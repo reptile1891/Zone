@@ -106,8 +106,8 @@ const Camp = {
     const i = +arg;
     if (a === 'cgo') { this.depart(); return true; }
     if (a === 'cstay') { closePanel(); return true; }
-    if (a === 'stash') { const s = P.inv[i]; if (s) { const d = s.art ? null : P.stash.find(t => t.id === s.id && !t.art); if (d) d.n += s.n; else P.stash.push(s); P.inv.splice(i, 1); Snd.tick(); } return true; }
-    if (a === 'unstash') { const s = P.stash[i]; if (s) { if (s.art) P.inv.push(s); else invAdd(s.id, s.n); P.stash.splice(i, 1); Snd.tick(); } return true; }
+    if (a === 'stash') { const s = P.inv[i]; if (s) { const d = s.art || s.g ? null : P.stash.find(t => t.id === s.id && !t.art && !t.g); if (d) d.n += s.n; else P.stash.push(s); P.inv.splice(i, 1); Snd.tick(); } return true; }
+    if (a === 'unstash') { const s = P.stash[i]; if (s) { if (s.art || s.g) P.inv.push(s); else invAdd(s.id, s.n); P.stash.splice(i, 1); Snd.tick(); } return true; }
     return false;
   },
   near(c) {

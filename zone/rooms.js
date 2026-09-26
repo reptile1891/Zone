@@ -198,7 +198,7 @@ function drawInterior() {
       if (r.out[0] === 'art') { const t = U.pick(r.out[1]); invAdd('art', 1, t); log('Из переплавки вышло: ' + (P.known[t] ? CFG.arts[t].name : 'неопознанный артефакт'), '#e8c060'); } else invAdd(r.out[0], r.out[1]);
       Snd.pick(); Snd.tick(); addXp(6); log('Сделано: ' + r.name, '#a8c890'); return true;
     }
-    if (a === 'stash' && P.stash.length >= this.stashLimit() && !P.stash.find(t => P.inv[+arg] && t.id === P.inv[+arg].id && !t.art)) { log('Ящик полон. Улучши его.'); return true; }
+    if (a === 'stash' && P.stash.length >= this.stashLimit() && !P.stash.find(t => P.inv[+arg] && !P.inv[+arg].g && t.id === P.inv[+arg].id && !t.art && !t.g)) { log('Ящик полон. Улучши его.'); return true; }
     return _click(a, arg);
   };
 })();

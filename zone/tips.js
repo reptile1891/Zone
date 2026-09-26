@@ -14,6 +14,7 @@ const Tip = {
     fixFracture: () => 'Лечит перелом', cureInfect: () => 'Лечит заражение раны', identify: () => 'Опознаёт один неопознанный артефакт', repairGun: v => 'Чинит ' + v + '% износа оружия',
     repairSuit: v => 'Чинит ' + v + '% износа костюма', sensor: () => 'Ставится на землю, пищит при движении рядом',
   },
+  FX_ROUND: ['radRes', 'fireRes'],   // проценты считаются как есть, остальные числа округляются до десятых
   row(label, text, col) { return '<div class="ti-r">' + label + ' <b' + (col ? ' style="color:' + col + '"' : '') + '>' + text + '</b></div>'; },
   head(name, tag, col) { return '<div class="ti-h"' + (col ? ' style="color:' + col + '"' : '') + '>' + name + (tag ? ' <span>' + tag + '</span>' : '') + '</div>'; },
   kind(id) { const d = CFG.items[id]; return d.part ? 'трофей мутанта' : d.junk ? 'хлам' : d.use ? 'расходник' : d.buy ? 'снаряжение' : 'предмет'; },
@@ -25,27 +26,39 @@ const Tip = {
     for (const k in d.use || {}) if (this.USE[k]) h += this.row('▸', this.USE[k](d.use[k]));
     for (const k in d.req || {}) h += this.row('Нужно:', 'навык «' + CFG.skills[k].name + '» ' + d.req[k], P.sk[k] >= d.req[k] ? '#8fbf7f' : '#e06060');
     h += this.row('Вес:', d.w + ' кг' + (n > 1 ? ' (×' + n + ' = ' + (d.w * n).toFixed(1) + ' кг)' : '')) + this.row('Ценность:', d.val + ' ₽');
+    if (Gear.isGear(id) && ctx === 'buy') h += '<div class="ti-d">Каждый экземпляр со своими характеристиками: чаще обычный, иногда лучше или хуже. Видно после покупки.</div>';
     if (ctx === 'buy') h += this.row('Цена покупки:', buyPrice(id) + ' ₽' + (d.pack ? ' за ' + d.pack + ' шт.' : '')) + this.row('В рюкзаке:', invCount(id));
     else if (vendor) { const p = sellPrice({ id, n: 1 }, vendor); if (p) h += this.row('Скупка:', p + ' ₽ за штуку'); }
     return h;
   },
   // Артефакт по id. Неопознанный показывает только намёки навыка «Знание артефактов»
-  art(id, vendor) {
-    const a = CFG.arts[id]; if (!a) return null;
+  art(id, vendor, q) {
+    const a = CFG.arts[id]; if (!a) return null; q = q || 1;
     if (!P.known[id]) {
       let h = this.head('Неопознанный артефакт', 'артефакт', '#c8ccd0') + '<div class="ti-d">Свойства неизвестны. Опознай у Учёного (или реагентом), тогда можно положить в контейнер.</div>';
       const hint = Meta.itemName({ art: id }).replace('Неопознанный артефакт', '').trim(); if (hint) h += this.row('Наблюдение:', hint.replace(/[()]/g, ''));
       h += this.row('Вес:', a.w + ' кг'); if (vendor) { const p = sellPrice({ art: id }, vendor); if (p) h += this.row('Скупка (по низу):', p + ' ₽'); }
       return h;
     }
-    let h = this.head(a.name, 'артефакт', '#e8c060') + '<div class="ti-d">' + a.desc + '</div>';
-    for (const k in a.fx) if (this.FX[k]) h += this.row('▸', this.FX[k](a.fx[k]));
-    h += this.row('Фон:', a.rad ? a.rad.toFixed(2) + ' (растёт с числом артефактов)' : 'нет') + this.row('Вес:', a.w + ' кг') + this.row('Ценность:', a.val + ' ₽');
-    if (vendor) { const p = sellPrice({ art: id }, vendor); if (p) h += this.row('Скупка:', p + ' ₽'); }
+    const gr = Gear.grade(q), fx = Gear.fxOf(id, q), r1 = v => Math.round(v * 10) / 10;
+    let h = this.head(a.name, 'артефакт', '#e8c060') + '<div class="ti-d">' + a.desc + '</div>' + this.row('Качество:', gr.n + ' (сила эффектов ×' + q.toFixed(2) + ')', gr.col);
+    for (const k in a.fx) if (this.FX[k]) h += this.row('▸', this.FX[k](this.FX_ROUND.includes(k) ? fx[k] : r1(fx[k])));
+    h += this.row('Фон:', a.rad ? Gear.radOf(id, q).toFixed(2) + ' (растёт с числом артефактов)' : 'нет') + this.row('Вес:', a.w + ' кг') + this.row('Ценность:', Math.round(a.val * Gear.valMul(q)) + ' ₽');
+    if (vendor) { const p = sellPrice({ art: id, q }, vendor); if (p) h += this.row('Скупка:', p + ' ₽'); }
     return h;
   },
   // Слот рюкзака (предмет или артефакт)
-  slot(s, vendor) { if (!s) return null; return s.art ? this.art(s.art, vendor) : this.item(s.id, null, vendor, s.n); },
+  slot(s, vendor) { if (!s) return null; return s.art ? this.art(s.art, vendor, s.q) : Gear.isGear(s.id) ? this.suit(s) : this.item(s.id, null, vendor, s.n); },
+  // Костюм/плащ со своими характеристиками; сравнение с базовым (зелёный — лучше, оранжевый — хуже)
+  suit(s) {
+    const d = CFG.items[s.id], e = Gear.eff(s), b = Gear.BASE[s.id], rar = Gear.rarOf(s), tier = Gear.TIERS[rar], w0 = d.w;
+    const cmp = (v, bv, lowGood) => { if (!bv) return ''; const pc = Math.round((v / bv - 1) * 100); if (!pc) return ''; const good = lowGood ? pc < 0 : pc > 0; return ' <span style="color:' + (good ? '#8fbf7f' : '#e0a060') + '">(' + (pc > 0 ? '+' : '−') + Math.abs(pc) + '%)</span>'; };
+    let h = this.head(Gear.name(s), tier.n + ' · ' + (s.id === 'firecoat' ? 'плащ' : 'костюм'), tier.col) + '<div class="ti-d">' + d.desc + '</div>';
+    if (b.rad) h += this.row('Радиация:', '−' + Math.round(e.rad * 100) + '%' + cmp(e.rad, b.rad)); if (b.anom) h += this.row('Аномалии:', '−' + Math.round(e.anom * 100) + '%' + cmp(e.anom, b.anom)); if (b.fire) h += this.row('Огонь:', '−' + Math.round(e.fire * 100) + '%' + cmp(e.fire, b.fire));
+    h += this.row('Вес:', e.w + ' кг' + cmp(e.w, w0, true)) + this.row('Износ:', 'скорость ×' + e.wear.toFixed(2) + (e.wear < 0.95 ? ' (медленнее)' : e.wear > 1.05 ? ' (быстрее)' : ''), e.wear < 0.95 ? '#8fbf7f' : e.wear > 1.05 ? '#e0a060' : null);
+    if (s.id !== 'firecoat') h += '<div class="ti-d">Из костюмов в рюкзаке работает лучший.</div>';
+    return h + this.row('Ценность:', d.val + ' ₽');
+  },
   // Оружие: по id (своё, простое или со случайными характеристиками) или по описанию def (товар на прилавке)
   weapon(k, defo) {
     const d = defo || (Wpn.def(k) || (CFG.weapons[k] ? Wpn.plain(k) : null)); if (!d) return null;
@@ -132,7 +145,7 @@ const Tip = {
     if (G.scene !== 'zone') return null;
     for (const m of Mutants.list) if (!m.dead && !Mutants.hidden(m) && !(m.sp === 'cinder' && m.state === 'sleep') && !(m.sp === 'fogger' && m.state === 'sleep') && near(m, m.r + 10) && Math.hypot(m.x - P.x, m.y - P.y) < 420) return this.mutant(m);
     for (const s of Stalkers.list) if (!s.dead && near(s, 16) && Math.hypot(s.x - P.x, s.y - P.y) < 420) return this.stalker(s);
-    for (const l of W.loot) if (near(l, 14)) return this.item(l.id, null, null, l.n) + '<div class="ti-r">Подобрать: <b>E</b></div>';
+    for (const l of W.loot) if (near(l, 14)) return (l.g ? this.suit({ id: l.id, n: 1, g: l.g }) : this.item(l.id, null, null, l.n)) + '<div class="ti-r">Подобрать: <b>E</b></div>';
     for (const c of W.conts) if (near(c, 30) && Math.hypot(c.x - P.x, c.y - P.y) < 200) return this.head(this.CONT[c.kind] || 'Контейнер', c.opened ? 'обыскан' : 'можно обыскать') + '<div class="ti-d">' + (c.opened ? 'Пусто.' : 'Подойди и нажми E: хлам, патроны, деньги.') + '</div>';
     for (const a of W.arts) if (near(a, 22) && Math.hypot(a.x - P.x, a.y - P.y) < hintR() * 0.75) return this.head('Что-то поблёскивает', 'артефакт', '#e8c060') + '<div class="ti-d">Подойди и возьми (E). Если вокруг аномалия — сначала проверь болтом.</div>';
     for (const c of W.caches) if (near(c, 16)) return this.head('Твой хабар', 'тайник смерти', '#e06060') + '<div class="ti-d">Здесь остались артефакты и часть денег. Забери (E).</div>';
@@ -144,7 +157,7 @@ const Tip = {
     switch (a) {
       case 'equip': case 'use': case 'drop': case 'sell': case 'sellall': case 'ident': case 'research': case 'stash': return this.slot(P.inv[i], vk);
       case 'unstash': return this.slot((P.stash || [])[i]);
-      case 'unequip': return P.equip[i] ? this.art(P.equip[i]) : null;
+      case 'unequip': return P.equip[i] ? this.art(P.equip[i].art, null, P.equip[i].q) : null;
       case 'buy': return this.item(arg, 'buy');
       case 'wbuy': case 'wequip': case 'wrepair': case 'wsell': return this.weapon(arg);
       case 'wbuyg': return (P.gunOffers || [])[i] ? this.weapon(null, P.gunOffers[i].def) : null;

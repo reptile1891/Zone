@@ -91,10 +91,10 @@ test("Ожог игрока: плащ и артефакт снижают его,
   const out = z.run(`(() => {
     W = new World(5); G.dead = false; G.scene = "zone"; P.hp = 100; P.inv = []; P.equip = [null, null]; P.burn = 0; P.suitCond = 100;
     Meta.ignite(P, 5); const plain = P.burn; P.burn = 0;
-    invAdd("firecoat", 1); const res = Meta.fireRes(); Meta.ignite(P, 5); const coat = P.burn;
+    P.inv.push({ id: "firecoat", n: 1 }); const res = Meta.fireRes(); Meta.ignite(P, 5); const coat = P.burn;
     P.burn = 4; const hp0 = P.hp; for (let i = 0; i < 10; i++) Meta.update(0.1);
     const lost = hp0 - P.hp; P.burn = 3; P.inv = []; invAdd("medkit", 1); useItem("medkit");
-    const cured = P.burn; P.equip = ["ashheart", null]; return { plain, coat, res, lost, cured, art: Meta.fireRes() };
+    const cured = P.burn; P.equip = [{ art: "ashheart", q: 1 }, null]; return { plain, coat, res, lost, cured, art: Meta.fireRes() };
   })()`);
   assert.equal(out.plain, 5); assert.ok(Math.abs(out.coat - 2) < 1e-9); assert.ok(Math.abs(out.res - 0.6) < 1e-9);
   assert.ok(out.lost > 3 && out.lost < 5, "за 1 с горения теряется ~4 HP, а не " + out.lost);

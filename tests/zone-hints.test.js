@@ -69,7 +69,7 @@ test("состояния и параметры: кровотечение, пер
 test("неопознанный артефакт: совет про учёного; опознанный — не тот же; в лагере с пустым слотом — совет про контейнер", () => {
   fresh(); run(`invAdd("art", 1, "soul");`); assert.match(tick(1)[0], /Неопознанный артефакт/);
   fresh(); run(`invAdd("art", 1, "soul"); P.known.soul = true; G.scene = "camp";`); const o = tick(1); assert.match(o[0], /В контейнер/);
-  fresh(); run(`invAdd("art", 1, "soul"); P.known.soul = true; P.equip = ["medusa", "thorn"]; G.scene = "camp";`); assert.deepEqual(tick(2), []);
+  fresh(); run(`invAdd("art", 1, "soul"); P.known.soul = true; P.equip = [{ art: "medusa", q: 1 }, { art: "thorn", q: 1 }]; G.scene = "camp";`); assert.deepEqual(tick(2), []);
 });
 
 test("обстановка: первый выход из лагеря, ночь, озёра, гарь, сектор 4, сирена вне укрытия", () => {

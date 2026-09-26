@@ -65,7 +65,7 @@ test("подсказка рецепта: материалы «есть/нужн�
 test("подсказка по кнопке строки: рюкзак, торговля, склад, оружие, рецепт, контейнер артефактов, быстрый слот", () => {
   fresh();
   const o = run(`(() => {
-    invAdd("medkit", 2); invAdd("art", 1, "soul"); P.stash = [{ id: "scrap", n: 3 }]; P.known.soul = true; P.equip = ["soul", null]; G.ui = { k: "trade", v: "buyer" };
+    invAdd("medkit", 2); invAdd("art", 1, "soul"); P.stash = [{ id: "scrap", n: 3 }]; P.known.soul = true; P.equip = [{ art: "soul", q: 1 }, null]; G.ui = { k: "trade", v: "buyer" };
     const r = a => plain(Tip.fromAttr(a)); function plain(h) { return h ? String(h).replace(/<[^>]+>/g, " ") : null; }
     return { equip: r("equip:0"), use: r("use:0"), drop: r("drop:0"), sell: r("sell:1"), stash: r("stash:0"), unstash: r("unstash:0"), unequip: r("unequip:0"), unequipEmpty: r("unequip:1"), buy: r("buy:food"), wbuy: r("wbuy:rifle"), wequip: r("wequip:pistol"), craft: r("craft:shock"),
       quickWeapon: plain(Tip.quick(0)), quickBolt: plain(Tip.quick(1)), quickMedkit: plain(Tip.quick(2)), oor: r("sell:99"), close: r("close"), nan: r("qacc:1"), scrapSell: (G.ui = { k: "trade", v: "buyer" }, invAdd("scrap", 3), plain(Tip.fromAttr("sell:" + (P.inv.length - 1)))) };
@@ -79,7 +79,7 @@ test("подсказка по кнопке строки: рюкзак, торг�
 test("resolve: находит предмет по строке .row, слоту .slot и быстрому слоту .qs; на чужих элементах — null", () => {
   fresh();
   const o = run(`(() => {
-    invAdd("medkit", 1); P.known.soul = true; P.equip = ["soul", null];
+    invAdd("medkit", 1); P.known.soul = true; P.equip = [{ art: "soul", q: 1 }, null];
     const btn = { dataset: { a: "use:0" } }, row = { querySelector: s => (s === "[data-a]" ? btn : null) };
     const inRow = { closest: s => (s === ".row" ? row : null) };
     const slot = { closest: s => (s === ".slot" ? { dataset: { a: "unequip:0" } } : null) }, qs = { closest: s => (s === ".qs" ? { dataset: { q: "1" } } : null) };

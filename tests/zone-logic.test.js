@@ -243,8 +243,8 @@ test("предметы: аптечка лечит и останавливает 
 test("костюм: снижает радиацию и урон аномалий, износ ослабляет эффект", () => {
   fresh();
   const o = run(`(() => {
-    P.inv = []; const none = Meta.suitRad(); invAdd("suit", 1); P.suitCond = 100; const fresh = Meta.suitRad(); P.suitCond = 0; const worn = Meta.suitRad(); P.suitCond = 100;
-    invAdd("suit2", 1); const best = Meta.bestSuit(); const anom = Meta.suitAnom(); P.hp = 100; P.hurt(10, "anom");
+    P.inv = []; const none = Meta.suitRad(); P.inv.push({ id: "suit", n: 1 }); P.suitCond = 100; const fresh = Meta.suitRad(); P.suitCond = 0; const worn = Meta.suitRad(); P.suitCond = 100;
+    P.inv.push({ id: "suit2", n: 1 }); const best = Meta.bestSuit().id; const anom = Meta.suitAnom(); P.hp = 100; P.hurt(10, "anom");
     return { none, fresh, worn, best, anom, hp: P.hp, wear: P.suitCond };
   })()`);
   assert.equal(o.none, 0); assert.ok(o.fresh > o.worn && o.worn > 0); assert.equal(o.best, "suit2"); assert.ok(o.hp > 90 && o.hp < 100); assert.ok(o.wear < 100);
@@ -303,7 +303,7 @@ test("выброс: сирена → волна → конец; вне укры�
 test("смерть: артефакты и 40% денег остаются в тайнике на месте смерти, навыки и опыт — при игроке", () => {
   fresh();
   const o = run(`(() => {
-    P.money = 1000; P.xp = 5; P.lvl = 3; P.rep = 0; invAdd("art", 1, "soul"); invAdd("scrap", 3); P.equip = ["medusa", null]; P.x = 3300; P.y = 3300; P.insured = false;
+    P.money = 1000; P.xp = 5; P.lvl = 3; P.rep = 0; invAdd("art", 1, "soul"); invAdd("scrap", 3); P.equip = [{ art: "medusa", q: 1 }, null]; P.x = 3300; P.y = 3300; P.insured = false;
     W.caches = []; die(); const c = W.caches[0];
     return { dead: G.dead, money: P.money, cache: { money: c.money, arts: c.items.map(i => i.art).sort(), x: c.x }, scrap: invCount("scrap"), artsLeft: P.inv.filter(s => s.art).length, lvl: P.lvl, rep: P.rep, equip: P.equip };
   })()`);

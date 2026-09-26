@@ -12,14 +12,16 @@ const Meta = {
   saveFields() { const o = {}; for (const k of ['rep', 'karma', 'quests', 'offers', 'lore', 'weapons', 'weapon', 'cond', 'suitCond', 'insured', 'pass', 'earned', 'researched', 'kills', 'mapSold', 'stash', 'bld', 'chainDone', 'fuel', 'talked', 'deepDone', 'hints', 'hintsOff', 'wdefs', 'wseq', 'gunOffers']) o[k] = P[k]; return o; },
 
   // ---- костюм ----
-  bestSuit() { return hasItem('suit2') ? 'suit2' : hasItem('suit') ? 'suit' : null; },
+  // Носится лучший костюм из рюкзака (слот со своими характеристиками)
+  bestSuit() { let b = null; for (const s of P.inv) if ((s.id === 'suit' || s.id === 'suit2') && (!b || Gear.score(s) > Gear.score(b))) b = s; return b; },
   suitEff() { return 0.4 + 0.6 * P.suitCond / 100; },
-  suitRad() { const s = this.bestSuit(); return s ? this.TIER[s].rad * this.suitEff() : 0; },
-  suitAnom() { const s = this.bestSuit(); return s ? this.TIER[s].anom * this.suitEff() : 0; },
-  wearSuit(d) { if (this.bestSuit()) P.suitCond = Math.max(0, P.suitCond - d * 0.12); },
+  suitRad() { const s = this.bestSuit(); return s ? Gear.eff(s).rad * this.suitEff() : 0; },
+  suitAnom() { const s = this.bestSuit(); return s ? Gear.eff(s).anom * this.suitEff() : 0; },
+  wearSuit(d) { const s = this.bestSuit(); if (s) P.suitCond = Math.max(0, P.suitCond - d * 0.12 * Gear.eff(s).wear); },
+  bestCoat() { let b = null; for (const s of P.inv) if (s.id === 'firecoat' && (!b || Gear.eff(s).fire > Gear.eff(b).fire)) b = s; return b; },
 
   // ---- огонь ----
-  fireRes() { return Math.min(0.85, (hasItem('firecoat') ? 0.6 : 0) + fx('fireRes')); },
+  fireRes() { return Math.min(0.85, (this.bestCoat() ? Gear.eff(this.bestCoat()).fire : 0) + fx('fireRes')); },
   // Поджечь существо: игрока — на sec секунд с поправкой на огнестойкость, мутанта — на 4 с (огнеупорные не горят)
   ignite(e, sec) {
     if (e === P) { const k = 1 - this.fireRes(); if (k <= 0.05 || G.dead) return; if (!(P.burn > 0)) log('Ты горишь! Вода или аптечка потушат.', '#ff9a40'); P.burn = Math.max(P.burn || 0, sec * k); }
@@ -70,9 +72,16 @@ const Meta = {
     if (!(P.gunOffers || []).length) h += '<div class="stat">Пусто. Загляни после ночёвки.</div>';
     return h;
   },
+  // Подпись в панелях (HTML): у артефакта — класс качества (только у опознанного), у костюма — цвет редкости
+  itemLabel(s) {
+    const n = this.itemName(s);
+    if (s.art && P.known[s.art]) { const g = Gear.grade(s.q); return n + ' <span style="color:' + g.col + '">· ' + g.n + '</span>'; }
+    if (!s.art && Gear.isGear(s.id) && Gear.rarOf(s)) return '<span style="color:' + Gear.TIERS[Gear.rarOf(s)].col + '">' + n + '</span>';
+    return n;
+  },
   gainLore() { if (P.lore < CFG.lore.length) { log('Знание: ' + CFG.lore[P.lore++], '#c8b0e8'); } },
   itemName(s) {
-    if (!s.art) return CFG.items[s.id].name;
+    if (!s.art) return Gear.isGear(s.id) ? Gear.name(s) : CFG.items[s.id].name;
     if (P.known[s.art]) return CFG.arts[s.art].name;
     const a = CFG.arts[s.art], L = P.sk.lore; let t = 'Неопознанный артефакт';
     if (L >= 3 && s.art === 'dud') t += ' (похоже, пустышка)'; else if (L >= 1 && a.rad > 0.15) t += ' (фонит)'; else if (L >= 2 && a.fx.hpRegen) t += ' (тёплый)';
@@ -388,7 +397,7 @@ const Meta = {
   invExtra() {
     const w = Wpn.of(P.weapon);
     return `<div class="cols"><div><h3>Состояние</h3><div class="stat">Оружие: <b style="color:${Wpn.color(P.weapon)}">${w.name}</b> (износ ${Math.round(100 - P.cond[P.weapon])}%) · сменить: клавиша 1 при выбранном слоте</div>
-      <div class="stat">Костюм: <b>${this.bestSuit() ? CFG.items[this.bestSuit()].name + ' (износ ' + Math.round(100 - P.suitCond) + '%)' : 'нет'}</b></div>
+      <div class="stat">Костюм: <b>${this.bestSuit() ? Gear.name(this.bestSuit()) + ' (износ ' + Math.round(100 - P.suitCond) + '%)' : 'нет'}</b></div>
       <div class="stat">Травмы: <b>${(P.fracture ? 'перелом (шина) ' : '') + (P.infect > 0 ? 'заражение (антибиотик) ' : '') + (P.burn > 0 ? 'ожог (вода или аптечка) ' : '') + (P.bleed > 0 ? 'кровотечение ' : '') || 'нет'}</b></div></div></div>`;
   },
 
@@ -408,7 +417,7 @@ const Meta = {
       }
       case 'ident': {
         const s = P.inv[i], v = CFG.vendors[u.v];
-        if (s && s.art && P.money >= Camp.identCost()) { P.money -= Camp.identCost(); P.known[s.art] = true; addXp(25); P.karma.study += 0.5; log('Опознан: ' + CFG.arts[s.art].name + '. ' + CFG.arts[s.art].desc, '#e8c060'); } return true;
+        if (s && s.art && P.money >= Camp.identCost()) { P.money -= Camp.identCost(); P.known[s.art] = true; addXp(25); P.karma.study += 0.5; log('Опознан: ' + CFG.arts[s.art].name + ' (' + Gear.grade(s.q).n.toLowerCase() + '). ' + CFG.arts[s.art].desc, Gear.grade(s.q).col); } return true;
       }
       case 'sleep': {
         const v = CFG.vendors.bar;
@@ -514,7 +523,7 @@ function useItem(id) {
   invTake(id, 1); Snd.pick();
   if (u.repairGun) { P.cond[P.weapon] = Math.min(100, P.cond[P.weapon] + u.repairGun); log('Оружие подлатано.'); }
   if (u.repairSuit) { P.suitCond = Math.min(100, P.suitCond + u.repairSuit); log('Костюм залатан.'); }
-  if (u.identify) { const s = P.inv.find(x => x.art && !P.known[x.art]); P.known[s.art] = true; P.karma.study += 0.5; addXp(15); log('Реагент показал: ' + CFG.arts[s.art].name + '. ' + CFG.arts[s.art].desc, '#e8c060'); }
+  if (u.identify) { const s = P.inv.find(x => x.art && !P.known[x.art]); P.known[s.art] = true; P.karma.study += 0.5; addXp(15); log('Реагент показал: ' + CFG.arts[s.art].name + ' (' + Gear.grade(s.q).n.toLowerCase() + '). ' + CFG.arts[s.art].desc, Gear.grade(s.q).col); }
   if (u.heal) P.hp = Math.min(100, P.hp + u.heal);
   if (u.stopBleed) { P.bleed = 0; P.burn = 0; }
   if (u.food) P.food = Math.min(100, P.food + u.food);

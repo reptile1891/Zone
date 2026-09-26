@@ -79,7 +79,7 @@ test("сдача: артефакт «Эхо», деньги, репутация,
 
 test("«Эхо» опознаётся, работает: мутанты замечают хуже, раны затягиваются; в подсказке — эффекты", () => {
   fresh();
-  const o = run(`(() => { P.known.echo = true; P.equip = ["echo", null]; return { repel: fx("repel"), regen: fx("hpRegen"), tip: Tip.art("echo"), val: CFG.arts.echo.val }; })()`);
+  const o = run(`(() => { P.known.echo = true; P.equip = [{ art: "echo", q: 1 }, null]; return { repel: fx("repel"), regen: fx("hpRegen"), tip: Tip.art("echo"), val: CFG.arts.echo.val }; })()`);
   assert.equal(o.repel, 1); assert.equal(o.regen, 1); assert.match(o.tip.replace(/<[^>]+>/g, " "), /Мутанты хуже замечают/);
 });
 

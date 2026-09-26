@@ -25,19 +25,29 @@ let cam = { x: 0, y: 0 };
 // ---------- утилиты инвентаря ----------
 const hasItem = id => P.inv.some(s => s.id === id);
 const invCount = id => P.inv.reduce((n, s) => n + (s.id === id ? s.n : 0), 0);
-function invAdd(id, n = 1, art) {
-  if (art) { P.inv.push({ id: 'art', n: 1, art }); return; }
+// Удача находки: чем глубже Зона, тем сильнее артефакты (0 в лагере)
+const findLuck = () => { try { return Math.max(0, (G.scene === 'dungeon' && Dungeon.cur ? W.danger(Dungeon.cur.x, Dungeon.cur.y) : G.scene === 'zone' ? W.danger(P.x, P.y) : 1) - 1); } catch (e) { return 0; } };
+// art — тип артефакта, q — его качество (без q бросается новое); костюмы получают случайные характеристики
+function invAdd(id, n = 1, art, q) {
+  if (art) { P.inv.push({ id: 'art', n: 1, art, q: q || Gear.rollQ(Math.random, findLuck()) }); return; }
+  if (Gear.isGear(id)) { for (let i = 0; i < n; i++) P.inv.push(Gear.make(id, Math.random, { weights: [70, 25, 5, 0] })); return; }
   const s = P.inv.find(s => s.id === id && !s.art); if (s) s.n += n; else P.inv.push({ id, n });
 }
+// Забирает n штук; из костюмов — самые слабые (сильные экземпляры не уходят в переплавку)
+function takeWeakest(id, n) {
+  while (n > 0) { let bi = -1; P.inv.forEach((s, i) => { if (s.id === id && (bi < 0 || Gear.score(s) < Gear.score(P.inv[bi]))) bi = i; }); if (bi < 0) return; P.inv.splice(bi, 1); n--; }
+}
 function invTake(id, n = 1) {
+  if (Gear.isGear(id)) return takeWeakest(id, n);
   for (let i = 0; i < P.inv.length && n > 0; i++) {
     const s = P.inv[i]; if (s.id !== id) continue;
     const t = Math.min(n, s.n); s.n -= t; n -= t; if (!s.n) { P.inv.splice(i, 1); i--; }
   }
 }
-const slotW = s => s.art ? CFG.arts[s.art].w : CFG.items[s.id].w * s.n;
-const fx = k => P.equip.reduce((v, a) => v + (a ? (CFG.arts[a].fx[k] || 0) : 0), 0);
-const weight = () => P.inv.reduce((w, s) => w + slotW(s), 0) + P.equip.reduce((w, a) => w + (a ? CFG.arts[a].w : 0), 0);
+const slotW = s => s.art ? CFG.arts[s.art].w : Gear.isGear(s.id) ? Gear.eff(s).w * s.n : CFG.items[s.id].w * s.n;
+const fx = k => P.equip.reduce((v, a) => v + (a ? (Gear.fxOf(a.art, a.q)[k] || 0) : 0), 0);
+const weight = () => P.inv.reduce((w, s) => w + slotW(s), 0) + P.equip.reduce((w, a) => w + (a ? CFG.arts[a.art].w : 0), 0);
+const equipHas = id => P.equip.some(a => a && a.art === id);
 const carryCap = () => CFG.player.carry + P.sk.carry * 4 + fx('carry');
 const maxStam = () => CFG.player.stam * (1 + 0.15 * P.sk.endurance);
 const radRes = () => Math.min(0.85, fx('radRes') + Meta.suitRad() + P.sk.resist * 0.05);
@@ -46,7 +56,7 @@ const inCamp = (x = P.x, y = P.y) => G.scene !== 'zone' || Math.hypot(x - W.C.x,
 const isSheltered = () => G.scene !== 'zone' || W.sheltered(P.x, P.y);
 const itemName = s => Meta.itemName(s);
 const itemIcon = s => s.art ? Icons.html(P.known[s.art] ? 'art' : 'art_u') : CFG.items[s.id].icon;
-const baseVal = s => s.art ? CFG.arts[s.art].val : CFG.items[s.id].val;
+const baseVal = s => s.art ? CFG.arts[s.art].val * (P.known[s.art] ? Gear.valMul(s.q) : 1) : CFG.items[s.id].val;   // качество проявляется в цене только у опознанного
 function log(txt, col) { const d = document.createElement('div'); d.textContent = txt; if (col) d.style.color = col; $('log').appendChild(d); while ($('log').children.length > 7) $('log').firstChild.remove(); setTimeout(() => d.remove(), 9000); }
 function addXp(n) {
   P.xp += n;
@@ -106,7 +116,7 @@ function save(force) {
 function load() {
   try {
     const s = JSON.parse(localStorage.getItem('zone_save_v2')); if (!s) return false;
-    W = new World(s.seed); resetPlayer(); Object.assign(P, s.P); P.sp = s.P.sp; G.clock = s.clock; G.demand = s.demand || {}; G.events = s.events || [];
+    W = new World(s.seed); resetPlayer(); Object.assign(P, s.P); P.sp = s.P.sp; Gear.fixEquip(); G.clock = s.clock; G.demand = s.demand || {}; G.events = s.events || [];
     W.caches = s.caches || []; for (let i = 0; i < known.length; i++) known[i] = +s.kn[i] || 0;
     for (const k in CFG.skills) P.sk[k] = P.sk[k] || 0;
     // что уже вскрыто, обыскано и подобрано — не появляется заново (мир строится по сиду, а не хранится)
@@ -126,7 +136,7 @@ function die() {
   if (P.insured) { P.insured = false; P.rep -= 1; $('deathtxt').textContent = 'Страховка сработала: тебя вытащили вместе с хабаром.'; $('death').style.display = 'flex'; closePanel(); Snd.hit(); save(true); return; }
   P.rep -= 2;
   const items = P.inv.filter(s => s.art), lostMoney = Math.floor(P.money * CFG.death.moneyLoss);
-  const eq = P.equip.filter(Boolean).map(a => ({ id: 'art', n: 1, art: a }));
+  const eq = P.equip.filter(Boolean).map(a => ({ id: 'art', n: 1, art: a.art, q: a.q }));
   const all = items.concat(eq);
   const dun = G.scene === 'dungeon' && Dungeon.cur;   // погиб под землёй — тайник у входа в бункер
   if (all.length || lostMoney) W.caches.push({ x: dun ? Dungeon.cur.x : P.x, y: dun ? Dungeon.cur.y + 42 : P.y, items: all, money: lostMoney });
@@ -195,7 +205,7 @@ function updateBolts(dt) {
 function findNear() {
   let best = null, bd = 9999;
   const c = (o, d, lim, label, fn) => { if (d < lim && d < bd) { bd = d; best = { label, fn, o }; } };
-  for (const l of W.loot) if (l.id !== 'bolt') c(l, Math.hypot(l.x - P.x, l.y - P.y), 28, 'Подобрать: ' + CFG.items[l.id].name, () => { invAdd(l.id, l.n); W.loot.splice(W.loot.indexOf(l), 1); Snd.pick(); });
+  for (const l of W.loot) if (l.id !== 'bolt') c(l, Math.hypot(l.x - P.x, l.y - P.y), 28, 'Подобрать: ' + CFG.items[l.id].name, () => { if (l.g) P.inv.push({ id: l.id, n: 1, g: l.g }); else invAdd(l.id, l.n); W.loot.splice(W.loot.indexOf(l), 1); Snd.pick(); });
   for (const a of W.arts) c(a, Math.hypot(a.x - P.x, a.y - P.y), 28, 'Взять: ' + (P.known[a.type] ? CFG.arts[a.type].name : 'непонятную штуку'), () => takeArt(a));
   for (const s of W.corpses) if (!s.looted) c(s, Math.hypot(s.x - P.x, s.y - P.y), 32, 'Обыскать тело сталкера', () => lootCorpse(s));
   for (const s of W.caches) c(s, Math.hypot(s.x - P.x, s.y - P.y), 34, 'Забрать своё', () => lootCache(s));
@@ -210,8 +220,8 @@ function findNear() {
 }
 const npcPos = k => Camp.vendorPos(k);
 function takeArt(a) {
-  invAdd('art', 1, a.type); W.arts.splice(W.arts.indexOf(a), 1); Snd.pick();
-  log(P.known[a.type] ? 'Взят артефакт: ' + CFG.arts[a.type].name : 'Взят неопознанный артефакт. Учёный скажет, что это.', '#e8c060');
+  invAdd('art', 1, a.type, a.q); W.arts.splice(W.arts.indexOf(a), 1); Snd.pick();
+  log(P.known[a.type] ? 'Взят артефакт: ' + Meta.itemName(P.inv[P.inv.length - 1]) : 'Взят неопознанный артефакт. Учёный скажет, что это.', '#e8c060');
 }
 function lootCorpse(s) {
   s.looted = true; const got = [];
@@ -227,7 +237,7 @@ function openCont(c) {
   log('Найдено: ' + got.join(', '), '#c8c090'); Snd.pick(); Mutants.hear(P.x, P.y, 90);
   if (c.kind === 'lab') Meta.onLab();
 }
-function lootCache(s) { for (const it of s.items) invAdd(it.id, it.n, it.art); P.money += s.money; W.caches.splice(W.caches.indexOf(s), 1); log('Ты вернул своё. Повезло.', '#e8c060'); Snd.pick(); }
+function lootCache(s) { for (const it of s.items) invAdd(it.id, it.n, it.art, it.q); P.money += s.money; W.caches.splice(W.caches.indexOf(s), 1); log('Ты вернул своё. Повезло.', '#e8c060'); Snd.pick(); }
 function butcher(m) {
   const n = Math.min(m.meat, 1 + Math.floor(Math.random() * (1 + P.sk.butcher * 0.5) + 0.5)); m.meat -= n;
   invAdd('meat', n); const part = CFG.mut[m.sp].part; if (Math.random() < 0.35 + P.sk.butcher * 0.12) { invAdd(part, 1); log('Снят трофей: ' + CFG.items[part].name); }
@@ -293,12 +303,12 @@ function update(dt) {
   P.noiseT -= dt;
   if (moving && P.noiseT <= 0 && G.scene === 'zone') {
     P.noiseT = 0.5; const n = CFG.player.noise, r = (P.running ? n.run : P.sneak ? n.sneak : n.walk) * Math.pow(0.85, P.sk.stealth);
-    Mutants.hear(P.x, P.y, r * (1 + (P.equip.includes('moonlight') ? 1.2 : 0)) * (fx('repel') ? 0.7 : 1));
+    Mutants.hear(P.x, P.y, r * (1 + (equipHas('moonlight') ? 1.2 : 0)) * (fx('repel') ? 0.7 : 1));
   }
   // шаги
   if (moving) { G.step += sp * dt; if (G.step > 26) { G.step = 0; Snd.step(P.running ? 2 : P.sneak ? 0 : 1); } }
   // лунный свет привлекает
-  if (P.equip.includes('moonlight') && Math.random() < dt * 0.3) Mutants.hear(P.x, P.y, 400);
+  if (equipHas('moonlight') && Math.random() < dt * 0.3) Mutants.hear(P.x, P.y, 400);
   // оружие
   P.cd -= dt; P.recoil = Math.max(0, (P.recoil || 0) - dt * 7); if ((mouse.l || mouse.tap) && !G.ui && (G.scene === 'zone' || G.scene === 'dungeon')) useSel();
   mouse.tap = false;   // быстрый клик (нажал и отпустил между кадрами) всё равно даёт один выстрел
@@ -310,8 +320,8 @@ function update(dt) {
   else if (P.food > 20 && P.rad < 40) P.hp = Math.min(100, P.hp + (0.4 + fx('hpRegen')) * dt);
   else if (fx('hpRegen')) P.hp = Math.min(100, P.hp + fx('hpRegen') * 0.5 * dt);
   let rad = W.radAt(P.x, P.y);
-  for (const s of P.inv) if (s.art) rad += CFG.arts[s.art].rad * 0.5;
-  for (const a of P.equip) if (a) rad += CFG.arts[a].rad * 0.5;
+  for (const s of P.inv) if (s.art) rad += Gear.radOf(s.art, s.q) * 0.5;
+  for (const a of P.equip) if (a) rad += Gear.radOf(a.art, a.q) * 0.5;
   rad *= 1 - radRes(); P.geigerRate = rad;
   if (rad > 0) P.rad = Math.min(100, P.rad + rad * dt); else if (camp) P.rad = Math.max(0, P.rad - 1.5 * dt); else P.rad = Math.max(0, P.rad - CFG.player.radDecay * 0.1 * dt);
   if (P.rad > 60) P.hp -= (P.rad - 60) / 40 * dt;
@@ -634,12 +644,12 @@ function renderPanelBase() {
     P.inv.forEach((s, i) => {
       const def = s.art ? null : CFG.items[s.id];
       const act = s.art ? btn('equip:' + i, 'В контейнер') : def.use ? btn('use:' + i, 'Исп.') : '';
-      h += row(itemIcon(s), itemName(s) + (s.n > 1 ? ' ×' + s.n : ''), (s.art ? (P.known[s.art] ? CFG.arts[s.art].desc : 'Свойства неизвестны. Нужен учёный.') : (def.desc || '')) + ' · ' + slotW(s).toFixed(1) + ' кг', act + btn('drop:' + i, '↓'));
+      h += row(itemIcon(s), Meta.itemLabel(s) + (s.n > 1 ? ' ×' + s.n : ''), (s.art ? (P.known[s.art] ? CFG.arts[s.art].desc : 'Свойства неизвестны. Нужен учёный.') : (def.desc || '')) + ' · ' + slotW(s).toFixed(1) + ' кг', act + btn('drop:' + i, '↓'));
     });
     if (!P.inv.length) h += '<div class="stat">Пусто.</div>';
     h += '</div><div><h3>Контейнеры для артефактов</h3>';
-    P.equip.forEach((a, i) => { h += `<span class="slot" data-a="unequip:${i}" title="${a ? CFG.arts[a].name + ': ' + CFG.arts[a].desc : 'Пусто'}">${a ? Icons.html('art') : '·'}</span>`; });
-    h += '<div class="stat">' + P.equip.map(a => a ? CFG.arts[a].name : '—').join(' · ') + '</div>';
+    P.equip.forEach((a, i) => { h += `<span class="slot" data-a="unequip:${i}" title="${a ? CFG.arts[a.art].name + ': ' + CFG.arts[a.art].desc : 'Пусто'}">${a ? Icons.html('art') : '·'}</span>`; });
+    h += '<div class="stat">' + P.equip.map(a => a ? Meta.itemLabel(Gear.asSlot(a)) : '—').join(' · ') + '</div>';
     h += `<h3>Навыки — очков: ${P.sp} · опыт ${Math.floor(P.xp)}/${Math.floor(60 * Math.pow(P.lvl, 1.4))}</h3>`;
     for (const k in CFG.skills) { const s = CFG.skills[k]; h += row('', `${s.name} <b>${P.sk[k]}/${s.max}</b>`, s.desc, btn('skill:' + k, '+', !P.sp || P.sk[k] >= s.max)); }
     h += `<h3>Записки (${P.notes.length})</h3>` + (P.notes.map(n => `<div class="note">${n.txt}</div>`).join('') || '<div class="stat">Нет.</div>') + '</div></div>';
@@ -665,8 +675,9 @@ function renderPanelBase() {
     panel.innerHTML = h + '</div>';
   }
 }
-panel.addEventListener('click', e => {
-  const t = e.target.closest('[data-a]'); if (!t) return; Snd.tick(); const [a, arg, arg2] = t.dataset.a.split(':'), i = +arg;
+// Обработка нажатия на кнопку панели (data-a вида «действие:аргумент:аргумент2»)
+function panelClick(attr) {
+  Snd.tick(); const [a, arg, arg2] = attr.split(':'), i = +arg;
   const u = G.ui;
   if (a === 'close' || a === 'resume') return closePanel();
   if (Camp.click(a, arg, arg2, u)) { renderPanel(); return; }
@@ -675,12 +686,12 @@ panel.addEventListener('click', e => {
   else if (a === 'savenow') { if (inCamp() && G.scene !== 'dungeon') { save(); log('Сохранено.'); } else log('Сохраняться можно только в лагере.'); }
   else if (a === 'newgame') { if (u.conf) { try { localStorage.removeItem('zone_save_v2'); } catch (e) {} closePanel(); newGame(); return; } u.conf = true; }
   if (a === 'use') { const s = P.inv[i]; if (s) useItem(s.id); }
-  else if (a === 'drop') { const s = P.inv[i]; if (s) { if (s.art) W.arts.push({ id: 0, type: s.art, x: P.x + 20, y: P.y, anom: 0 }); else W.loot.push({ x: P.x + 20, y: P.y, id: s.id, n: s.n }); P.inv.splice(i, 1); } }
+  else if (a === 'drop') { const s = P.inv[i]; if (s) { if (s.art) W.arts.push({ id: 0, type: s.art, q: s.q, x: P.x + 20, y: P.y, anom: 0 }); else W.loot.push({ x: P.x + 20, y: P.y, id: s.id, n: s.n, g: s.g }); P.inv.splice(i, 1); } }
   else if (a === 'equip') {
     const s = P.inv[i], slot = P.equip.indexOf(null);
     if (!P.known[s.art]) log('Неизвестный артефакт в контейнер не положишь — опознай у учёного.');
-    else if (slot < 0) log('Контейнеры заняты.'); else { P.equip[slot] = s.art; P.inv.splice(i, 1); }
-  } else if (a === 'unequip') { if (P.equip[i]) { invAdd('art', 1, P.equip[i]); P.equip[i] = null; } }
+    else if (slot < 0) log('Контейнеры заняты.'); else { P.equip[slot] = Gear.slotOf(s); P.inv.splice(i, 1); }
+  } else if (a === 'unequip') { if (P.equip[i]) { invAdd('art', 1, P.equip[i].art, P.equip[i].q); P.equip[i] = null; } }
   else if (a === 'skill') { if (P.sp > 0 && P.sk[arg] < CFG.skills[arg].max) { P.sk[arg]++; P.sp--; } }
   else if (a === 'buy') { const p = buyPrice(arg); if (P.money >= p) { P.money -= p; invAdd(arg, CFG.items[arg].pack || 1); Snd.pick(); } }
   else if (a === 'sell' || a === 'sellall') {
@@ -688,7 +699,7 @@ panel.addEventListener('click', e => {
     P.money += p; addXp(p * 0.06); const key = s.art || s.id; G.demand[key] = Math.max(0.5, (G.demand[key] || 1) * Math.pow(0.94, n));
     if (s.art) P.inv.splice(i, 1); else { s.n -= n; if (s.n <= 0) P.inv.splice(i, 1); } Snd.pick();
   } else if (a === 'ident') {
-    const s = P.inv[i], v = CFG.vendors[u.v]; if (s && s.art && P.money >= v.ident) { P.money -= v.ident; P.known[s.art] = true; addXp(25); log('Опознан: ' + CFG.arts[s.art].name + '. ' + CFG.arts[s.art].desc, '#e8c060'); }
+    const s = P.inv[i], v = CFG.vendors[u.v]; if (s && s.art && P.money >= v.ident) { P.money -= v.ident; P.known[s.art] = true; addXp(25); log('Опознан: ' + CFG.arts[s.art].name + ' (' + Gear.grade(s.q).n.toLowerCase() + '). ' + CFG.arts[s.art].desc, Gear.grade(s.q).col); }
   } else if (a === 'sleep') {
     const v = CFG.vendors.bar; if (P.money >= v.sleep) { P.money -= v.sleep; const day = CFG.time.dayLen / 24; G.clock += (((7 - G.hour) + 24) % 24) * day; P.hp = 100; P.stam = maxStam(); P.rad = Math.max(0, P.rad - 20); P.stress = 0; P.food = Math.max(20, P.food - 15); save(); log('Ты выспался. Утро. Игра сохранена.'); closePanel(); }
   } else if (a === 'map') {
@@ -700,7 +711,8 @@ panel.addEventListener('click', e => {
   } else if (a === 'rumor') u.r = U.pick(CFG.rumors);
   else if (a === 'tell') { const n = P.notes[i]; if (n && !n.sold) { n.sold = true; P.money += CFG.vendors.bar.noteSell; addXp(4); Snd.pick(); } }
   renderPanel();
-});
+}
+panel.addEventListener('click', e => { const t = e.target.closest('[data-a]'); if (t) panelClick(t.dataset.a); });
 
 function openMenu() { closePanel(); G.ui = { k: 'menu' }; renderPanel(); }
 function menuHTML(u) {
