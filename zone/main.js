@@ -89,13 +89,18 @@ function newGame() {
   log('Ты в лагере «Обочина». Подготовься: купи, разложи, проверь. Выход в Зону — ворота справа.');
   log('Обыскивай остовы и тайники (E), хлам продавай Скупщику. Esc — меню и управление.', '#e8c060');
 }
-function save() {
-  if (!inCamp() || G.dead) return;
+// force — сохранить и вне лагеря (автосейв в поле, закрытие вкладки, смерть). Такое сохранение помечается field:
+// при загрузке игрок окажется в лагере с тем, что нёс, но заплатит за «вытаскивание» (см. load).
+const idxWhere = (a, f) => a.reduce((r, x, i) => (f(x) && r.push(i), r), []);
+function save(force) {
+  if (!force && (!inCamp() || G.dead)) return;
   try {
     const kb = []; for (let i = 0; i < known.length; i++) kb.push(known[i]);
     localStorage.setItem('zone_save_v2', JSON.stringify({ seed: W.seed, P: { money: P.money, inv: P.inv, equip: P.equip, notes: P.notes, known: P.known,
       sk: P.sk, sp: P.sp, xp: P.xp, lvl: P.lvl, hp: P.hp, rad: P.rad, food: P.food, goal: P.goal, ...Meta.saveFields() }, clock: G.clock, demand: G.demand, events: G.events,
-      caches: W.caches, kn: kb.join('') }));
+      caches: W.caches, kn: kb.join(''), field: !inCamp() && !G.dead,
+      oc: idxWhere(W.conts, c => c.opened), cl: idxWhere(W.corpses.slice(0, W.nGenCorpses), c => c.looted),
+      gone: W.seedArts.filter(id => !W.arts.some(a => a.id === id)) }));
   } catch (e) {}
 }
 function load() {
@@ -104,14 +109,20 @@ function load() {
     W = new World(s.seed); resetPlayer(); Object.assign(P, s.P); P.sp = s.P.sp; G.clock = s.clock; G.demand = s.demand || {}; G.events = s.events || [];
     W.caches = s.caches || []; for (let i = 0; i < known.length; i++) known[i] = +s.kn[i] || 0;
     for (const k in CFG.skills) P.sk[k] = P.sk[k] || 0;
-    Mutants.spawn(); Stalkers.spawn(); Meta.afterLoad(); Camp.enter(true); log('Игра загружена.'); return true;
+    // что уже вскрыто, обыскано и подобрано — не появляется заново (мир строится по сиду, а не хранится)
+    for (const i of s.oc || []) if (W.conts[i]) W.conts[i].opened = true;
+    for (const i of s.cl || []) if (W.corpses[i] && i < W.nGenCorpses) W.corpses[i].looted = true;
+    if (s.gone) { const g = new Set(s.gone); W.arts = W.arts.filter(a => !g.has(a.id)); }
+    Mutants.spawn(); Stalkers.spawn(); Meta.afterLoad(); Camp.enter(true); log('Игра загружена.');
+    if (s.field) { P.money = Math.floor(P.money * 0.9); P.hp = Math.min(P.hp, CFG.death.hpOnRespawn); log('Связь оборвалась в Зоне. Тебя вытащили в лагерь: −10% денег, ты ранен.', '#e0a060'); }
+    return true;
   } catch (e) { return false; }
 }
 
 // ---------- смерть ----------
 function die() {
   if (G.dead) return; G.dead = true; P.dead = true; G.deadT = 4;
-  if (P.insured) { P.insured = false; P.rep -= 1; $('deathtxt').textContent = 'Страховка сработала: тебя вытащили вместе с хабаром.'; $('death').style.display = 'flex'; closePanel(); Snd.hit(); return; }
+  if (P.insured) { P.insured = false; P.rep -= 1; $('deathtxt').textContent = 'Страховка сработала: тебя вытащили вместе с хабаром.'; $('death').style.display = 'flex'; closePanel(); Snd.hit(); save(true); return; }
   P.rep -= 2;
   const items = P.inv.filter(s => s.art), lostMoney = Math.floor(P.money * CFG.death.moneyLoss);
   const eq = P.equip.filter(Boolean).map(a => ({ id: 'art', n: 1, art: a }));
@@ -119,7 +130,7 @@ function die() {
   if (all.length || lostMoney) W.caches.push({ x: P.x, y: P.y, items: all, money: lostMoney });
   P.inv = P.inv.filter(s => !s.art); P.equip = P.equip.map(() => null); P.money -= lostMoney;
   $('deathtxt').textContent = all.length || lostMoney ? 'Хабар остался в Зоне. Отметка на карте (M). Навыки и опыт сохранены.' : 'Ты ничего не нёс. Зона равнодушна.';
-  $('death').style.display = 'flex'; closePanel(); Snd.hit();
+  $('death').style.display = 'flex'; closePanel(); Snd.hit(); save(true);
 }
 function respawn() {
   G.dead = false; P.dead = false; $('death').style.display = 'none';
@@ -330,6 +341,7 @@ function update(dt) {
   if (!camp) P.wasOut = true;
   else if (P.wasOut) { P.wasOut = false; Mutants.refill(); save(); log('Ты у периметра блокпоста. Вход в лагерь — на E у ворот.', '#a8c890'); }
   else if (Math.floor(G.t) % 15 === 0 && Math.floor(G.t - dt) % 15 !== 0) save();
+  if (!camp && Math.floor(G.t) % 30 === 0 && Math.floor(G.t - dt) % 30 !== 0) save(true);
   G.near = G.ui ? null : findNear();
   // звук
   let hd = 999, ha = null; for (const a of W.anoms) { const d = Math.hypot(a.x - P.x, a.y - P.y); if (d < hd) { hd = d; ha = a; } }
@@ -694,7 +706,7 @@ function menuHTML(u) {
   return `<div class="x" data-a="resume">✕ Esc</div><h2>Меню — игра на паузе</h2><div class="cols"><div><h3>Управление</h3>${ctl.map(([k, d]) => row('', '<b>' + k + '</b>', d)).join('')}</div>
     <div><h3>Как заработать</h3>${tips.map(t => '<div class="note">' + t + '</div>').join('')}<h3>Игра</h3>
     <div class="row"><div class="nm">Громкость: <b>${Math.round(Snd.vol * 100)}%</b></div>${btn('vol:down', '−')}${btn('vol:up', '+')}</div>
-    <div class="row"><div class="nm">Сохранение<div class="sub">только в лагере (автосейв при возврате)</div></div>${btn('savenow', 'Сохранить', !inCamp())}</div>
+    <div class="row"><div class="nm">Сохранение<div class="sub">в лагере; в Зоне — автосейв каждые 30 с (при обрыве связи: −10% денег)</div></div>${btn('savenow', 'Сохранить', !inCamp())}</div>
     <div class="row"><div class="nm">Новая игра<div class="sub">${u.conf ? 'Нажми ещё раз: сохранение будет стёрто' : 'Начать заново'}</div></div>${btn('newgame', u.conf ? 'Точно?' : 'Новая')}</div>
     <div style="margin-top:12px">${btn('resume', '▶ Продолжить')}</div></div></div>`;
 }
@@ -764,4 +776,4 @@ function frame(now) {
   requestAnimationFrame(frame);
 }
 requestAnimationFrame(frame);
-addEventListener('beforeunload', save);
+addEventListener('beforeunload', () => save(true));

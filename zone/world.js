@@ -48,6 +48,7 @@ class World {
     this.anoms = []; this.arts = []; this.loot = []; this.corpses = []; this.bunkers = []; this.rad = []; this.caches = [];
     this.conts = []; this.water = []; this.grass = []; this.rest = []; this.labs = []; this.roads = [];
     this.genBiomes(); this.genProps(); this.genAnoms(); this.genRad(); this.genBunkers(); this.genCorpses(); this.genStashes(); this.genRest(); this.genLabs(); this.genRoads();
+    this.seedArts = this.arts.map(a => a.id); this.nGenCorpses = this.corpses.length;   // для сохранения: что из мира по сиду уже убрано
   }
   danger(x, y) {
     const d = Math.hypot(x - this.C.x, y - this.C.y) / (this.S * 1.1);
