@@ -78,7 +78,7 @@ test("обстановка: первый выход из лагеря, ночь,
   fresh(); run(away + " P.hints.leave = true; G.night = 1;"); assert.match(tick(1)[0], /Ночь/);
   fresh(); run(away + ` P.hints.leave = true; const il = Array.from(W.bg).findIndex(v => BIOME_KEYS[v] === "lake"); P.x = (il % W.N + 0.5) * W.CELL; P.y = (Math.floor(il / W.N) + 0.5) * W.CELL;`); assert.match(tick(1)[0], /Озёрный край/);
   fresh(); run(away + ` P.hints.leave = true; const ib = Array.from(W.bg).findIndex(v => BIOME_KEYS[v] === "burnt"); P.x = (ib % W.N + 0.5) * W.CELL; P.y = (Math.floor(ib / W.N) + 0.5) * W.CELL;`); assert.match(tick(1)[0], /Гарь/);
-  fresh(); run(`P.hints.leave = true; let p = null; for (let i = 0; i < 400 && !p; i++) { const q = W.spot(500, Math.random); if (W.danger(q.x, q.y) === 4) p = q; } P.x = p.x; P.y = p.y; P.rep = 0;`); assert.match(tick(1)[0], /Сектор 4 закрыт/);
+  fresh(); run(`P.hints.leave = true; P.hints.lake = true; P.hints.burnt = true; P.hints.night = true; let p = null; for (let i = 0; i < 400 && !p; i++) { const q = W.spot(500, Math.random); if (W.danger(q.x, q.y) === 4) p = q; } P.x = p.x; P.y = p.y; P.rep = 0;`); assert.match(tick(1)[0], /Сектор 4 закрыт/);
   fresh(); run(away + ` P.hints.leave = true; G.emi = { s: "warn", left: 20, next: 0 };`); assert.match(tick(1)[0], /Сирена/);
 });
 
