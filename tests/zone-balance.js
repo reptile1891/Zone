@@ -1,5 +1,5 @@
 "use strict";
-// Модель баланса «Обочины»: считает таблицы по zone/config.js. Ничего не меняет.
+// Модель баланса «Обочины»: считает таблицы по config.js. Ничего не меняет.
 // Используется отчётом (zone-balance-report.js) и защитными тестами (zone-balance.test.js).
 const { createZone } = require("./zone-load");
 

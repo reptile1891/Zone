@@ -1,10 +1,10 @@
 "use strict";
-// Загрузка скриптов «Обочины» в песочницу vm (см. load.js). Порядок — как в zone/index.html.
+// Загрузка скриптов «Обочины» в песочницу vm (см. load.js). Порядок — как в index.html.
 const vm = require("vm");
 const fs = require("fs");
 const path = require("path");
 
-const ROOT = path.join(__dirname, "..", "zone");
+const ROOT = path.join(__dirname, "..");
 
 function stub() {
   const fn = function () {};

@@ -158,7 +158,7 @@ test("оружие: у каждого своя ниша по урону на п�
 
 test("иконки 16×16: все строки ровно по 16 символов", () => {
   const fs = require("node:fs"), path = require("node:path");
-  const src = fs.readFileSync(path.join(__dirname, "..", "zone", "icons.js"), "utf8");
+  const src = fs.readFileSync(path.join(__dirname, "..", "icons.js"), "utf8");
   const bad = [];
   for (const m of src.matchAll(/M\('(\w+)',\s*\[([^\]]+)\]/g)) {
     for (const row of m[2].matchAll(/'([^']*)'/g)) if (row[1].length !== 16) bad.push(`${m[1]}: "${row[1]}" (${row[1].length})`);
