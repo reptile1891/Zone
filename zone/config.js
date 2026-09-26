@@ -25,7 +25,7 @@ const CFG = {
       shade:    { name: 'Тень', kind: 'shade', spr: 'shade', hp: 30, armor: 0, walk: 55, run: 150, dmg: 18, cd: 0.8, r: 8, sight: 0, hear: { run: 260, walk: 110, sneak: 45, idle: 25 }, xp: 20, w: [0, 1, 2, 3],
                   drop: { id: 'mistvial', p: 0.25 } },
       // Панцирник: медленный и бронированный. Заметив тебя в прямом коридоре, замирает (замах), потом несётся по прямой; врезавшись в стену, оглушён и получает на 50% больше урона.
-      carapace: { name: 'Панцирник', kind: 'charge', spr: 'carapace', hp: 140, armor: 0.6, walk: 30, run: 62, dmg: 18, dash: 300, dashT: 1.1, reach: 300, dashDmg: 30, wind: 0.9, stun: 1.8, chargeCd: 3, cd: 1.4, r: 12, sight: 200, xp: 40, w: [0, 0, 1, 2],
+      carapace: { name: 'Панцирник', kind: 'charge', spr: 'carapace', hp: 110, armor: 0.5, walk: 30, run: 62, dmg: 12, dash: 300, dashT: 1.1, reach: 300, dashDmg: 20, wind: 1.2, stun: 1.8, chargeCd: 4, cd: 1.4, r: 12, sight: 200, xp: 40, w: [0, 0, 1, 2],
                   drop: { id: 'plate', p: 0.7 } },
     } },
 
@@ -201,7 +201,7 @@ const CFG = {
     flamer:  { lvl: 3, name: 'Огнемёт-самоделка', dmg: 9, cd: 0.16, spread: 0, pellets: 1, range: 150, noise: 500, price: 540, wear: 0.3, repair: 1.0,
                cone: 0.42, pierce: true, ammo: 'canister', perAmmo: 25, note: 'конус, игнорирует броню, поджигает; топливо — канистры' },
     // Самострел — почти бесшумный (Тени и Слухачи не слышат), стреляет болтами; сильный выстрел, но медленный
-    crossbow: { lvl: 2, name: 'Самострел', dmg: 34, cd: 1.1, spread: 0.025, pellets: 1, range: 480, noise: 60, price: 340, wear: 0.3, repair: 0.7, ammo: 'bolt', note: 'бесшумный, стреляет болтами' },
+    crossbow: { lvl: 2, name: 'Самострел', dmg: 34, cd: 1.1, spread: 0.025, pellets: 1, range: 480, noise: 60, price: 340, wear: 0.3, repair: 0.7, ammo: 'bolt', ambush: 2, note: 'бесшумный, стреляет болтами; по не заметившим — двойной урон' },
     smg:     { lvl: 3, name: 'ПП «Оса»', dmg: 15, cd: 0.14, spread: 0.16, pellets: 1, range: 430, noise: 1000, price: 620, wear: 0.28, repair: 1.1 },
   },
   gate: { rep: 15 },

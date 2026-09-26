@@ -33,7 +33,7 @@ test("Самострел: тратит болт, а не патрон; без б
     const a = { ammo: invCount("ammo"), bolt: invCount("bolt"), dmg: e.max - e.hp }; P.cd = 0; invTake("bolt", 1); shoot(); const b = { bolt: invCount("bolt"), cd: P.cd };
     P.cd = 0; const hp = e.hp; shoot(); return { a, b, same: e.hp === hp, quick: document.getElementById("quick") ? 1 : 1 };
   })()`);
-  assert.equal(o.a.ammo, 5, "патроны не тронуты"); assert.equal(o.a.bolt, 1); assert.equal(o.a.dmg, 34); assert.equal(o.b.bolt, 0); assert.equal(o.b.cd, 0.3, "без болтов — щелчок"); assert.ok(o.same);
+  assert.equal(o.a.ammo, 5, "патроны не тронуты"); assert.equal(o.a.bolt, 1); assert.equal(o.a.dmg, 34 * CFG.weapons.crossbow.ambush, "не заметивший враг получает удар из засады"); assert.equal(o.b.bolt, 0); assert.equal(o.b.cd, 0.3, "без болтов — щелчок"); assert.ok(o.same);
 });
 
 test("Самострел не будит: выстрел слышен на ~96 px, пистолет — на ~1200; Тень и подземник дальше не проснутся", () => {
@@ -46,6 +46,19 @@ test("Самострел не будит: выстрел слышен на ~96 p
     const near = new DEnemy(P.x + 60, P.y, CFG.dungeon.enemies.shade, 1, "shade"); Dungeon.enemies = [near]; P.weapon = "crossbow"; P.cd = 0; P.ang = Math.PI; shoot(); res.near = near.state; return res;
   })()`);
   assert.equal(o.crossbow, "idle"); assert.equal(o.pistol, "hunt"); assert.equal(o.near, "hunt", "вплотную всё равно услышат");
+});
+
+test("Самострел: из засады бьёт вдвое сильнее по не заметившим (подземник, Топляк не в счёт), заметивший — обычный урон; пистолет так не умеет", () => {
+  fresh(); arena();
+  const o = run(`(() => {
+    P.weapons.push("crossbow"); P.cond.crossbow = 100; P.cond.pistol = 100; invAdd("bolt", 9); invAdd("ammo", 9); keys.mx = 0; keys.my = 0; const orig = Math.random; Math.random = () => 0.5; const res = {};
+    try {
+      const shot = (w, state) => { P.weapon = w; P.cd = 0; P.ang = 0; const e = new DEnemy(P.x + 120, P.y, CFG.dungeon.enemies.carapace, 1, "carapace"); e.state = state; e.hp = e.max = 500; Dungeon.enemies = [e]; shoot(); return e.max - e.hp; };
+      res.idleX = shot("crossbow", "idle"); res.huntX = shot("crossbow", "hunt"); res.idleP = shot("pistol", "idle");
+    } finally { Math.random = orig; } return res;
+  })()`);
+  const ar = 1 - CFG.dungeon.enemies.carapace.armor;
+  assert.ok(Math.abs(o.idleX - CFG.weapons.crossbow.dmg * 2 * ar) < 1e-9); assert.ok(Math.abs(o.huntX - CFG.weapons.crossbow.dmg * ar) < 1e-9); assert.ok(Math.abs(o.idleP - CFG.weapons.pistol.dmg * ar) < 1e-9);
 });
 
 test("Самострел: покупается у оружейника с уровня 2; износ и ремонт работают", () => {

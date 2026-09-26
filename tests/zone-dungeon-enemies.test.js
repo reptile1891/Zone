@@ -117,9 +117,9 @@ test("Панцирник: замах виден, разбег по прямой 
     return { wind, dashAt, hurtAt, stunAt, dmgTaken, stunned, x, stunT, inStun, normal, flame, dashDmg: c.dashDmg };
   })()`);
   assert.equal(o.wind.mode, "wind"); assert.ok(Math.abs(o.wind.mt - CFG.dungeon.enemies.carapace.wind) < 0.06);
-  assert.ok(o.dashAt >= 0.8 && o.dashAt <= 1.1, "разбег после замаха ~0.9 с: " + o.dashAt); assert.ok(o.hurtAt > o.dashAt); assert.equal(o.dmgTaken, o.dashDmg, "по игроку один удар за разбег");
+  assert.ok(Math.abs(o.dashAt - CFG.dungeon.enemies.carapace.wind) < 0.25, "разбег после замаха ~" + CFG.dungeon.enemies.carapace.wind + " с: " + o.dashAt); assert.ok(o.hurtAt > o.dashAt); assert.equal(o.dmgTaken, o.dashDmg, "по игроку один удар за разбег");
   assert.equal(o.stunned, "stun"); assert.ok(o.x < 5 * 48, "пролетел дальше игрока до стены: x=" + o.x); assert.ok(Math.abs(o.stunT - CFG.dungeon.enemies.carapace.stun) < 0.06);
-  assert.ok(Math.abs(o.inStun - 10 * 0.4 * 1.5) < 1e-9); assert.ok(Math.abs(o.normal - 4) < 1e-9); assert.ok(Math.abs(o.flame - 15) < 1e-9, "огонь идёт сквозь броню, оглушение усиливает");
+  const ar = CFG.dungeon.enemies.carapace.armor; assert.ok(Math.abs(o.inStun - 10 * (1 - ar) * 1.5) < 1e-9); assert.ok(Math.abs(o.normal - 10 * (1 - ar)) < 1e-9); assert.ok(Math.abs(o.flame - 15) < 1e-9, "огонь идёт сквозь броню, оглушение усиливает");
 });
 
 test("Панцирник: уклонение — шаг в нишу во время замаха; разбег проносится мимо и заканчивается оглушением", () => {

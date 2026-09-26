@@ -474,7 +474,7 @@ function shoot() {
       if (Math.abs(rx * dy - ry * dx) < m.r + 3) { best = m; bt = t; }
     }
     tracers.push({ x1: P.x, y1: P.y, x2: P.x + dx * bt, y2: P.y + dy * bt, t: 0.07 });
-    if (best) { best.hurt(w.dmg, P); for (let i = 0; i < 4; i++) parts.push({ x: best.x, y: best.y, vx: (Math.random() - 0.5) * 80, vy: (Math.random() - 0.5) * 80, life: 0.5, col: '#7a1a1a' }); }
+    if (best) { const unaware = w.ambush && (best.state === 'idle' || best.state === 'wander' || best.state === 'sleep'); best.hurt(w.dmg * (unaware ? w.ambush : 1), P); if (unaware) log('Удар из засады!', '#c8b0e8'); for (let i = 0; i < 4; i++) parts.push({ x: best.x, y: best.y, vx: (Math.random() - 0.5) * 80, vy: (Math.random() - 0.5) * 80, life: 0.5, col: '#7a1a1a' }); }
   }
   Snd.shot(); G.shake = 0.12; Mutants.hear(P.x, P.y, w.noise);
 }
