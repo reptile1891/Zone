@@ -300,7 +300,8 @@ function update(dt) {
   // лунный свет привлекает
   if (P.equip.includes('moonlight') && Math.random() < dt * 0.3) Mutants.hear(P.x, P.y, 400);
   // оружие
-  P.cd -= dt; P.recoil = Math.max(0, (P.recoil || 0) - dt * 7); if (mouse.l && !G.ui && (G.scene === 'zone' || G.scene === 'dungeon')) useSel();
+  P.cd -= dt; P.recoil = Math.max(0, (P.recoil || 0) - dt * 7); if ((mouse.l || mouse.tap) && !G.ui && (G.scene === 'zone' || G.scene === 'dungeon')) useSel();
+  mouse.tap = false;   // быстрый клик (нажал и отпустил между кадрами) всё равно даёт один выстрел
   if (G.scene !== 'zone') return campTick(dt);
   // голод, кровь, регенерация, радиация
   P.food = Math.max(0, P.food - CFG.player.foodRate * dt * (P.running ? 1.5 : 1));
@@ -754,7 +755,7 @@ addEventListener('keyup', e => { keys[e.code] = false; });
 addEventListener('blur', () => { for (const k in keys) keys[k] = false; mouse.l = mouse.r = false; });
 cv.addEventListener('mousemove', e => { mouse.x = e.clientX; mouse.y = e.clientY; });
 addEventListener('mousemove', e => { mouse.x = e.clientX; mouse.y = e.clientY; });
-cv.addEventListener('mousedown', e => { if (e.button === 0) mouse.l = true; if (e.button === 2) mouse.r = true; });
+cv.addEventListener('mousedown', e => { mouse.x = e.clientX; mouse.y = e.clientY; if (e.button === 0) { mouse.l = true; mouse.tap = true; } if (e.button === 2) mouse.r = true; });
 addEventListener('mouseup', e => { if (e.button === 0) mouse.l = false; if (e.button === 2) mouse.r = false; });
 cv.addEventListener('contextmenu', e => e.preventDefault());
 addEventListener('wheel', e => { if (G.started && !G.ui) P.sel = (P.sel + (e.deltaY > 0 ? 1 : heldNames.length - 1)) % heldNames.length; });

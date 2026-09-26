@@ -112,7 +112,8 @@ const Camp = {
   },
   near(c) {
     for (const k in CFG.vendors) { const p = this.vend[k]; c(k, Math.hypot(p.x - P.x, p.y - P.y), 70, 'Войти: ' + Camp.bName(k) + ' (ур. ' + Camp.lvl(k) + ')', () => Camp.enterRoom(k)); }
-    for (const n of this.npcs) if (n.id) c(n, Math.hypot(n.x - P.x, n.y - P.y), 62, 'Поговорить: ' + n.name, () => Meta.openCampTalk(n));
+    // люди важнее мебели: жители вокруг костра иначе проигрывали ему «ближайшую цель» (смещение −18 при том же радиусе 62)
+    for (const n of this.npcs) if (n.id) c(n, Math.hypot(n.x - P.x, n.y - P.y) - 18, 44, 'Поговорить: ' + n.name, () => Meta.openCampTalk(n));
     const s = this.spots;
     c('locker', Math.hypot(s.locker.x - P.x, s.locker.y - P.y), 64, 'Открыть ящик хранения', () => { G.ui = { k: 'storage' }; renderPanel(); });
     c('board', Math.hypot(s.board.x - P.x, s.board.y - P.y), 70, 'Доска объявлений (журнал заданий)', () => Meta.openJournal());
