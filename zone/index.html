@@ -32,6 +32,9 @@ canvas#cv{position:fixed;inset:0;display:block;cursor:crosshair}
 #menubtn{position:absolute;right:12px;bottom:14px;pointer-events:auto;cursor:pointer;padding:6px 12px;background:rgba(0,0,0,.55);border:1px solid #4a4634;color:var(--dim)}
 #menubtn:hover{color:var(--fg);border-color:var(--acc)}
 #tip{position:absolute;max-width:300px;padding:6px 9px;background:var(--pan);border:1px solid var(--acc);display:none;font-size:13px}
+#itip{position:fixed;z-index:9;max-width:290px;padding:7px 10px;background:rgba(10,11,8,.97);border:1px solid var(--acc);display:none;font-size:12.5px;pointer-events:none;box-shadow:0 2px 12px #000}
+#itip .ti-h{color:var(--acc);font-size:14px;margin-bottom:3px}#itip .ti-h span{color:var(--dim);font-size:11px;margin-left:4px}
+#itip .ti-d{color:#b8b298;margin:2px 0 4px}#itip .ti-r{color:var(--dim)}#itip .ti-r b{color:var(--fg);font-weight:normal}
 #panel{position:fixed;left:50%;top:50%;transform:translate(-50%,-50%);width:min(880px,96vw);max-height:90vh;overflow:auto;background:var(--pan);border:1px solid #4a4634;padding:14px 16px;display:none;user-select:none}
 #panel h2{margin:0 0 8px;font-size:17px;color:var(--acc);font-weight:normal;letter-spacing:.05em}
 #panel h3{margin:12px 0 4px;font-size:13px;color:var(--dim);font-weight:normal;text-transform:uppercase}
@@ -103,5 +106,6 @@ canvas#cv{position:fixed;inset:0;display:block;cursor:crosshair}
 <script src="camp.js"></script>
 <script src="rooms.js"></script>
 <script src="dungeon.js"></script>
+<script src="tips.js"></script>
 </body>
 </html>

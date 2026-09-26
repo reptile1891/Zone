@@ -8,8 +8,8 @@ const Meta = {
   DIRS: ['востоке', 'юго-востоке', 'юге', 'юго-западе', 'западе', 'северо-западе', 'севере', 'северо-востоке'],
 
   reset() { this._bountyCd = 0; this.sensors = []; this.lures = []; this.lureShots = []; this.genOffers(); this.pickEvents(); },
-  afterLoad() { P.burn = 0; if (!P.fuel) P.fuel = 0; for (const k in CFG.weapons) if (P.cond[k] == null) P.cond[k] = 100; this._bountyCd = 0; for (const q of P.quests || []) if (q.type === 'bounty' && q.prog < 1) this.spawnBounty(q); this.sensors = []; this.lures = []; this.lureShots = []; if (!P.offers || !P.offers.length) this.genOffers(); if (!G.events || !G.events.length) this.pickEvents(); },
-  saveFields() { const o = {}; for (const k of ['rep', 'karma', 'quests', 'offers', 'lore', 'weapons', 'weapon', 'cond', 'suitCond', 'insured', 'pass', 'earned', 'researched', 'kills', 'mapSold', 'stash', 'bld', 'chainDone', 'fuel']) o[k] = P[k]; return o; },
+  afterLoad() { P.burn = 0; if (!P.fuel) P.fuel = 0; if (!P.talked) P.talked = {}; for (const k in CFG.weapons) if (P.cond[k] == null) P.cond[k] = 100; this._bountyCd = 0; for (const q of P.quests || []) if (q.type === 'bounty' && q.prog < 1) this.spawnBounty(q); this.sensors = []; this.lures = []; this.lureShots = []; if (!P.offers || !P.offers.length) this.genOffers(); if (!G.events || !G.events.length) this.pickEvents(); },
+  saveFields() { const o = {}; for (const k of ['rep', 'karma', 'quests', 'offers', 'lore', 'weapons', 'weapon', 'cond', 'suitCond', 'insured', 'pass', 'earned', 'researched', 'kills', 'mapSold', 'stash', 'bld', 'chainDone', 'fuel', 'talked']) o[k] = P[k]; return o; },
 
   // ---- костюм ----
   bestSuit() { return hasItem('suit2') ? 'suit2' : hasItem('suit') ? 'suit' : null; },
@@ -249,6 +249,34 @@ const Meta = {
 
   // ---- панели ----
   openJournal() { G.ui = { k: 'journal' }; renderPanel(); },
+  // ---- разговоры с жителями лагеря (CFG.talk) ----
+  openCampTalk(n) { G.ui = { k: 'talk', n, msg: '' }; renderPanel(); },
+  talkHTML(u) {
+    const d = CFG.talk[u.n.id], done = P.talked[u.n.id];
+    const rows = d.topics.map((t, i) => {
+      const dis = (t.k === 'story' && (done || P.rep < 3)) || (t.k === 'duds' && !P.inv.some(s => s.art === 'dud'));
+      return row(t.k === 'duds' ? Icons.html('art') : '💬', t.t, t.k === 'story' && done ? 'Уже рассказал' : t.s, btn('tk:' + i, t.k === 'duds' ? 'Продать' : t.k === 'locker' ? 'Открыть' : 'Спросить', dis));
+    }).join('');
+    return '<div class="x" data-a="close">✕ Esc</div><h2>' + u.n.name + ' <span class="stat">(' + d.role + ')</span></h2><div class="note" style="font-size:14px">' + (u.msg || d.greet) + '</div><div style="margin-top:8px">' + rows + '</div>' + row('…', 'Уйти', '', btn('close', 'Уйти'));
+  },
+  talk(u, i) {
+    const d = CFG.talk[u.n.id], t = d.topics[i]; if (!t) return;
+    if (t.k === 'rumor') u.msg = '«' + U.pick(CFG.rumors) + '»';
+    else if (t.k === 'tip') u.msg = '«' + U.pick(CFG.tips) + '»';
+    else if (t.k === 'text') u.msg = t.a;
+    else if (t.k === 'gate') u.msg = 'Четвёртый сектор закрыт. Пропустят при репутации ' + CFG.gate.rep + ' (у тебя ' + (P.rep | 0) + ')' + (P.pass ? ' — а у тебя ещё и пропуск, так что иди.' : ', либо с пропуском: его продаёт Сидор за 250 ₽ (нужна репутация 5). Без этого — оцепление, и разговор с ними короткий.');
+    else if (t.k === 'emission') {
+      const e = G.emi;
+      u.msg = e.s === 'warn' ? 'Слышишь сирену?! Живо в укрытие!' : e.s === 'blast' ? 'Тихо. Сиди, где сидишь, и не высовывайся.' : e.next < 45 ? 'Зубы ломит так, что глаза слезятся. Минута-две — не больше.' : e.next < 150 ? 'Скоро. Не уходи далеко от лагеря или бункера, слышишь?' : 'Пока тихо. Но я бы на это не рассчитывал: Зона обманывает.';
+    } else if (t.k === 'duds') {
+      let n = 0; for (let j = P.inv.length - 1; j >= 0; j--) if (P.inv[j].art === 'dud') { P.inv.splice(j, 1); n++; }
+      if (n) { const pay = n * 9; P.money += pay; P.earned += pay; Snd.pick(); u.msg = 'Мосол пересчитывает пустышки, как монеты: «' + n + ' штук — ' + pay + ' рублей. Приятно иметь дело».'; } else u.msg = 'У тебя нет пустышек.';
+    } else if (t.k === 'locker') { G.ui = { k: 'storage' }; return; }
+    else if (t.k === 'story') {
+      if (P.talked[u.n.id]) return; if (P.rep < 3) { u.msg = 'Тебя тут ещё плохо знают. Сделай что-нибудь для лагеря — тогда поговорим по-настоящему.'; return; }
+      P.talked[u.n.id] = true; u.msg = '«' + d.story + '»'; this.gainLore(); P.karma.study += 0.5;
+    }
+  },
   openNpc(s) { G.ui = { k: 'npc', s, msg: '' }; renderPanel(); },
   journalHTML() {
     const kz = P.karma, qs = P.quests.length ? P.quests.map((q, i) => row('📋', q.text, this.progText(q) + ' · ' + q.reward + ' ₽', btn('qdrop:' + i, '✕'))).join('') : '<div class="stat">Заданий нет. Их дают у бармена.</div>';
@@ -370,6 +398,7 @@ const Meta = {
       case 'research': {
         const s = P.inv[i]; if (s && s.art && P.money >= Camp.researchCost() && !P.researched[s.art]) { P.money -= Camp.researchCost(); P.researched[s.art] = true; P.karma.study += 1; addXp(30); this.gainLore(); } return true;
       }
+      case 'tk': this.talk(u, i); return true;
       case 'nrumor': u.msg = U.pick(CFG.rumors); return true;
       case 'ntip': {
         if (P.money < 60) return true; P.money -= 60; let n = 0;
@@ -466,6 +495,7 @@ function renderPanel() {
   if (Camp.render(u)) return;
   if (u.k === 'journal') { panel.style.display = 'block'; panel.innerHTML = Meta.journalHTML(); return; }
   if (u.k === 'npc') { panel.style.display = 'block'; panel.innerHTML = Meta.npcHTML(u); return; }
+  if (u.k === 'talk') { panel.style.display = 'block'; panel.innerHTML = Meta.talkHTML(u); return; }
   if (u.k === 'ending') { panel.style.display = 'block'; panel.innerHTML = Meta.endingHTML(u); return; }
   renderPanelBase();
   if (u.k === 'trade') panel.insertAdjacentHTML('beforeend', Meta.tradeExtra(u.v));
