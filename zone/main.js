@@ -614,7 +614,9 @@ function hud(dt) {
   const hh = Math.floor(G.hour), mm = Math.floor((G.hour % 1) * 60), e = G.emi;
   const ez = e.s === 'warn' ? `<div class="warn">ВЫБРОС ЧЕРЕЗ ${Math.ceil(e.left)} с${isSheltered() ? ' · ты в укрытии' : ' · В УКРЫТИЕ!'}</div>` : e.s === 'blast' ? '<div class="warn">ВЫБРОС!</div>' : '';
   $('top').innerHTML = `<div class="stat">${WX[G.wx].name}</div>${String(hh).padStart(2, '0')}:${String(mm).padStart(2, '0')} ${G.night > 0.5 ? '☾' : '☀'} · <b style="color:#e8c060">${P.money} ₽</b>${ez}<div class="stat">${G.scene === 'dungeon' ? Dungeon.title() : G.scene === 'interior' ? Camp.roomName() : G.scene === 'camp' ? 'Лагерь «Обочина»' : inCamp() ? 'Блокпост' : CFG.biomes[W.biomeAt(P.x, P.y)].name + ' · сектор ' + W.danger(P.x, P.y)}</div>`;
-  $('prompt').textContent = G.near ? '[E] ' + G.near.label : '';
+  // подсказка действия — зелёная, прямо под игроком
+  const pr = $('prompt'); pr.textContent = G.near ? '[E] ' + G.near.label : '';
+  if (G.near) { const w = pr.offsetWidth || 0; pr.style.left = U.clamp(P.x - cam.x, w / 2 + 8, VW - w / 2 - 8) + 'px'; pr.style.top = U.clamp(P.y - cam.y + 36, 40, VH - 90) + 'px'; }
   let q = ''; heldNames.forEach((h, i) => { const ic = h === 'weapon' ? Icons.html('w_' + Wpn.base(P.weapon)) : CFG.items[h].icon, n = h === 'weapon' ? invCount(Wpn.of(P.weapon).ammo || 'ammo') : invCount(h); q += `<div class="qs ${P.sel === i ? 'on' : ''}" data-q="${i}"><u>${i + 1}</u>${ic}<b>${n}</b></div>`; });
   if ($('quick').dataset.s !== q) { $('quick').innerHTML = q; $('quick').dataset.s = q; }
   // осмотр (ПКМ)
