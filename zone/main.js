@@ -278,8 +278,9 @@ function update(dt) {
 
   const camp = inCamp();
   // движение
-  const mx = (keys.KeyD || keys.ArrowRight ? 1 : 0) - (keys.KeyA || keys.ArrowLeft ? 1 : 0);
-  const my = (keys.KeyS || keys.ArrowDown ? 1 : 0) - (keys.KeyW || keys.ArrowUp ? 1 : 0);
+  const st = keys.stick;   // аналоговый стик на телефоне (touch.js): длина — доля скорости
+  const mx = st ? st.x : (keys.KeyD || keys.ArrowRight ? 1 : 0) - (keys.KeyA || keys.ArrowLeft ? 1 : 0);
+  const my = st ? st.y : (keys.KeyS || keys.ArrowDown ? 1 : 0) - (keys.KeyW || keys.ArrowUp ? 1 : 0);
   keys.mx = mx; keys.my = my; const moving = mx || my;
   P.sneak = !!(keys.ControlLeft || keys.KeyC);
   P.running = !!(keys.ShiftLeft && !P.sneak && moving && P.stam > 0 && !P.fracture);
@@ -288,7 +289,7 @@ function update(dt) {
   if (P.food <= 0) sp *= 0.8;
   if (P.fracture) sp *= 0.6;
   if (P.grab > 0) { P.grab -= dt * (moving ? 2.5 : 1); sp = 0; if (P.grab <= 0) log('Ты вырвался.', '#9ab8d8'); }   // Топляк держит; рывок сокращает хватку
-  if (moving) { const l = Math.hypot(mx, my); P.x += mx / l * sp * dt; P.y += my / l * sp * dt; }
+  if (moving) { const l = Math.hypot(mx, my), f = st ? Math.min(1, l) : 1; P.x += mx / l * sp * f * dt; P.y += my / l * sp * f * dt; }
   Camp.grid().query(P.x, P.y, P.r + 40, o => {
     const ox = P.x - o.x, oy = P.y - o.y, od = Math.hypot(ox, oy), m = o.r + P.r;
     if (od < m && od > 0) { P.x = o.x + ox / od * m; P.y = o.y + oy / od * m; }

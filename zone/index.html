@@ -3,13 +3,15 @@
 <head>
 <meta charset="utf-8">
 <title>Обочина — прототип</title>
-<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="theme-color" content="#0b0d0a">
 <style>
 :root{--bg:#0b0d0a;--fg:#c9c2a8;--dim:#7d7864;--acc:#b5742a;--red:#b04040;--grn:#6f9a55;--blu:#5f8fc0;--pan:rgba(16,18,14,.94)}
 *{box-sizing:border-box}
 html,body{margin:0;height:100%;background:var(--bg);color:var(--fg);font:14px/1.35 Consolas,"Courier New",monospace;overflow:hidden;user-select:none}
 canvas#cv{position:fixed;inset:0;display:block;cursor:crosshair}
-#hud{position:fixed;inset:0;pointer-events:none}
+#hud{position:fixed;inset:0;pointer-events:none;z-index:2}
 #bars{position:absolute;left:12px;top:12px;width:clamp(150px,18vw,230px)}
 .bar{pointer-events:auto;position:relative;height:16px;margin-bottom:4px;background:rgba(0,0,0,.55);border:1px solid #3a3a30}
 .bar i{position:absolute;left:0;top:0;bottom:0;width:50%}
@@ -35,7 +37,7 @@ canvas#cv{position:fixed;inset:0;display:block;cursor:crosshair}
 #itip{position:fixed;z-index:9;max-width:290px;padding:7px 10px;background:rgba(10,11,8,.97);border:1px solid var(--acc);display:none;font-size:12.5px;pointer-events:none;box-shadow:0 2px 12px #000}
 #itip .ti-h{color:var(--acc);font-size:14px;margin-bottom:3px}#itip .ti-h span{color:var(--dim);font-size:11px;margin-left:4px}
 #itip .ti-d{color:#b8b298;margin:2px 0 4px}#itip .ti-r{color:var(--dim)}#itip .ti-r b{color:var(--fg);font-weight:normal}
-#panel{position:fixed;left:50%;top:50%;transform:translate(-50%,-50%);width:min(880px,96vw);max-height:90vh;overflow:auto;background:var(--pan);border:1px solid #4a4634;padding:14px 16px;display:none;user-select:none}
+#panel{z-index:3;position:fixed;left:50%;top:50%;transform:translate(-50%,-50%);width:min(880px,96vw);max-height:90vh;overflow:auto;background:var(--pan);border:1px solid #4a4634;padding:14px 16px;display:none;user-select:none}
 #panel h2{margin:0 0 8px;font-size:17px;color:var(--acc);font-weight:normal;letter-spacing:.05em}
 #panel h3{margin:12px 0 4px;font-size:13px;color:var(--dim);font-weight:normal;text-transform:uppercase}
 .x{position:absolute;right:10px;top:8px;cursor:pointer;color:var(--dim)}
@@ -49,8 +51,32 @@ canvas#cv{position:fixed;inset:0;display:block;cursor:crosshair}
 .slot{display:inline-flex;width:64px;height:64px;border:1px dashed #5a5030;align-items:center;justify-content:center;font-size:30px;margin-right:8px;cursor:pointer;vertical-align:middle}
 .stat{color:var(--dim)}.stat b{color:var(--fg);font-weight:normal}
 .note{margin:3px 0;padding-left:8px;border-left:2px solid #4a4634;color:#b8b298;font-size:13px}
-#mapwrap{position:fixed;inset:0;background:rgba(0,0,0,.86);display:none;align-items:center;justify-content:center}
-#splash,#death{position:fixed;inset:0;background:rgba(6,7,5,.93);display:flex;align-items:center;justify-content:center;flex-direction:column;text-align:center;padding:20px}
+#mapwrap{z-index:4;position:fixed;inset:0;background:rgba(0,0,0,.86);display:none;align-items:center;justify-content:center}
+#tz{position:fixed;inset:0;z-index:1;touch-action:none;display:none}
+#tbtns{position:fixed;inset:0;z-index:2;pointer-events:none;display:none}
+.tring{position:fixed;z-index:2;width:112px;height:112px;border-radius:50%;border:2px solid rgba(201,194,168,.35);background:rgba(201,194,168,.08);display:none;pointer-events:none}
+.tring.a{border-color:rgba(224,120,80,.45);background:rgba(224,120,80,.08)}
+.tring i{position:absolute;left:32px;top:32px;width:48px;height:48px;border-radius:50%;background:rgba(201,194,168,.45)}
+.tring.a i{background:rgba(224,120,80,.55)}
+.trow{position:absolute;right:8px;top:64px;display:flex;gap:6px;flex-wrap:wrap;justify-content:flex-end;max-width:60vw}
+.tside{position:absolute;right:14px;bottom:88px;display:flex;flex-direction:column;align-items:flex-end;gap:8px}
+.tb{pointer-events:auto;touch-action:none;min-width:40px;height:40px;padding:0 8px;display:flex;align-items:center;justify-content:center;background:rgba(0,0,0,.55);border:1px solid #6a5a34;color:var(--fg);font-size:20px;border-radius:10px;user-select:none}
+.tb.w{font-size:13px;height:38px}.tb.on{background:#3a2f16;border-color:var(--acc);color:#f0d9a0}
+.tb.act{min-width:130px;max-width:46vw;height:auto;min-height:50px;padding:8px 14px;font-size:15px;text-align:center;color:#7fe07f;border-color:#4a8a4a;background:rgba(10,40,10,.7)}
+#trot{position:fixed;inset:0;z-index:30;background:rgba(6,7,5,.94);display:none;align-items:center;justify-content:center;text-align:center;font-size:20px;color:var(--fg);line-height:1.6}
+body.touch #menubtn,body.touch #prompt{display:none}
+body.touch #quick{bottom:8px;gap:4px}
+body.touch .qs{width:46px;height:46px}
+body.touch #log{bottom:auto;top:168px;width:34vw;font-size:12px}
+body.touch #log div:nth-last-child(n+4){display:none}
+body.touch #bars{width:140px;left:8px;top:8px}
+body.touch #top{right:8px;top:8px;font-size:13px}
+body.touch .btn{padding:9px 14px;min-height:40px}
+body.touch .row{padding:8px 6px}
+body.touch .x{font-size:22px;padding:6px 10px;top:2px;right:4px}
+body.touch #panel{max-height:96vh;width:98vw;padding:10px 12px}
+body.touch #itip{max-width:60vw}
+#splash,#death{z-index:20;position:fixed;inset:0;background:rgba(6,7,5,.93);display:flex;align-items:center;justify-content:center;flex-direction:column;text-align:center;padding:20px}
 #death{display:none;background:rgba(40,0,0,.85);z-index:5}
 #splash h1{font-size:clamp(28px,5vw,52px);letter-spacing:.2em;color:var(--acc);margin:0 0 4px;font-weight:normal}
 #splash p{max-width:640px;color:var(--dim)}
@@ -110,5 +136,6 @@ canvas#cv{position:fixed;inset:0;display:block;cursor:crosshair}
 <script src="dungeon.js"></script>
 <script src="tips.js"></script>
 <script src="hints.js"></script>
+<script src="touch.js"></script>
 </body>
 </html>

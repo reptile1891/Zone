@@ -50,7 +50,7 @@ test("Углеглот: спит в золе, из засады бросаетс
     W = new World(5); Mutants.list = []; Mutants.embers = [];
     G.night = 1; G.dead = false; G.scene = "zone"; P.x = 3000; P.y = 3000; P.burn = 0;
     const far = new Mutant("cinder", 3000 + 300, 3000, null), near = new Mutant("cinder", 3000 + 40, 3000, null);
-    const r0 = far.state, n0 = near.state; far.perceive(); near.perceive();
+    const r0 = far.state, n0 = near.state; const R0 = Math.random; Math.random = () => 0.999; far.perceive(); Math.random = () => 0.001; near.perceive(); Math.random = R0;   // восприятие с броском: фиксируем, чтобы тест не мигал
     const plain = new Mutant("bristler", 100, 100, null); plain.burn = 5; plain.burner = P; plain.hp = 1; plain.update(0.5);
     const m = new Mutant("tin", 0, 0, null); m.hurt(10, P, true); const n = new Mutant("tin", 0, 0, null); n.hurt(10, P);
     return { r0, n0, farState: far.state, nearState: near.state, plainDead: plain.dead, pierce: [m.hp, n.hp, CFG.mut.tin.hp] };
