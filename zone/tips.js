@@ -69,6 +69,69 @@ const Tip = {
     const h = heldNames[i]; if (!h) return null;
     return h === 'weapon' ? this.weapon(P.weapon) : this.item(h, null, null, invCount(h));
   },
+  skill(k) {
+    const s = CFG.skills[k]; if (!s) return null;
+    return this.head(s.name, 'навык') + '<div class="ti-d">' + s.desc + '</div>' + this.row('Уровень:', P.sk[k] + ' / ' + s.max) + this.row('Очков навыков:', P.sp, P.sp ? '#e8c060' : null);
+  },
+  offer(o) {
+    if (!o) return null;
+    let h = this.head('Задание', 'предложение', '#e8c060') + '<div class="ti-d">' + o.text + '</div>' + this.row('Награда:', o.reward + ' ₽') + this.row('Репутация:', '+' + o.rep);
+    if (o.item) h += this.row('Артефакт:', CFG.arts[o.item[1]].name);
+    return h + this.row('Активных заданий:', P.quests.length + ' / 3', P.quests.length >= 3 ? '#e06060' : null);
+  },
+  quest(q) {
+    if (!q) return null;
+    const ok = Meta.done(q);
+    return this.head('Задание', ok ? 'выполнено' : 'в работе', ok ? '#8fbf7f' : '#e8c060') + '<div class="ti-d">' + q.text + '</div>' + this.row('Прогресс:', Meta.progText(q), ok ? '#8fbf7f' : null) + this.row('Награда:', q.reward + ' ₽, репутация +' + q.rep);
+  },
+
+  // ---- подсказки при наведении на мир (зона и подземелье) ----
+  STATE: { sleep: 'спит', wander: 'бродит', investigate: 'насторожен', hunt: 'охотится', flee: 'убегает', eat: 'ест', idle: 'не заметил тебя' },
+  KIND: { crawl: 'Кусает вплотную, может вызвать кровотечение.', spit: 'Держится на расстоянии и плюёт кислотой: сгусток медленный, шаг в сторону — уворот.', shade: 'Слепая: идёт на шум. Красться — почти не слышит. Видна только вблизи.', charge: 'Замирает и несётся по прямой; врезавшись в стену, оглушён и уязвим.' },
+  mutantFlags(c) {
+    const f = []; if (c.pack) f.push('ходит стаей'); if (c.timid) f.push('пугливый'); if (c.territory) f.push('охраняет территорию'); if (c.metal) f.push('металлический — магнитная яма бьёт его сильнее');
+    if (c.fireproof) f.push('огнеупорен'); if (c.charge) f.push('разбегается'); if (c.lunge) f.push('прыгает'); if (c.stalker) f.push('замирает под взглядом'); if (c.ambush) f.push('нападает из засады');
+    if (c.aquatic) f.push('живёт в воде, хватает у кромки'); if (c.infect) f.push('укус заражает рану'); if (c.bleed) f.push('вызывает кровотечение'); if (c.fracture) f.push('может сломать ногу'); if (c.burn) f.push('может поджечь');
+    return f;
+  },
+  mutant(m) {
+    const c = m.c, act = { day: 'днём', night: 'ночью', weather: 'в туман и дождь' }[c.active];
+    let h = this.head(c.name, this.STATE[m.state] || m.state, '#c9c2a8') + this.row('Здоровье:', Math.ceil(m.hp) + ' / ' + c.hp) + this.row('Урон:', c.dmg + (c.armor ? ' · броня ' + Math.round(c.armor * 100) + '%' : ''));
+    if (!c.aquatic) h += this.row('Активен:', act);
+    const fl = this.mutantFlags(c); if (fl.length) h += '<div class="ti-d">' + fl.join('; ') + '.</div>';
+    return h + this.row('Трофей:', CFG.items[c.part].name + ' (' + CFG.items[c.part].val + ' ₽)') + this.row('Опыт:', c.xp);
+  },
+  stalker(s) {
+    const kind = { loner: 'одиночка', bandit: 'бандит', patrol: 'оцепление', wounded: 'раненый' }[s.kind] || s.kind;
+    return this.head(s.name, kind, s.hostile ? '#e06060' : '#c9c2a8') + this.row('Здоровье:', Math.ceil(s.hp) + ' / ' + s.c.hp) + this.row('Отношение:', s.state === 'wounded' ? 'нужна помощь (E)' : s.hostile ? 'враждебен' : 'нейтрален (E — поговорить)', s.hostile ? '#e06060' : '#8fbf7f');
+  },
+  denemy(e) {
+    const c = e.c; let h = this.head(c.name, e.state === 'hunt' ? 'охотится' : this.STATE[e.state] || e.state, '#c9c2a8') + this.row('Здоровье:', Math.ceil(e.hp) + ' / ' + e.max) + this.row('Урон:', c.dmg + (c.armor ? ' · броня ' + Math.round(c.armor * 100) + '%' : ''));
+    h += '<div class="ti-d">' + this.KIND[c.kind] + '</div>'; if (e.mode === 'stun') h += this.row('', 'оглушён: урон ×1.5', '#f0d060');
+    return h + (c.drop ? this.row('Трофей:', CFG.items[c.drop.id].name + ' (' + Math.round(c.drop.p * 100) + '%)') : '') + this.row('Опыт:', c.xp);
+  },
+  CONT: { stash: 'Тайник', house: 'Дом', wreck: 'Остов', lab: 'Шкаф лаборатории', road: 'Обгоревший остов' },
+  // Что лежит под курсором в мире (координаты экрана); null, если ничего или открыта панель
+  world(mx, my) {
+    if (typeof G === 'undefined' || !G.started || G.dead || G.ui) return null;
+    const wx = mx + cam.x, wy = my + cam.y, near = (o, r) => Math.hypot(o.x - wx, o.y - wy) < r;
+    if (G.scene === 'dungeon' && Dungeon.lvl) {
+      for (const e of Dungeon.enemies) if (near(e, e.r + 10) && e.alpha() > 0.3) return this.denemy(e);
+      const L = Dungeon.lvl, b = Dungeon.cur;
+      L.lockers.forEach((k, i) => { const p = Dungeon.center(k.tx, k.ty); if (near(p, 26)) this._hit = this.head('Шкафчик', b.opened.includes(i) ? 'пуст' : 'закрыт') + '<div class="ti-d">' + (b.opened.includes(i) ? 'Здесь уже пусто.' : 'Подойди и нажми E: внутри хлам, патроны, иногда аптечка.') + '</div>'; });
+      const v = Dungeon.center(L.vault.tx, L.vault.ty); if (near(v, 30)) this._hit = this.head('Сейф', b.opened.includes(99) ? 'вскрыт' : 'закрыт', '#e8c060') + '<div class="ti-d">' + (b.opened.includes(99) ? 'Пуст.' : 'Самая жирная добыча бункера: деньги, артефакт, знание. Подойди и нажми E.') + '</div>';
+      const s = Dungeon.center(L.start.tx, L.start.ty); if (near(s, 30)) this._hit = this.head('Лестница', 'выход') + '<div class="ti-d">Наверх: E.</div>';
+      const r = this._hit || null; this._hit = null; return r;
+    }
+    if (G.scene !== 'zone') return null;
+    for (const m of Mutants.list) if (!m.dead && !Mutants.hidden(m) && !(m.sp === 'cinder' && m.state === 'sleep') && !(m.sp === 'fogger' && m.state === 'sleep') && near(m, m.r + 10) && Math.hypot(m.x - P.x, m.y - P.y) < 420) return this.mutant(m);
+    for (const s of Stalkers.list) if (!s.dead && near(s, 16) && Math.hypot(s.x - P.x, s.y - P.y) < 420) return this.stalker(s);
+    for (const l of W.loot) if (near(l, 14)) return this.item(l.id, null, null, l.n) + '<div class="ti-r">Подобрать: <b>E</b></div>';
+    for (const c of W.conts) if (near(c, 30) && Math.hypot(c.x - P.x, c.y - P.y) < 200) return this.head(this.CONT[c.kind] || 'Контейнер', c.opened ? 'обыскан' : 'можно обыскать') + '<div class="ti-d">' + (c.opened ? 'Пусто.' : 'Подойди и нажми E: хлам, патроны, деньги.') + '</div>';
+    for (const a of W.arts) if (near(a, 22) && Math.hypot(a.x - P.x, a.y - P.y) < hintR() * 0.75) return this.head('Что-то поблёскивает', 'артефакт', '#e8c060') + '<div class="ti-d">Подойди и возьми (E). Если вокруг аномалия — сначала проверь болтом.</div>';
+    for (const c of W.caches) if (near(c, 16)) return this.head('Твой хабар', 'тайник смерти', '#e06060') + '<div class="ti-d">Здесь остались артефакты и часть денег. Забери (E).</div>';
+    return null;
+  },
   // Подсказка по атрибуту кнопки строки (data-a)
   fromAttr(attr) {
     const [a, arg] = String(attr).split(':'), i = +arg, u = G.ui || {}, vk = u.k === 'trade' ? u.v : null;
@@ -79,6 +142,9 @@ const Tip = {
       case 'buy': return this.item(arg, 'buy');
       case 'wbuy': case 'wequip': case 'wrepair': return this.weapon(arg);
       case 'craft': return this.recipe(arg);
+      case 'skill': return this.skill(arg);
+      case 'qacc': return this.offer(P.offers[i]);
+      case 'qturn': case 'qdrop': return this.quest(P.quests[i]);
     }
     return null;
   },
@@ -99,8 +165,12 @@ const Tip = {
   init() {
     const t = document.createElement('div'); t.id = 'itip'; document.body.appendChild(t); this.el = t;
     addEventListener('mousemove', e => {
+      clearTimeout(this.dwell);
       let html = null; try { html = this.resolve(e.target); } catch (err) { html = null; }
-      if (html) this.show(html, e.clientX, e.clientY); else this.hide();
+      if (html) return this.show(html, e.clientX, e.clientY);
+      this.hide();
+      // над миром показываем не сразу, а когда курсор постоял: иначе подсказки мешали бы целиться
+      if (e.target && e.target.id === 'cv') { const x = e.clientX, y = e.clientY; this.dwell = setTimeout(() => { let h = null; try { h = this.world(x, y); } catch (err) { h = null; } if (h) this.show(h, x, y); }, 260); }
     });
     addEventListener('blur', () => this.hide());
     addEventListener('keydown', () => this.hide());   // Tab/Esc/E меняют панель, а мышь при этом не двигается
