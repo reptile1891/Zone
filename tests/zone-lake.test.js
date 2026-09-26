@@ -47,8 +47,8 @@ test("Топляк: под водой дрейфует по пруду и не �
   fresh(); mkDrowner();
   const o = run(`(() => {
     P.x = 3400; P.y = 3400; const m = Mutants.list[0]; let out = false, moved = 0, x0 = m.x, y0 = m.y, states = new Set();
-    for (let i = 0; i < 600; i++) { m.update(0.05); states.add(m.state); const p = m.pond; if (((m.x - p.x) / (p.rx * 1.2 + 0.5)) ** 2 + ((m.y - p.y) / (p.ry * 1.2 + 0.5)) ** 2 > 1) out = true; }
-    return { out, moved: Math.hypot(m.x - x0, m.y - y0), states: [...states] };
+    for (let i = 0; i < 600; i++) { m.update(0.05); states.add(m.state); moved = Math.max(moved, Math.hypot(m.x - x0, m.y - y0)); const p = m.pond; if (((m.x - p.x) / (p.rx * 1.2 + 0.5)) ** 2 + ((m.y - p.y) / (p.ry * 1.2 + 0.5)) ** 2 > 1) out = true; }
+    return { out, moved, states: [...states] };   // наибольшее удаление от старта: по конечной точке дрейф мог случайно вернуться назад
   })()`);
   assert.equal(o.out, false); assert.ok(o.moved > 5, "дрейфует: " + o.moved.toFixed(1)); assert.deepEqual(o.states, ["sleep"]);
 });

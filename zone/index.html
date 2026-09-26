@@ -6,6 +6,11 @@
 <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="theme-color" content="#0b0d0a">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="Обочина">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" href="icon.svg" type="image/svg+xml">
+<link rel="apple-touch-icon" href="apple-touch-icon.png">
 <style>
 :root{--bg:#0b0d0a;--fg:#c9c2a8;--dim:#7d7864;--acc:#b5742a;--red:#b04040;--grn:#6f9a55;--blu:#5f8fc0;--pan:rgba(16,18,14,.94)}
 *{box-sizing:border-box}
@@ -137,5 +142,6 @@ body.touch #itip{max-width:60vw}
 <script src="tips.js"></script>
 <script src="hints.js"></script>
 <script src="touch.js"></script>
+<script>if ('serviceWorker' in navigator && /^https?:$/.test(location.protocol)) navigator.serviceWorker.register('sw.js').catch(() => {});</script>
 </body>
 </html>
