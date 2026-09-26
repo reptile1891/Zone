@@ -44,6 +44,7 @@ const Meta = {
 
   // ---- ремонт из хлама и тюнинг ----
   matsText(cost) { return Object.keys(cost).map(m => '<span style="color:' + (Camp.have(m) >= cost[m] ? '#8fbf7f' : '#e06060') + '">' + Camp.matName(m) + ' ' + cost[m] + '</span>').join(', '); },
+  matsPlain(m) { return Object.keys(m).map(k => CFG.items[k].name + ' ×' + m[k]).join(', '); },
   canPay(cost) { return Object.keys(cost).every(m => Camp.have(m) >= cost[m]); },
   pay(cost) { for (const m in cost) Camp.take(m, cost[m]); },
   // Сколько хлама нужно, чтобы убрать износ wear % (навык и уровень здания удешевляют)
@@ -70,6 +71,25 @@ const Meta = {
       for (const k of Gear.keys(s.id)) h += row('⚙', Gear.TUNE[k].text, full ? 'Мест для улучшений нет' : '', btn('gtune:' + i + ':' + k, 'Улучшить', full || !this.canPay(tc)));
     }
     return h;
+  },
+
+  // ---- разборка (верстак): вещь → материалы ----
+  // Оружие: по цене и состоянию; редкое даёт пластины, уникальное — ещё и батарею. Тюнинг не возвращается
+  salvageWeapon(id) {
+    const d = Wpn.defOf(id), v = Wpn.value(d), f = 0.6 + 0.4 * P.cond[id] / 100, o = { scrap: Math.max(2, Math.round(v / 70 * f)) }, c = Math.round(v / 160 * f);
+    if (c) o.circuit = c; if (d.rar >= 2) o.plate = d.rar - 1; if (d.rar >= 3) o.battery = 1; return o;
+  },
+  salvageSlot(s) {
+    const t = s && !s.art && CFG.salvage[s.id]; if (!t) return null; const m = 1 + 0.3 * Gear.rarOf(s), o = {};
+    for (const k in t) o[k] = Math.max(1, Math.round(t[k] * m)); return o;
+  },
+  // kind: 'w' — оружие (ref — id), 'g' — предмет из рюкзака (ref — индекс). Возвращает выданные материалы или null
+  salvage(kind, ref) {
+    let mats, what;
+    if (kind === 'w') { if (!P.weapons.includes(ref) || P.weapons.length <= 1) return null; mats = this.salvageWeapon(ref); what = Wpn.name(ref); Wpn.remove(ref); }
+    else { const s = P.inv[+ref], m = this.salvageSlot(s); if (!m) return null; mats = m; what = Meta.itemName(s); if (s.n > 1) s.n--; else P.inv.splice(+ref, 1); }
+    for (const k in mats) invAdd(k, mats[k]);
+    addXp(4); Snd.pick(); log('Разобрано: ' + what + ' → ' + Object.keys(mats).map(k => CFG.items[k].name + ' ×' + mats[k]).join(', '), '#a8c890'); return mats;
   },
 
   // ---- оружие ----

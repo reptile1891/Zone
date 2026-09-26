@@ -167,6 +167,7 @@ const Tip = {
       case 'wbuyg': return (P.gunOffers || [])[i] ? this.weapon(null, P.gunOffers[i].def) : null;
       case 'craft': return this.recipe(arg);
       case 'wwork': return this.weapon(arg);
+      case 'salv': { const m = arg === 'w' ? (P.weapons.includes(arg2) ? Meta.salvageWeapon(arg2) : null) : Meta.salvageSlot(P.inv[+arg2]); const t = arg === 'w' ? this.weapon(arg2) : this.slot(P.inv[+arg2]); return t && m ? t + this.row('Разборка даст:', Meta.matsPlain(m), '#a8c890') + '<div class="ti-d">Нажми дважды, чтобы подтвердить. Вещь исчезнет.</div>' : null; }
       case 'wtune': return this.tuneTip(Wpn.TUNE[arg2], Wpn.tuneCount(arg), Camp.lvl('gun'));
       case 'gtune': { const s = P.inv[i]; return s && Gear.TUNE[arg2] ? this.tuneTip(Gear.TUNE[arg2], (s.g && s.g.t) || 0, Camp.lvl('gear')) : null; }
       case 'wrepairm': return this.head('Ремонт из хлама', 'без денег', '#a8c890') + '<div class="ti-d">Снимает весь износ оружия за металлолом и схемы. Навык «Ремонт» и уровень мастерской удешевляют.</div>';

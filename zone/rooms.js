@@ -53,7 +53,15 @@ Object.assign(Camp, {
       const mats = Object.keys(r.mat).map(id => this.matName(id) + ' ' + this.have(id) + '/' + r.mat[id]).join(', '), ic = r.out[0] === 'art' ? Icons.html('art') : CFG.items[r.out[0]].icon;
       const sub = l < r.lvl ? 'Нужен уровень здания ' + r.lvl : (r.req && !Object.keys(r.req).every(k => P.sk[k] >= r.req[k]) ? 'Нужен навык «' + CFG.skills[Object.keys(r.req)[0]].name + '» ' + Object.values(r.req)[0] : mats);
       return row(ic, r.name, sub, btn('craft:' + r.id, 'Сделать', !this.canCraft(r)));
-    }).join('');
+    }).join('') + (st === 'gun' ? this.salvageHTML() : '');
+  },
+  // Разборка: оружие и снаряжение → материалы (два нажатия: второе подтверждает)
+  salvageHTML() {
+    const u = G.ui || {}, ask = key => (u.sc === key ? 'Точно?' : 'Разобрать');
+    let h = '<h3>Разборка</h3><div class="stat">Лишнее оружие и снаряжение — в металлолом и детали. Деньгами выгоднее продать, материалами — чинить и тюнинговать.</div>', any = false;
+    for (const id of P.weapons) { any = true; h += row(Icons.html('w_' + Wpn.base(id)), '<span style="color:' + Wpn.color(id) + '">' + Wpn.name(id) + '</span>', 'Даст: ' + Meta.matsPlain(Meta.salvageWeapon(id)) + (P.weapons.length <= 1 ? ' · последнее оружие не разобрать' : ''), btn('salv:w:' + id, ask('w' + id), P.weapons.length <= 1)); }
+    P.inv.forEach((s, i) => { const m = Meta.salvageSlot(s); if (!m) return; any = true; h += row(itemIcon(s), Meta.itemLabel(s) + (s.n > 1 ? ' ×' + s.n : ''), 'Даст: ' + Meta.matsPlain(m), btn('salv:g:' + i, ask('g' + i))); });
+    return h + (any ? '' : '<div class="stat">Разбирать нечего.</div>');
   },
 
   // ---- комнаты ----
@@ -190,7 +198,9 @@ function drawInterior() {
     if (r && u.k === 'storage') panel.insertAdjacentHTML('beforeend', '<div class="stat" style="margin-top:8px">Вместимость: ' + P.stash.length + ' / ' + (this.stashLimit() > 999 ? '∞' : this.stashLimit()) + ' · ' + this.bonusText('storage') + ' ' + btn('ubuild:storage', 'Улучшить ящик', !this.canUp('storage') || this.lvl('storage') >= 3) + '</div>');
     return r;
   };
-  Camp.click = function (a, arg) {
+  Camp.click = function (a, arg, arg2, u) {
+    if (a !== 'salv' && G.ui) G.ui.sc = null;
+    if (a === 'salv') { const key = arg + arg2; if (G.ui.sc !== key) G.ui.sc = key; else { G.ui.sc = null; Meta.salvage(arg, arg2); } return true; }
     if (a === 'ubuild') { this.upgrade(arg); return true; }
     if (a === 'craft') {
       const r = CFG.recipes.find(x => x.id === arg); if (!r || !this.canCraft(r)) return true;
@@ -199,6 +209,6 @@ function drawInterior() {
       Snd.pick(); Snd.tick(); addXp(6); log('Сделано: ' + r.name, '#a8c890'); return true;
     }
     if (a === 'stash' && P.stash.length >= this.stashLimit() && !P.stash.find(t => P.inv[+arg] && !P.inv[+arg].g && t.id === P.inv[+arg].id && !t.art && !t.g)) { log('Ящик полон. Улучши его.'); return true; }
-    return _click(a, arg);
+    return _click.call(this, a, arg, arg2, u);
   };
 })();

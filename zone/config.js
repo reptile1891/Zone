@@ -260,6 +260,8 @@ const CFG = {
   },
   // Ремонт из хлама и тюнинг. repair: сколько % износа закрывает 1 металлолом / 1 схема; cost[n] — цена (n+1)-го улучшения; максимум улучшений = уровень мастерской (оружие) или снабжения (костюм)
   tune: { repair: { scrap: 8, circuit: 35 }, cost: [{ scrap: 4, circuit: 2 }, { scrap: 7, circuit: 3, plate: 1 }, { scrap: 10, circuit: 4, plate: 2, battery: 1 }] },
+  // Разборка на верстаке: что даёт вещь (костюмы — ×(1 + 0.3 за ступень редкости)); оружие считается по цене
+  salvage: { suit: { scrap: 4 }, suit2: { scrap: 6, plate: 2 }, firecoat: { scrap: 5, circuit: 1, battery: 1 }, detector: { circuit: 3, battery: 1, scrap: 1 }, detector2: { circuit: 5, battery: 2 }, headlamp: { circuit: 1, battery: 1 }, sensor: { circuit: 1, battery: 1 }, repairkit: { scrap: 2 } },
   gearStock: { suit: 2, detector: 2, sensor: 2, suit2: 3, detector2: 3, firecoat: 3, headlamp: 2 },
   recipes: [
     { id: 'bolts',    st: 'gun', name: 'Болты ×10',           lvl: 1, mat: { scrap: 2 }, out: ['bolt', 10] },
