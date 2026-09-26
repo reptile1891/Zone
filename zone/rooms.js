@@ -49,11 +49,22 @@ Object.assign(Camp, {
   canCraft(r) { return this.lvl(r.st) >= r.lvl && Object.keys(r.mat).every(id => this.have(id) >= r.mat[id]) && (!r.req || Object.keys(r.req).every(k => P.sk[k] >= r.req[k])); },
   craftHTML(st) {
     const l = this.lvl(st), nm = st === 'sci' ? 'Лабораторный синтез (лаборатория ур. ' + l + ')' : 'Верстак (мастерская ур. ' + l + ')';
-    return '<div class="x" data-a="close">✕ Esc</div><h2>' + nm + '</h2><div class="stat">Хлам и трофеи — в дело. Сложные рецепты открываются с уровнем здания.</div>' + CFG.recipes.filter(r => r.st === st).map(r => {
+    return '<div class="x" data-a="close">✕ Esc</div><h2>' + nm + '</h2><div class="stat">Хлам и трофеи — в дело. Сложные рецепты открываются с уровнем здания.</div>' + (st === 'gun' ? this.upgradeHTML() : '') + CFG.recipes.filter(r => r.st === st).map(r => {
       const mats = Object.keys(r.mat).map(id => this.matName(id) + ' ' + this.have(id) + '/' + r.mat[id]).join(', '), ic = r.out[0] === 'art' ? Icons.html('art') : CFG.items[r.out[0]].icon;
       const sub = l < r.lvl ? 'Нужен уровень здания ' + r.lvl : (r.req && !Object.keys(r.req).every(k => P.sk[k] >= r.req[k]) ? 'Нужен навык «' + CFG.skills[Object.keys(r.req)[0]].name + '» ' + Object.values(r.req)[0] : mats);
       return row(ic, r.name, sub, btn('craft:' + r.id, 'Сделать', !this.canCraft(r)));
     }).join('') + (st === 'gun' ? this.salvageHTML() : '');
+  },
+  // Ремонт из хлама и тюнинг — прямо на верстаке (то же, что «Доработать» у Оружейника и Снабженца)
+  upgradeHTML() {
+    const u = G.ui || {}; let h = '<h3>Ремонт и тюнинг</h3>';
+    for (const id of P.weapons) {
+      const w = Wpn.of(id), n = Wpn.tuneCount(id);
+      h += row(Icons.html('w_' + Wpn.base(id)), '<span style="color:' + Wpn.color(id) + '">' + Wpn.name(id) + '</span>' + (P.weapon === id ? ' ★' : ''), 'Износ ' + Math.round(100 - P.cond[id]) + '% · тюнинг ' + n + ' / ' + this.lvl('gun'), btn('wwork:' + id, u.wsel === id ? 'Закрыть' : 'Доработать'));
+      if (u.wsel === id) h += '<div class="note">' + Meta.weaponWorkHTML(id) + '</div>';
+    }
+    if (Meta.bestSuit() || Meta.bestCoat()) { h += row('🧥', 'Костюм и плащ', 'Износ костюма ' + Math.round(100 - P.suitCond) + '% · тюнинг зависит от уровня Снабжения', btn('swork', u.ssel ? 'Закрыть' : 'Доработать')); if (u.ssel) h += '<div class="note">' + Meta.suitWorkHTML() + '</div>'; }
+    return h;
   },
   // Разборка: оружие и снаряжение → материалы (два нажатия: второе подтверждает)
   salvageHTML() {
