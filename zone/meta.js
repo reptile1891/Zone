@@ -9,7 +9,7 @@ const Meta = {
 
   reset() { this._bountyCd = 0; this.sensors = []; this.lures = []; this.lureShots = []; this.genOffers(); this.pickEvents(); },
   afterLoad() { P.burn = 0; if (!P.fuel) P.fuel = 0; if (!P.talked) P.talked = {}; for (const k in CFG.weapons) if (P.cond[k] == null) P.cond[k] = 100; this._bountyCd = 0; for (const q of P.quests || []) if (q.type === 'bounty' && q.prog < 1) this.spawnBounty(q); this.sensors = []; this.lures = []; this.lureShots = []; if (!P.offers || !P.offers.length) this.genOffers(); if (!G.events || !G.events.length) this.pickEvents(); },
-  saveFields() { const o = {}; for (const k of ['rep', 'karma', 'quests', 'offers', 'lore', 'weapons', 'weapon', 'cond', 'suitCond', 'insured', 'pass', 'earned', 'researched', 'kills', 'mapSold', 'stash', 'bld', 'chainDone', 'fuel', 'talked']) o[k] = P[k]; return o; },
+  saveFields() { const o = {}; for (const k of ['rep', 'karma', 'quests', 'offers', 'lore', 'weapons', 'weapon', 'cond', 'suitCond', 'insured', 'pass', 'earned', 'researched', 'kills', 'mapSold', 'stash', 'bld', 'chainDone', 'fuel', 'talked', 'deepDone']) o[k] = P[k]; return o; },
 
   // ---- костюм ----
   bestSuit() { return hasItem('suit2') ? 'suit2' : hasItem('suit') ? 'suit' : null; },
@@ -75,12 +75,13 @@ const Meta = {
     const offers = [], pool = ['fetch', 'hunt', 'recon', 'bring', 'bring', 'discover', 'sensor', 'help', 'bounty', 'rescue', 'lab', 'ash', 'vault'].sort(() => Math.random() - 0.5), n = 4 + (Camp.lvl('bar') - 1);
     for (const t of pool) { if (offers.length >= n) break; const o = this.makeOffer(t); if (o) offers.push(o); }
     if (!P.chainDone && !P.quests.some(q => q.type === 'chain') && P.lore >= 2 && Math.random() < 0.8) offers.unshift(this.makeOffer('chain'));
+    if (P.chainDone && !P.deepDone && !P.quests.some(q => q.type === 'deep') && Math.random() < 0.8) { const d = this.makeOffer('deep'); if (d) offers.unshift(d); }
     const bl = this.rewardMul(); for (const o of offers) o.reward = Math.round(o.reward * bl);
     P.offers = offers;
   },
   makeOffer(t) {
     const R = Math.random;
-    if (t === 'fetch') { const ids = Object.keys(CFG.arts).filter(k => k !== 'dud'), a = U.pick(ids), ad = CFG.arts[a]; return { type: 'fetch', art: a, reward: Math.round(ad.val * 1.7), rep: 3, text: 'Принести «' + ad.name + '» (подойдёт и неопознанный)' }; }
+    if (t === 'fetch') { const ids = this.wildArts(), a = U.pick(ids), ad = CFG.arts[a]; return { type: 'fetch', art: a, reward: Math.round(ad.val * 1.7), rep: 3, text: 'Принести «' + ad.name + '» (подойдёт и неопознанный)' }; }
     if (t === 'hunt') { const sp = U.pick(Object.keys(CFG.mut)), n = CFG.mut[sp].stalker ? 1 : CFG.mut[sp].hp >= 80 ? 2 : 3; return { type: 'hunt', sp, n, prog: 0, reward: 60 + n * 35, rep: 4, text: 'Истребить: ' + CFG.mut[sp].name + ' ×' + n }; }
     if (t === 'recon') { const p = W.spot(1500, R); return { type: 'recon', x: p.x, y: p.y, reached: false, reward: 80 + W.danger(p.x, p.y) * 45, rep: 5, text: 'Разведка: дойти до отмеченной точки (' + this.bmName(p.x, p.y) + ') и вернуться' }; }
     if (t === 'rescue') { const p = W.spot(1800, R); return { type: 'rescue', x: p.x, y: p.y, reward: 170, rep: 9, text: 'Экспедиция не вернулась. Найти жетон группы.' }; }
@@ -91,6 +92,13 @@ const Meta = {
     if (t === 'discover') { const n = 3 + Math.floor(R() * 3); return { type: 'discover', n, prog: 0, reward: 50 + n * 22, rep: 3, text: 'Картограф: отметить болтами новые аномалии ×' + n }; }
     if (t === 'sensor') { const p = W.spot(1200, R); return { type: 'sensor', x: p.x, y: p.y, placed: false, reward: 120 + W.danger(p.x, p.y) * 30, rep: 4, text: 'Установить датчик движения в точке (' + this.bmName(p.x, p.y) + '). Датчик выдадим.' }; }
     if (t === 'lab') return W.labs.length ? { type: 'lab', prog: 0, n: 1, reward: 210, rep: 6, text: 'Лаборатория: найти заброшенную площадку с оградой (сектор 3–4, фонит, у подходов «пружины» и магнитные ямы) и вскрыть шкаф' } : null;
+    if (t === 'deep') {
+      // три бункера от мелкого сектора к глубокому: следы экспедиции Штейна ведут вниз, каждый следующий отмечается на карте после сейфа предыдущего
+      const bs = W.bunkers.slice().sort((a, b) => W.danger(a.x, a.y) - W.danger(b.x, b.y) || a.i - b.i); if (bs.length < 3) return null;
+      const pick = [bs[Math.floor(bs.length * 0.12)], bs[Math.floor(bs.length * 0.5)], bs[bs.length - 1 - Math.floor(bs.length * 0.06)]];
+      if (new Set(pick.map(b => b.i)).size < 3) return null; pick[0].known = true;
+      return { type: 'deep', stage: 0, bunks: pick.map(b => b.i), x: pick[0].x, y: pick[0].y, reward: 520, rep: 14, item: ['art', 'echo'], text: 'Цепочка «Нижний ярус»: следы экспедиции Штейна ведут под землю. Найти сейфы в трёх бункерах (3 этапа)' };
+    }
     if (t === 'vault') return W.bunkers.length ? { type: 'vault', prog: 0, n: 1, reward: 260, rep: 6, text: 'Бункер: спуститься под землю (вход отмечен бункером на карте) и вскрыть сейф в глубине лабиринта. Внизу темно, есть подземники' } : null;
     if (t === 'ash') return W.roads.length ? { type: 'ash', prog: 0, n: 3, reward: 380, rep: 8, text: 'Пожарный: убить углеглотов ×3 и принести «Угольный зуб» ×3. Логова — у Пепельного тракта (сектор 2–4) и в Гари' } : null;
     if (t === 'help') return { type: 'help', n: 1, prog: 0, reward: 70, rep: 6, text: 'Найти раненого сталкера и спасти его аптечкой' };
@@ -101,6 +109,7 @@ const Meta = {
     const st = this.done(q) ? 'готово: сдай Сидору' : 'в работе';
     if (q.type === 'hunt' || q.type === 'discover' || q.type === 'help' || q.type === 'lab' || q.type === 'vault') return q.prog + '/' + q.n + ' · ' + st;
     if (q.type === 'bring') return invCount(q.mat) + '/' + q.n + ' · ' + st;
+    if (q.type === 'deep') return q.stage >= 3 ? 'все записки найдены: сдай Сидору' : 'этап ' + (q.stage + 1) + '/3: спустись в отмеченный бункер (E у люка) и вскрой сейф в глубине';
     if (q.type === 'ash') return 'убито ' + q.prog + '/' + q.n + ' · зубов ' + invCount('coalfang') + '/' + q.n + ' · ' + st;
     if (q.type === 'chain') return ['этап 1: дойти до отмеченной точки', 'этап 2: найти дневник в отмеченном месте', 'этап 3: отнести дневник Сидору'][Math.min(q.stage, 2)];
     if (q.type === 'sensor') return q.placed ? 'датчик стоит · ' + st : 'поставь датчик в точке';
@@ -125,6 +134,7 @@ const Meta = {
     if (q.type === 'rescue') return invCount('dogtag') > 0;
     if (q.type === 'bring') return invCount(q.mat) >= q.n;
     if (q.type === 'ash') return q.prog >= q.n && invCount('coalfang') >= q.n;
+    if (q.type === 'deep') return q.stage >= 3;
     if (q.type === 'sensor') return q.placed;
     if (q.type === 'bounty') return q.prog >= 1;
     if (q.type === 'chain') return q.stage >= 2 && invCount('diary') > 0;
@@ -135,13 +145,26 @@ const Meta = {
     if (q.type === 'rescue') invTake('dogtag', 1);
     if (q.type === 'bring') invTake(q.mat, q.n);
     if (q.type === 'ash') invTake('coalfang', q.n);
+    if (q.type === 'deep') { P.deepDone = true; P.karma.study += 2; this.gainLore(); this.gainLore(); }
     if (q.type === 'chain') { invTake('diary', 1); P.chainDone = true; this.gainLore(); this.gainLore(); }
     if (q.item) { invAdd('art', 1, q.item[1]); log('Награда: ' + CFG.arts[q.item[1]].name, '#e8c060'); }
     P.money += q.reward; P.earned += q.reward; P.rep += q.rep; addXp(30 + q.rep * 5); P.quests.splice(i, 1);
     log('Задание выполнено: +' + q.reward + ' ₽, репутация +' + q.rep, '#e8c060'); if (q.type === 'rescue' || q.type === 'help') P.karma.mercy += 1; this.gainLore();
   },
   onLab() { for (const q of P.quests) if (q.type === 'lab' && q.prog < q.n) { q.prog = q.n; log('Шкаф вскрыт. Возвращайся к Сидору.', '#e8c060'); } },
-  onVault() { for (const q of P.quests) if (q.type === 'vault' && q.prog < q.n) { q.prog = q.n; log('Сейф вскрыт. Возвращайся к Сидору.', '#e8c060'); } },
+  // Все арты, которые реально встречаются в аномалиях (без пустышки и наград цепочек)
+  wildArts() { const s = new Set(); for (const k in CFG.anoms) for (const a of CFG.anoms[k].arts) s.add(a); s.delete('dud'); return [...s]; },
+  onVault(b) {
+    for (const q of P.quests) {
+      if (q.type === 'vault' && q.prog < q.n) { q.prog = q.n; log('Сейф вскрыт. Возвращайся к Сидору.', '#e8c060'); }
+      if (q.type === 'deep' && b && q.stage < 3 && b.i === q.bunks[q.stage]) {
+        const txt = CFG.deepNotes[q.stage]; P.notes.push({ txt, sold: false }); log('В сейфе — потрёпанная тетрадь. Записка: «' + txt + '»', '#c8b0e8'); addXp(25);
+        q.stage++;
+        if (q.stage < 3) { const n = W.bunkers.find(x => x.i === q.bunks[q.stage]); n.known = true; q.x = n.x; q.y = n.y; log('Следы ведут дальше: новый бункер отмечен на карте (M).', '#e8c060'); }
+        else { q.x = null; q.y = null; log('Последняя записка найдена. Возвращайся к Сидору.', '#e8c060'); }
+      }
+    }
+  },
   onKill(kind) {
     for (const q of P.quests) {
       if (q.type === 'hunt' && q.sp === kind && q.prog < q.n) { q.prog++; log('Задание: ' + q.prog + '/' + q.n, '#e8c060'); }

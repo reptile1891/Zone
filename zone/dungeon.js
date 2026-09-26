@@ -58,6 +58,8 @@ const Dungeon = {
     if (!this.levels[b.i]) this.levels[b.i] = this.build(Math.imul(W.seed | 0, 2654435761) ^ Math.imul(b.i + 1, 0x9E3779B1), W.danger(b.x, b.y));
     return this.levels[b.i];
   },
+  // Цель цепочки «Нижний ярус» в этом бункере? (сейф помечается на полу знаком)
+  storyTarget(b) { b = b || this.cur; return !!(b && P.quests.some(q => q.type === 'deep' && q.stage < 3 && q.bunks[q.stage] === b.i) && !b.opened.includes(99)); },
   title() { return 'Бункер ' + (this.cur ? this.cur.i + 1 : '') + ' · сектор ' + (this.cur ? W.danger(this.cur.x, this.cur.y) : 1); },
 
   // ---------- геометрия ----------
@@ -101,6 +103,7 @@ const Dungeon = {
     this.lights = [{ x: s.x, y: s.y, r: 190, a: 0.85 }];   // светло только у входа: остальное лабиринт скрывает, пока не подойдёшь
     this.fieldT = 0; this.computeField(); this.calm = 0; Snd.tick();
     log('Ты спустился в бункер. Здесь темно и тихо. Выход — там, где ты вошёл.', '#a8c890');
+    if (this.storyTarget()) log('На стене у входа — старая метка экспедиции Штейна. Их сейф где-то в глубине.', '#c8b0e8');
   },
   leave() {
     const b = this.cur; G.scene = 'zone'; P.x = b.x; P.y = b.y + 42; this.reset(); closePanel(); Snd.tick();
@@ -117,7 +120,7 @@ const Dungeon = {
     return L;
   },
   vaultLoot(b) {
-    const R = this.rng(b, 99), d = W.danger(b.x, b.y), arts = Object.keys(CFG.arts).filter(k => k !== 'dud');
+    const R = this.rng(b, 99), d = W.danger(b.x, b.y), arts = Meta.wildArts();
     const L = [['money', Math.round((150 + R() * 150) * (0.8 + d * 0.2))], ['medkit', 1 + Math.floor(R() * 2)], ['ammo', 8 + Math.floor(R() * 8)], ['circuit', 2 + Math.floor(R() * 3)], ['art', arts[Math.floor(R() * arts.length)]]];
     if (R() < 0.6) L.push(['reagent', 1]);
     return L;
@@ -137,7 +140,7 @@ const Dungeon = {
   },
   openVault() {
     const b = this.cur; if (b.opened.includes(99)) return;
-    b.opened.push(99); log('Сейф вскрыт: ' + this.give(this.vaultLoot(b)), '#e8c060'); Snd.pick(); Meta.onVault(); addXp(30); Meta.gainLore(); this.hear(P.x, P.y, 260);
+    b.opened.push(99); log('Сейф вскрыт: ' + this.give(this.vaultLoot(b)), '#e8c060'); Snd.pick(); Meta.onVault(b); addXp(30); Meta.gainLore(); this.hear(P.x, P.y, 260);
   },
   // ---------- ход ----------
   hear(x, y, r) { for (const e of this.enemies) if (!e.dead && Math.hypot(e.x - x, e.y - y) < r * 1.6) e.alert(); },
@@ -212,6 +215,7 @@ const Dungeon = {
     L.lockers.forEach((k, i) => { const p = this.center(k.tx, k.ty), op = b.opened.includes(i); Spr.draw(ctx, op ? 'crate_o' : 'crate', p.x, p.y, false, null, 1.8); if (!op && Math.hypot(p.x - P.x, p.y - P.y) < 160) Spr.draw(ctx, 'star', p.x, p.y - 18, false, 0.4 + 0.5 * Math.abs(Math.sin(G.t * 4 + i))); });
     const v = this.center(L.vault.tx, L.vault.ty), vo = b.opened.includes(99);
     ctx.fillStyle = '#20242a'; ctx.fillRect(v.x - 16, v.y - 16, 32, 32); ctx.fillStyle = vo ? '#3a3f47' : '#5a616c'; ctx.fillRect(v.x - 14, v.y - 14, 28, 28);
+    if (this.storyTarget(b)) { ctx.strokeStyle = `rgba(200,176,232,${0.5 + 0.3 * Math.sin(G.t * 4)})`; ctx.lineWidth = 2; ctx.strokeRect(v.x - 20, v.y - 20, 40, 40); }
     ctx.fillStyle = vo ? '#20242a' : '#c8a030'; ctx.beginPath(); ctx.arc(v.x, v.y, 6, 0, 6.28); ctx.fill(); if (!vo) { ctx.fillStyle = '#3a2a10'; ctx.fillRect(v.x - 1, v.y - 5, 2, 5); }
     const dl = this.enemies.map(e => ({ y: e.y + 6, e }));
     if (!G.dead) dl.push({ y: P.y + 8, p: true });
