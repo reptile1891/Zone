@@ -93,12 +93,12 @@ function newGame() {
 // при загрузке игрок окажется в лагере с тем, что нёс, но заплатит за «вытаскивание» (см. load).
 const idxWhere = (a, f) => a.reduce((r, x, i) => (f(x) && r.push(i), r), []);
 function save(force) {
-  if (!force && (!inCamp() || G.dead)) return;
+  if (!force && (!inCamp() || G.scene === 'dungeon' || G.dead)) return;
   try {
     const kb = []; for (let i = 0; i < known.length; i++) kb.push(known[i]);
     localStorage.setItem('zone_save_v2', JSON.stringify({ seed: W.seed, P: { money: P.money, inv: P.inv, equip: P.equip, notes: P.notes, known: P.known,
       sk: P.sk, sp: P.sp, xp: P.xp, lvl: P.lvl, hp: P.hp, rad: P.rad, food: P.food, goal: P.goal, ...Meta.saveFields() }, clock: G.clock, demand: G.demand, events: G.events,
-      caches: W.caches, kn: kb.join(''), field: !inCamp() && !G.dead,
+      caches: W.caches, kn: kb.join(''), field: (!inCamp() || G.scene === 'dungeon') && !G.dead, bo: W.bunkers.map(b => b.opened),
       oc: idxWhere(W.conts, c => c.opened), cl: idxWhere(W.corpses.slice(0, W.nGenCorpses), c => c.looted),
       gone: W.seedArts.filter(id => !W.arts.some(a => a.id === id)) }));
   } catch (e) {}
@@ -112,6 +112,7 @@ function load() {
     // что уже вскрыто, обыскано и подобрано — не появляется заново (мир строится по сиду, а не хранится)
     for (const i of s.oc || []) if (W.conts[i]) W.conts[i].opened = true;
     for (const i of s.cl || []) if (W.corpses[i] && i < W.nGenCorpses) W.corpses[i].looted = true;
+    (s.bo || []).forEach((o, i) => { if (W.bunkers[i]) W.bunkers[i].opened = o; });
     if (s.gone) { const g = new Set(s.gone); W.arts = W.arts.filter(a => !g.has(a.id)); }
     Mutants.spawn(); Stalkers.spawn(); Meta.afterLoad(); Camp.enter(true); log('Игра загружена.');
     if (s.field) { P.money = Math.floor(P.money * 0.9); P.hp = Math.min(P.hp, CFG.death.hpOnRespawn); log('Связь оборвалась в Зоне. Тебя вытащили в лагерь: −10% денег, ты ранен.', '#e0a060'); }
@@ -127,7 +128,8 @@ function die() {
   const items = P.inv.filter(s => s.art), lostMoney = Math.floor(P.money * CFG.death.moneyLoss);
   const eq = P.equip.filter(Boolean).map(a => ({ id: 'art', n: 1, art: a }));
   const all = items.concat(eq);
-  if (all.length || lostMoney) W.caches.push({ x: P.x, y: P.y, items: all, money: lostMoney });
+  const dun = G.scene === 'dungeon' && Dungeon.cur;   // погиб под землёй — тайник у входа в бункер
+  if (all.length || lostMoney) W.caches.push({ x: dun ? Dungeon.cur.x : P.x, y: dun ? Dungeon.cur.y + 42 : P.y, items: all, money: lostMoney });
   P.inv = P.inv.filter(s => !s.art); P.equip = P.equip.map(() => null); P.money -= lostMoney;
   $('deathtxt').textContent = all.length || lostMoney ? 'Хабар остался в Зоне. Отметка на карте (M). Навыки и опыт сохранены.' : 'Ты ничего не нёс. Зона равнодушна.';
   $('death').style.display = 'flex'; closePanel(); Snd.hit(); save(true);
@@ -297,7 +299,7 @@ function update(dt) {
   // лунный свет привлекает
   if (P.equip.includes('moonlight') && Math.random() < dt * 0.3) Mutants.hear(P.x, P.y, 400);
   // оружие
-  P.cd -= dt; P.recoil = Math.max(0, (P.recoil || 0) - dt * 7); if (mouse.l && !G.ui && G.scene === 'zone') useSel();
+  P.cd -= dt; P.recoil = Math.max(0, (P.recoil || 0) - dt * 7); if (mouse.l && !G.ui && (G.scene === 'zone' || G.scene === 'dungeon')) useSel();
   if (G.scene !== 'zone') return campTick(dt);
   // голод, кровь, регенерация, радиация
   P.food = Math.max(0, P.food - CFG.player.foodRate * dt * (P.running ? 1.5 : 1));
@@ -483,17 +485,18 @@ function draw() {
   ctx.restore();
   drawOverlays();
 }
+const indoor = () => G.scene === 'interior' || G.scene === 'dungeon';
 function drawOverlays() {
   drawLight();
-  const sk = skyTint(G.hour); if (sk[3] > 0.01 && G.scene !== 'interior') { ctx.fillStyle = `rgba(${sk[0] | 0},${sk[1] | 0},${sk[2] | 0},${sk[3] * (1 - G.cloud * 0.4)})`; ctx.fillRect(0, 0, VW, VH); }
-  if (G.rain > 0.02 && G.scene !== 'interior') {
+  const sk = skyTint(G.hour); if (sk[3] > 0.01 && !indoor()) { ctx.fillStyle = `rgba(${sk[0] | 0},${sk[1] | 0},${sk[2] | 0},${sk[3] * (1 - G.cloud * 0.4)})`; ctx.fillRect(0, 0, VW, VH); }
+  if (G.rain > 0.02 && !indoor()) {
     ctx.fillStyle = `rgba(40,60,85,${G.rain * 0.14})`; ctx.fillRect(0, 0, VW, VH);
     ctx.strokeStyle = 'rgba(175,195,225,.4)'; ctx.lineWidth = 1; ctx.beginPath();
     const n = Math.floor(G.rain * 170), sl = G.wx === 'storm' ? 8 : 4;
     for (let i = 0; i < n; i++) { const x = ((i * 211.7 + G.t * 90) % (VW + 100)) - 50, y = ((i * 97.3 + G.t * (650 + i % 5 * 90)) % (VH + 40)) - 20; ctx.moveTo(x, y); ctx.lineTo(x - sl, y + 13); }
     ctx.stroke();
   }
-  if (G.flash > 0.01 && G.scene !== 'interior') { ctx.fillStyle = `rgba(215,225,255,${G.flash * 0.55})`; ctx.fillRect(0, 0, VW, VH); }
+  if (G.flash > 0.01 && !indoor()) { ctx.fillStyle = `rgba(215,225,255,${G.flash * 0.55})`; ctx.fillRect(0, 0, VW, VH); }
   const e = G.emi;
   if (e.s === 'warn') { ctx.fillStyle = `rgba(160,20,10,${0.08 + 0.07 * Math.sin(G.t * 5)})`; ctx.fillRect(0, 0, VW, VH); }
   else if (e.s === 'blast') { ctx.fillStyle = `rgba(200,40,20,${0.25 + 0.15 * Math.sin(G.t * 12)})`; ctx.fillRect(0, 0, VW, VH); if (Math.random() < 0.06) { ctx.fillStyle = 'rgba(255,255,255,.35)'; ctx.fillRect(0, 0, VW, VH); } }
@@ -509,10 +512,10 @@ function drawOverlays() {
 }
 function drawLight() {
   lc.globalCompositeOperation = 'source-over'; lc.clearRect(0, 0, VW, VH);
-  const dark = G.scene === 'interior' ? 0.42 : Math.min(0.95, 0.2 + 0.65 * G.night + G.cloud * 0.16 + G.fog * 0.1);
+  const dark = G.scene === 'dungeon' ? 0.93 : G.scene === 'interior' ? 0.42 : Math.min(0.95, 0.2 + 0.65 * G.night + G.cloud * 0.16 + G.fog * 0.1);
   lc.fillStyle = `rgba(4,6,8,${dark})`; lc.fillRect(0, 0, VW, VH);
   lc.globalCompositeOperation = 'destination-out';
-  const vis = (U.lerp(CFG.player.vision, CFG.player.visionNight, G.night) + fx('sight')) * (1 - G.fog * 0.28) * (1 - G.rain * 0.1) * (P.sneak ? 0.95 : 1) * (G.scene === 'zone' && W.biomeAt(P.x, P.y) === 'forest' ? 0.82 : 1);
+  const vis = (U.lerp(CFG.player.vision, CFG.player.visionNight, G.night) + fx('sight')) * (1 - G.fog * 0.28) * (1 - G.rain * 0.1) * (P.sneak ? 0.95 : 1) * (G.scene === 'zone' && W.biomeAt(P.x, P.y) === 'forest' ? 0.82 : G.scene === 'dungeon' ? 0.7 : 1);
   const hole = (x, y, r, a) => { const g = lc.createRadialGradient(x, y, r * 0.2, x, y, r); g.addColorStop(0, `rgba(0,0,0,${a})`); g.addColorStop(1, 'rgba(0,0,0,0)'); lc.fillStyle = g; lc.fillRect(x - r, y - r, r * 2, r * 2); };
   hole(P.x - cam.x, P.y - cam.y, vis, 1);
   if (G.scene !== 'zone') { const fl = 0.85 + 0.15 * Math.sin(G.t * 9); for (const l of Camp.curLights()) hole(l.x - cam.x, l.y - cam.y, l.r, Math.min(1, l.a * fl)); }
@@ -597,7 +600,7 @@ function hud(dt) {
   $('state').innerHTML = `Вес <b style="color:${w > cap ? '#e06060' : ''}">${w.toFixed(1)}/${cap}</b> кг · Ур.${P.lvl}${P.sp ? ' <b style="color:#e8c060">(+' + P.sp + ' очко)</b>' : ''}` + (P.bleed > 0 ? ' <b style="color:#e06060">КРОВОТЕЧЕНИЕ</b>' : '') + (P.geigerRate > 0.2 ? ' <b style="color:#d8d040">ФОН</b>' : '') + Meta.status();
   const hh = Math.floor(G.hour), mm = Math.floor((G.hour % 1) * 60), e = G.emi;
   const ez = e.s === 'warn' ? `<div class="warn">ВЫБРОС ЧЕРЕЗ ${Math.ceil(e.left)} с${isSheltered() ? ' · ты в укрытии' : ' · В УКРЫТИЕ!'}</div>` : e.s === 'blast' ? '<div class="warn">ВЫБРОС!</div>' : '';
-  $('top').innerHTML = `<div class="stat">${WX[G.wx].name}</div>${String(hh).padStart(2, '0')}:${String(mm).padStart(2, '0')} ${G.night > 0.5 ? '☾' : '☀'} · <b style="color:#e8c060">${P.money} ₽</b>${ez}<div class="stat">${G.scene === 'interior' ? Camp.roomName() : G.scene === 'camp' ? 'Лагерь «Обочина»' : inCamp() ? 'Блокпост' : CFG.biomes[W.biomeAt(P.x, P.y)].name + ' · сектор ' + W.danger(P.x, P.y)}</div>`;
+  $('top').innerHTML = `<div class="stat">${WX[G.wx].name}</div>${String(hh).padStart(2, '0')}:${String(mm).padStart(2, '0')} ${G.night > 0.5 ? '☾' : '☀'} · <b style="color:#e8c060">${P.money} ₽</b>${ez}<div class="stat">${G.scene === 'dungeon' ? Dungeon.title() : G.scene === 'interior' ? Camp.roomName() : G.scene === 'camp' ? 'Лагерь «Обочина»' : inCamp() ? 'Блокпост' : CFG.biomes[W.biomeAt(P.x, P.y)].name + ' · сектор ' + W.danger(P.x, P.y)}</div>`;
   $('prompt').textContent = G.near ? '[E] ' + G.near.label : '';
   let q = ''; heldNames.forEach((h, i) => { const ic = h === 'weapon' ? Icons.html('w_' + P.weapon) : CFG.items[h].icon, n = h === 'weapon' ? invCount(CFG.weapons[P.weapon].ammo || 'ammo') : invCount(h); q += `<div class="qs ${P.sel === i ? 'on' : ''}" data-q="${i}"><u>${i + 1}</u>${ic}<b>${n}</b></div>`; });
   if ($('quick').dataset.s !== q) { $('quick').innerHTML = q; $('quick').dataset.s = q; }
@@ -666,7 +669,7 @@ panel.addEventListener('click', e => {
   if (Camp.click(a, arg, arg2, u)) { renderPanel(); return; }
   if (Meta.click(a, arg, arg2, u)) { renderPanel(); return; }
   if (a === 'vol') { Snd.vol = U.clamp(Math.round((Snd.vol + (arg === 'up' ? 0.1 : -0.1)) * 10) / 10, 0, 1); if (Snd.master) Snd.master.gain.value = Snd.vol; }
-  else if (a === 'savenow') { if (inCamp()) { save(); log('Сохранено.'); } else log('Сохраняться можно только в лагере.'); }
+  else if (a === 'savenow') { if (inCamp() && G.scene !== 'dungeon') { save(); log('Сохранено.'); } else log('Сохраняться можно только в лагере.'); }
   else if (a === 'newgame') { if (u.conf) { try { localStorage.removeItem('zone_save_v2'); } catch (e) {} closePanel(); newGame(); return; } u.conf = true; }
   if (a === 'use') { const s = P.inv[i]; if (s) useItem(s.id); }
   else if (a === 'drop') { const s = P.inv[i]; if (s) { if (s.art) W.arts.push({ id: 0, type: s.art, x: P.x + 20, y: P.y, anom: 0 }); else W.loot.push({ x: P.x + 20, y: P.y, id: s.id, n: s.n }); P.inv.splice(i, 1); } }

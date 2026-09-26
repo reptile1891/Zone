@@ -176,7 +176,7 @@ class World {
       }
     }
   }
-  genBunkers() { for (let i = 0; i < CFG.counts.bunkers; i++) { const p = this.spot(this.C.r + 350); this.bunkers.push({ x: p.x, y: p.y, known: false }); } }
+  genBunkers() { for (let i = 0; i < CFG.counts.bunkers; i++) { const p = this.spot(this.C.r + 350); this.bunkers.push({ x: p.x, y: p.y, known: false, i, opened: [], cleared: false, gen: 0 }); } }
   genRest() {
     for (let i = 0; i < CFG.counts.rest; i++) for (let t = 0; t < 20; t++) {
       const p = this.spot(this.C.r + 400);
@@ -412,5 +412,6 @@ class World {
     }
     for (const c of this.conts) if (c.opened && Math.random() < 0.45) { c.opened = false; c.loot = c.kind === 'lab' ? this.rollLab(Math.random) : c.kind === 'road' ? this.rollRoad(Math.random) : this.rollLoot(this.danger(c.x, c.y), c.kind !== 'wreck', Math.random); }
     for (const z of this.rad) z.i = Math.max(0.4, z.i * (0.7 + Math.random() * 0.7));
+    for (const b of this.bunkers) { b.cleared = false; b.opened = b.opened.filter(() => Math.random() > 0.45); b.gen++; }   // подземелья заселяются и пополняются заново
   }
 }

@@ -12,6 +12,9 @@ const CFG = {
   emission: { gapMin: 420, gapMax: 720, warn: 30, dur: 14, dps: 22, shelterR: 46, firstIn: 300 },
   counts: { anoms: 90, fields: 30, corpses: 50, bunkers: 14, radZones: 20, stashes: 80, rest: 10, labs: 3, roads: 2 },
   death: { moneyLoss: 0.4, hpOnRespawn: 60 },
+  // Подземелье под каждым бункером: лабиринт из клеток cols×rows (тайл tile пикселей), шкафчики в тупиках, сейф в самой дальней точке.
+  dungeon: { tile: 48, cols: 8, rows: 6, loops: 0.12, rooms: 2, lockers: 4, radSpots: 2, radRate: 1.4, base: 2,
+    enemy: { name: 'Подземник', hp: 50, armor: 0, walk: 40, run: 105, dmg: 12, cd: 0.9, r: 9, sight: 230, xp: 14, bleed: 0.2 } },
 
   anoms: {
     plesh: { name: 'Комариная плешь', r: 32, dps: 75, w: [0, 0.6, 1.2, 2], col: '#a08a5a', react: 'Болт вдавило в землю, будто на него встал слон.',

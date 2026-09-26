@@ -27,10 +27,11 @@ const Meta = {
   },
   // Огнемёт: конус перед игроком, урон каждому в нём (сквозь броню), поджигает
   flame(w) {
-    let seen = false;
-    for (const list of [Mutants.list, Stalkers.list]) for (const m of list) {
+    let seen = false; const dun = G.scene === 'dungeon';
+    for (const list of dun ? [Dungeon.enemies] : [Mutants.list, Stalkers.list]) for (const m of list) {
       if (m.dead) continue; const dx = m.x - P.x, dy = m.y - P.y, d = Math.hypot(dx, dy);
       if (d > w.range + m.r || U.angDiff(P.ang, Math.atan2(dy, dx)) > w.cone) continue;
+      if (dun && !Dungeon.los(P.x, P.y, m.x, m.y)) continue;
       if (m.c && m.c.fireproof) { seen = true; continue; }
       m.hurt(w.dmg, P, w.pierce); if (!m.dead && m.burn != null) { m.burn = Math.max(m.burn, 4); m.burner = P; }
     }
@@ -71,7 +72,7 @@ const Meta = {
   rewardMul() { return 1 + 0.15 * (Camp.lvl('bar') - 1); },
   bmName(x, y) { return CFG.biomes[W.biomeAt(x, y)].name; },
   genOffers() {
-    const offers = [], pool = ['fetch', 'hunt', 'recon', 'bring', 'bring', 'discover', 'sensor', 'help', 'bounty', 'rescue', 'lab', 'ash'].sort(() => Math.random() - 0.5), n = 4 + (Camp.lvl('bar') - 1);
+    const offers = [], pool = ['fetch', 'hunt', 'recon', 'bring', 'bring', 'discover', 'sensor', 'help', 'bounty', 'rescue', 'lab', 'ash', 'vault'].sort(() => Math.random() - 0.5), n = 4 + (Camp.lvl('bar') - 1);
     for (const t of pool) { if (offers.length >= n) break; const o = this.makeOffer(t); if (o) offers.push(o); }
     if (!P.chainDone && !P.quests.some(q => q.type === 'chain') && P.lore >= 2 && Math.random() < 0.8) offers.unshift(this.makeOffer('chain'));
     const bl = this.rewardMul(); for (const o of offers) o.reward = Math.round(o.reward * bl);
@@ -90,6 +91,7 @@ const Meta = {
     if (t === 'discover') { const n = 3 + Math.floor(R() * 3); return { type: 'discover', n, prog: 0, reward: 50 + n * 22, rep: 3, text: 'Картограф: отметить болтами новые аномалии ×' + n }; }
     if (t === 'sensor') { const p = W.spot(1200, R); return { type: 'sensor', x: p.x, y: p.y, placed: false, reward: 120 + W.danger(p.x, p.y) * 30, rep: 4, text: 'Установить датчик движения в точке (' + this.bmName(p.x, p.y) + '). Датчик выдадим.' }; }
     if (t === 'lab') return W.labs.length ? { type: 'lab', prog: 0, n: 1, reward: 210, rep: 6, text: 'Лаборатория: найти заброшенную площадку с оградой (сектор 3–4, фонит, у подходов «пружины» и магнитные ямы) и вскрыть шкаф' } : null;
+    if (t === 'vault') return W.bunkers.length ? { type: 'vault', prog: 0, n: 1, reward: 260, rep: 6, text: 'Бункер: спуститься под землю (вход отмечен бункером на карте) и вскрыть сейф в глубине лабиринта. Внизу темно, есть подземники' } : null;
     if (t === 'ash') return W.roads.length ? { type: 'ash', prog: 0, n: 3, reward: 380, rep: 8, text: 'Пожарный: убить углеглотов ×3 и принести «Угольный зуб» ×3. Логова — у Пепельного тракта (сектор 2–4) и в Гари' } : null;
     if (t === 'help') return { type: 'help', n: 1, prog: 0, reward: 70, rep: 6, text: 'Найти раненого сталкера и спасти его аптечкой' };
     if (t === 'bounty') { const p = W.spot(1500, R); return { type: 'bounty', x: p.x, y: p.y, prog: 0, name: U.pick(STALKER_NAMES), reward: 180 + W.danger(p.x, p.y) * 40, rep: 8, text: 'Награда за голову: главарь бандитов (' + this.bmName(p.x, p.y) + '). Опасен.' }; }
@@ -97,7 +99,7 @@ const Meta = {
   },
   progText(q) {
     const st = this.done(q) ? 'готово: сдай Сидору' : 'в работе';
-    if (q.type === 'hunt' || q.type === 'discover' || q.type === 'help' || q.type === 'lab') return q.prog + '/' + q.n + ' · ' + st;
+    if (q.type === 'hunt' || q.type === 'discover' || q.type === 'help' || q.type === 'lab' || q.type === 'vault') return q.prog + '/' + q.n + ' · ' + st;
     if (q.type === 'bring') return invCount(q.mat) + '/' + q.n + ' · ' + st;
     if (q.type === 'ash') return 'убито ' + q.prog + '/' + q.n + ' · зубов ' + invCount('coalfang') + '/' + q.n + ' · ' + st;
     if (q.type === 'chain') return ['этап 1: дойти до отмеченной точки', 'этап 2: найти дневник в отмеченном месте', 'этап 3: отнести дневник Сидору'][Math.min(q.stage, 2)];
@@ -118,7 +120,7 @@ const Meta = {
   },
   done(q) {
     if (q.type === 'fetch') return P.inv.some(s => s.art === q.art);
-    if (q.type === 'hunt' || q.type === 'discover' || q.type === 'help' || q.type === 'lab') return q.prog >= q.n;
+    if (q.type === 'hunt' || q.type === 'discover' || q.type === 'help' || q.type === 'lab' || q.type === 'vault') return q.prog >= q.n;
     if (q.type === 'recon') return q.reached;
     if (q.type === 'rescue') return invCount('dogtag') > 0;
     if (q.type === 'bring') return invCount(q.mat) >= q.n;
@@ -139,6 +141,7 @@ const Meta = {
     log('Задание выполнено: +' + q.reward + ' ₽, репутация +' + q.rep, '#e8c060'); if (q.type === 'rescue' || q.type === 'help') P.karma.mercy += 1; this.gainLore();
   },
   onLab() { for (const q of P.quests) if (q.type === 'lab' && q.prog < q.n) { q.prog = q.n; log('Шкаф вскрыт. Возвращайся к Сидору.', '#e8c060'); } },
+  onVault() { for (const q of P.quests) if (q.type === 'vault' && q.prog < q.n) { q.prog = q.n; log('Сейф вскрыт. Возвращайся к Сидору.', '#e8c060'); } },
   onKill(kind) {
     for (const q of P.quests) {
       if (q.type === 'hunt' && q.sp === kind && q.prog < q.n) { q.prog++; log('Задание: ' + q.prog + '/' + q.n, '#e8c060'); }
@@ -194,6 +197,7 @@ const Meta = {
     if (P.inAnom && P.inAnom.type === 'plesh' && Math.random() < dt * 0.6) this.breakLeg('Плешь вдавила ногу в землю. Перелом.');
     if (P.infect > 0) { P.infect += dt; P.hp -= 0.3 * dt; if (P.infect > 180) { P.infect = 0; log('Организм справился с заражением.', '#a8c890'); } }
     const pb = this.prevBleed; if (pb > 0 && pb <= dt * 1.5 && P.bleed <= 0 && P.infect <= 0 && Math.random() < 0.35) { P.infect = 0.01; log('Рана загноилась. Нужен антибиотик.', '#c0e060'); } this.prevBleed = P.bleed;
+    if (G.scene !== 'zone') return;   // дальше — только то, что привязано к карте Зоны
     // закрытый сектор: без репутации или пропуска — оцепление
     if (W.danger(P.x, P.y) >= 4 && !P.pass && P.rep < CFG.gate.rep && G.t > this.gateCool) {
       this.gateCool = G.t + 120; Stalkers.spawnPatrol(); log('Оцепление! Сюда пускают только тех, кого знают в лагере.', '#e06060'); Snd.zap();
@@ -411,8 +415,8 @@ function shoot() {
   const moving = Math.hypot(keys.mx || 0, keys.my || 0) > 0;
   for (let n = 0; n < w.pellets; n++) {
     const a = P.ang + (Math.random() - 0.5) * w.spread * (P.sneak ? 0.6 : 1) * (moving ? 1.6 : 1) * (cond < 50 ? 1.3 : 1);
-    const dx = Math.cos(a), dy = Math.sin(a); let best = null, bt = w.range;
-    for (const list of [Mutants.list, Stalkers.list]) for (const m of list) {
+    const dx = Math.cos(a), dy = Math.sin(a), dun = G.scene === 'dungeon'; let best = null, bt = dun ? Dungeon.rayLen(P.x, P.y, dx, dy, w.range) : w.range;
+    for (const list of dun ? [Dungeon.enemies] : [Mutants.list, Stalkers.list]) for (const m of list) {
       if (m.dead) continue; const rx = m.x - P.x, ry = m.y - P.y, t = rx * dx + ry * dy; if (t < 0 || t > bt) continue;
       if (Math.abs(rx * dy - ry * dx) < m.r + 3) { best = m; bt = t; }
     }
@@ -423,6 +427,7 @@ function shoot() {
 }
 function useSel() {
   const h = heldNames[P.sel];
+  if (G.scene === 'dungeon' && (h === 'bolt' || h === 'lure' || h === 'shock')) { if (!(G.t < (Meta._dunLog || 0))) { Meta._dunLog = G.t + 3; log('Под землёй это ни к чему.'); } return; }
   if (h === 'weapon') shoot(); else if (h === 'bolt') throwBolt(); else if (h === 'lure') Meta.throwLure(); else if (h === 'shock') Meta.throwShock(); else if (invCount(h) > 0) useItem(h);
 }
 function useItem(id) {
