@@ -22,7 +22,9 @@ const Spr = {
     M('listener', ['.......ee.......', '......eEEe......', '..ppppppEe.p....', '.pppppppppppp...', 'pppppppppppppp..', '.ppp.pp..ppp.pp.', '.p.p.p...p.p.p..'], { p: '#cbb9a0', e: '#d68f8f', E: '#9a5a5a' });
     M('tin', ['....rrrrrrrrrr....', '..rrRrrRrrRrrRrr..', '.rrrrrrrrrrrrrrrrh.', 'rRrrRrrRrrRrrRrrrhh', 'rrrrrrrrrrrrrrrrrhhw', '.rrrrrrrrrrrrrrrrr.w', '..kk..kk....kk..kk.', '..kk..kk....kk..kk.'], { r: '#7a5238', R: '#a06a3a', h: '#4a3a30', w: '#d8d0b0', k: '#2a2018' });
     M('glass', ['.........aa.', '........aaba', '..aaaaaaaaa.', '.aabbabbbaa.', '.aabbbbbbaa.', '.aaaaaaaaaa.', '..a.a..a.a..', '..a.a..a.a..'], { a: '#8fb8d8', b: '#d8f0ff' });
-    M('fogger', ['..wwww..', '.wwwwww.', '.wkwwkw.', '..wwww..', '..dddd..', '.dddddd.', '.dddddd.', 'dddddddd', '.d.dd.d.', '.d.dd.d.', '.d....d.', '.d....d.'], { w: '#dcdcd0', k: '#101010', d: '#2a2c34' });
+    M('bristler', ['...k.k.k.k.k....', '..kqkqkqkqkqk...', '.bbbbbbbbbbbbbh.', 'bbBbbbbbbbbbbbhh', 'bbbbbbbbbbbbbhwh', '.bbbbbbbbbbbbbh.', '..kk..kk..kk.kk.', '..kk..kk..kk.kk.'], { b: '#6a4e3a', B: '#8a6a4a', q: '#d8cfa8', k: '#2a2018', h: '#4a3a2a', w: '#e8e0c0' });
+    M('rotter', ['....gg....', '..ggGGg...', '.ggggggggg', 'gggwrwgggg', '.gggggggg.', '.g.g..g.g.', '.k.k..k.k.'], { g: '#5a6a3a', G: '#7a8a4a', w: '#e8e4c0', r: '#a03030', k: '#2a3018' });
+    M('fogger',['..wwww..', '.wwwwww.', '.wkwwkw.', '..wwww..', '..dddd..', '.dddddd.', '.dddddd.', 'dddddddd', '.d.dd.d.', '.d.dd.d.', '.d....d.', '.d....d.'], { w: '#dcdcd0', k: '#101010', d: '#2a2c34' });
     M('tree', ['...gggg...', '..gGggGg..', '.gggGgggg.', '.gGggggGg.', '..gggggg..', '...gggg...', '....tt....', '....tt....'], { g: '#1e2c1a', G: '#2c4024', t: '#3a2a1a' });
     M('rock', ['..rrrr..', '.rRrrrr.', 'rRrrrrrr', 'rrrrrrkr', '.kkkkkk.'], { r: '#57574f', R: '#77776c', k: '#3a3a34' });
     M('wreck', ['..rrrrrr....', '.rRRRRRRr...', 'rrrrrrrrrrrr', 'rkkrrrrkkrrr', 'rkkrrrrkkrrr', '.kk......kk.'], { r: '#6a3e26', R: '#8a5a3a', k: '#2a1c12' });

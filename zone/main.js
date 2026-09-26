@@ -10,7 +10,7 @@ const P = { x: 0, y: 0, ang: 0, r: CFG.player.r, hp: 100, stam: 100, rad: 0, foo
   sk: {}, money: 0, inv: [], equip: [null, null], notes: [], known: {}, sel: 0, cd: 0, slow: 1, sneak: false, running: false,
   dead: false, goal: false, wasOut: false, noiseT: 0, geigerRate: 0,
   rep: 0, karma: { greed: 0, cruelty: 0, mercy: 0, study: 0 }, quests: [], offers: [], lore: 0, weapons: ['pistol'], weapon: 'pistol',
-  cond: { pistol: 100, sawnoff: 100, rifle: 100 }, suitCond: 100, insured: false, pass: false, fracture: false, infect: 0, earned: 0, researched: {}, kills: 0, mapSold: 0,
+  cond: Object.fromEntries(Object.keys(CFG.weapons).map(k => [k, 100])), suitCond: 100, insured: false, pass: false, fracture: false, infect: 0, earned: 0, researched: {}, kills: 0, mapSold: 0,
   hurt(d, src) {
     if (G.dead) return;
     if (src === 'anom') d *= 1 - Meta.suitAnom();
@@ -78,7 +78,7 @@ function resetPlayer() {
   Object.assign(P, { hp: 100, stam: 100, rad: 0, food: 80, stress: 0, bleed: 0, xp: 0, lvl: 1, sp: 0, money: 50, inv: [], equip: [null, null],
     notes: [], known: {}, sel: 0, cd: 0, dead: false, goal: false, wasOut: false,
     rep: 0, karma: { greed: 0, cruelty: 0, mercy: 0, study: 0 }, quests: [], offers: [], lore: 0, weapons: ['pistol'], weapon: 'pistol',
-    cond: { pistol: 100, sawnoff: 100, rifle: 100 }, suitCond: 100, insured: false, pass: false, fracture: false, infect: 0, earned: 0, researched: {}, kills: 0, mapSold: 0 });
+    cond: Object.fromEntries(Object.keys(CFG.weapons).map(k => [k, 100])), suitCond: 100, insured: false, pass: false, fracture: false, infect: 0, earned: 0, researched: {}, kills: 0, mapSold: 0 });
   for (const k in CFG.skills) P.sk[k] = 0;
   invAdd('ammo', 12); invAdd('bolt', 15); invAdd('medkit', 1); invAdd('food', 2);
   P.x = W.C.x; P.y = W.C.y + 40; known.fill(0); reveal(W.C.x, W.C.y, 320);
@@ -186,7 +186,7 @@ function findNear() {
   for (const a of W.arts) c(a, Math.hypot(a.x - P.x, a.y - P.y), 28, 'Взять: ' + (P.known[a.type] ? CFG.arts[a.type].name : 'непонятную штуку'), () => takeArt(a));
   for (const s of W.corpses) if (!s.looted) c(s, Math.hypot(s.x - P.x, s.y - P.y), 32, 'Обыскать тело сталкера', () => lootCorpse(s));
   for (const s of W.caches) c(s, Math.hypot(s.x - P.x, s.y - P.y), 34, 'Забрать своё', () => lootCache(s));
-  for (const s of W.conts) if (!s.opened) c(s, Math.hypot(s.x - P.x, s.y - P.y), s.kind === 'house' ? 62 : 36, s.kind === 'stash' ? 'Открыть тайник' : s.kind === 'house' ? 'Обыскать дом' : 'Обыскать остов', () => openCont(s));
+  for (const s of W.conts) if (!s.opened) c(s, Math.hypot(s.x - P.x, s.y - P.y), s.kind === 'house' ? 62 : 36, s.kind === 'stash' ? 'Открыть тайник' : s.kind === 'house' ? 'Обыскать дом' : s.kind === 'lab' ? 'Вскрыть шкаф лаборатории' : 'Обыскать остов', () => openCont(s));
   for (const r of W.rest) c(r, Math.hypot(r.x - P.x, r.y - P.y), 62, 'Сделать привал (отдых у костра)', () => doRest(r));
   for (const m of Mutants.corpses) if (m.meat > 0) c(m, Math.hypot(m.x - P.x, m.y - P.y), 32, 'Разделать тушу (' + CFG.mut[m.sp].name + ')', () => butcher(m));
   for (const k in CFG.vendors) { const p = npcPos(k); c(k, Math.hypot(p.x - P.x, p.y - P.y), 52, 'Говорить: ' + CFG.vendors[k].name, () => openTrade(k)); }
@@ -212,6 +212,7 @@ function openCont(c) {
   c.opened = true; const got = [];
   for (const [id, n] of c.loot) { if (id === 'money') { P.money += n; got.push(n + ' ₽'); } else { invAdd(id, n); got.push(CFG.items[id].name + ' ×' + n); } }
   log('Найдено: ' + got.join(', '), '#c8c090'); Snd.pick(); Mutants.hear(P.x, P.y, 90);
+  if (c.kind === 'lab') Meta.onLab();
 }
 function lootCache(s) { for (const it of s.items) invAdd(it.id, it.n, it.art); P.money += s.money; W.caches.splice(W.caches.indexOf(s), 1); log('Ты вернул своё. Повезло.', '#e8c060'); Snd.pick(); }
 function butcher(m) {
@@ -321,6 +322,7 @@ function update(dt) {
   Mutants.update(dt); Stalkers.update(dt); updateBolts(dt); updateEmission(dt); Meta.update(dt);
   reveal(P.x, P.y, 130 * (1 + 0.25 * P.sk.mapping));
   for (const b of W.bunkers) if (!b.known && Math.hypot(b.x - P.x, b.y - P.y) < 150) { b.known = true; log('Найден бункер — укрытие от выброса.', '#a8c890'); }
+  for (const l of W.labs) if (!l.known && Math.hypot(l.x - P.x, l.y - P.y) < 260) { l.known = true; addXp(20); log('Заброшенная лаборатория. Ограда, фон и «пружины» на подходах. Шкафы внутри не тронуты.', '#9ab8d8'); }
   // автоподбор болтов
   for (let i = W.loot.length - 1; i >= 0; i--) { const l = W.loot[i]; if (l.id === 'bolt' && Math.hypot(l.x - P.x, l.y - P.y) < 16) { invAdd('bolt', 1); W.loot.splice(i, 1); Snd.clink(); } }
   // вход/выход из Зоны
@@ -330,7 +332,7 @@ function update(dt) {
   G.near = G.ui ? null : findNear();
   // звук
   let hd = 999, ha = null; for (const a of W.anoms) { const d = Math.hypot(a.x - P.x, a.y - P.y); if (d < hd) { hd = d; ha = a; } }
-  if (ha && hd < 240) { const f = { funnel: 55, electra: 110 + (ha.state ? 120 * ha.t / CFG.anoms.electra.charge : 0), fluff: 190, slime: 80, plesh: 45, grinder: 140 }[ha.type]; Snd.setHum(f, 0.05 * (1 - hd / 240)); } else Snd.setHum(60, 0);
+  if (ha && hd < 240) { const f = { funnel: 55, electra: 110 + (ha.state ? 120 * ha.t / CFG.anoms.electra.charge : 0), fluff: 190, slime: 80, plesh: 45, grinder: 140, spring: 95 + (ha.state ? 90 * ha.t / CFG.anoms.spring.charge : 0), magnet: 70 }[ha.type]; Snd.setHum(f, 0.05 * (1 - hd / 240)); } else Snd.setHum(60, 0);
   if (Math.random() < P.geigerRate * dt * 8) Snd.geiger();
   Snd.siren(G.emi.s === 'warn' || G.emi.s === 'blast' && false);
   for (let i = tracers.length - 1; i >= 0; i--) if ((tracers[i].t -= dt) <= 0) tracers.splice(i, 1);
@@ -533,6 +535,18 @@ function drawAnom(a) {
     for (let i = 0; i < 8; i++) { const an = i * 0.8 + (a.act ? t * 8 : 0), rr = a.r * (0.3 + (i % 3) * 0.22); px(a.x + Math.cos(an) * rr, a.y + Math.sin(an) * rr, i % 2 ? '#b0a890' : '#6a2a2a', 3); }
     if (a.act) { ctx.strokeStyle = '#c0c0c0'; ctx.lineWidth = 3; ctx.beginPath(); ctx.moveTo(a.x, a.y); ctx.lineTo(a.x + Math.cos(t * 8) * a.r, a.y + Math.sin(t * 8) * a.r); ctx.moveTo(a.x, a.y); ctx.lineTo(a.x - Math.cos(t * 8) * a.r, a.y - Math.sin(t * 8) * a.r); ctx.stroke(); }
   }
+  else if (a.type === 'spring') {
+    // кольца-вмятины; перед прыжком сжимаются к центру
+    const k = a.state ? a.t / c.charge : 0;
+    ctx.strokeStyle = '#8a6a34'; ctx.lineWidth = 2;
+    for (let i = 1; i <= 3; i++) { ctx.globalAlpha = ah * (0.7 - i * 0.15); ctx.beginPath(); ctx.arc(a.x, a.y, a.r * (i / 3.2) * (1 - k * 0.35), 0, 6.28); ctx.stroke(); }
+    ctx.globalAlpha = ah; for (let i = 0; i < 6; i++) { const an = i * 1.05 + a.ph; px(a.x + Math.cos(an) * a.r * 0.75, a.y + Math.sin(an) * a.r * 0.75 - k * 6, '#e0c080', 3); }
+  }
+  else if (a.type === 'magnet') {
+    ctx.globalAlpha = ah * 0.45; circle(a.x, a.y, a.r * 0.35, '#1c2028'); ctx.globalAlpha = ah;
+    for (let i = 0; i < 12; i++) { const an = i * 2.4 + a.ph, rr = a.r * (0.35 + ((i * 0.17 + t * 0.05) % 1) * 0.65); px(a.x + Math.cos(an) * rr, a.y + Math.sin(an) * rr, i % 3 ? '#7a4a30' : '#9aa0a8', 3); }
+    ctx.strokeStyle = 'rgba(140,170,210,.5)'; ctx.lineWidth = 1; for (let i = 0; i < 4; i++) { const an = i * 1.57 + t * 0.4; ctx.beginPath(); ctx.arc(a.x, a.y, a.r * 0.6, an, an + 0.9); ctx.stroke(); }
+  }
   else { ctx.globalAlpha = ah * 0.4; ctx.beginPath(); ctx.ellipse(a.x, a.y, a.r * 0.8, a.r * 0.6, 0.3, 0, 6.28); ctx.fillStyle = '#4a7a55'; ctx.fill(); ctx.globalAlpha = ah; px(a.x - a.r * 0.25 + Math.sin(t) * 3, a.y - a.r * 0.2, '#cfe8d0', 4); }
   if (a.flash > 0) { ctx.globalAlpha = a.flash; circle(a.x, a.y, a.r * (1.1 - a.flash * 0.3), a.type === 'electra' ? '#cfe6ff' : c.col); }
   if (vis) { ctx.globalAlpha = vis; ctx.strokeStyle = c.col; ctx.lineWidth = 1.5; ctx.setLineDash([6, 5]); ctx.beginPath(); ctx.arc(a.x, a.y, a.r, 0, 6.28); ctx.stroke(); ctx.setLineDash([]); ctx.font = 'bold 11px Consolas'; ctx.textAlign = 'center'; ctx.fillStyle = c.col; ctx.fillText(c.name, a.x, a.y - a.r - 6); }
@@ -680,6 +694,7 @@ function drawMap() {
   m.strokeStyle = '#3a3a2a'; m.strokeRect(0, 0, s, s); m.font = '12px Consolas'; m.textAlign = 'center';
   for (const a of W.anoms) if (a.known) { m.strokeStyle = CFG.anoms[a.type].col; m.beginPath(); m.arc(a.x * k, a.y * k, Math.max(3, a.r * k), 0, 6.28); m.stroke(); m.fillStyle = CFG.anoms[a.type].col; m.fillText(CFG.anoms[a.type].name[0], a.x * k, a.y * k + 4); }
   for (const b of W.bunkers) if (b.known) { m.fillStyle = '#8aa070'; m.fillRect(b.x * k - 4, b.y * k - 4, 8, 8); }
+  for (const l of W.labs) if (l.known) { m.fillStyle = '#7fb8ff'; m.fillRect(l.x * k - 5, l.y * k - 5, 10, 10); m.fillStyle = '#0b0d0a'; m.fillText('Л', l.x * k, l.y * k + 4); }
   for (const x of W.caches) { m.strokeStyle = '#e06060'; m.strokeRect(x.x * k - 4, x.y * k - 4, 8, 8); }
   m.fillStyle = '#e8c060'; m.fillText('БЛОКПОСТ', W.C.x * k, W.C.y * k - 12); m.beginPath(); m.arc(W.C.x * k, W.C.y * k, 5, 0, 6.28); m.fill();
   m.fillStyle = '#c9a93a'; m.fillText('?', CFG.world.goal.x * k, CFG.world.goal.y * k);

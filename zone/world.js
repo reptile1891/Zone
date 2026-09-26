@@ -43,8 +43,8 @@ class World {
     this.S = CFG.world.size; this.C = CFG.world.camp; this.uid = 1; this.CELL = 160; this.N = Math.ceil(this.S / this.CELL);
     this.og = new Grid(200); this.dg = new Grid(200);
     this.anoms = []; this.arts = []; this.loot = []; this.corpses = []; this.bunkers = []; this.rad = []; this.caches = [];
-    this.conts = []; this.water = []; this.grass = []; this.rest = [];
-    this.genBiomes(); this.genProps(); this.genAnoms(); this.genRad(); this.genBunkers(); this.genCorpses(); this.genStashes(); this.genRest();
+    this.conts = []; this.water = []; this.grass = []; this.rest = []; this.labs = [];
+    this.genBiomes(); this.genProps(); this.genAnoms(); this.genRad(); this.genBunkers(); this.genCorpses(); this.genStashes(); this.genRest(); this.genLabs();
   }
   danger(x, y) {
     const d = Math.hypot(x - this.C.x, y - this.C.y) / (this.S * 1.1);
@@ -70,7 +70,7 @@ class World {
     const ti = BIOME_KEYS.indexOf('town'); sites[ti] = { x: S * 0.45, y: S * 0.5, t: ti };
     for (let i = 0; i < 26; i++) {
       const p = this.spot(0), d = this.danger(p.x, p.y);
-      sites.push({ x: p.x, y: p.y, t: BIOME_KEYS.indexOf(U.wpick(BIOME_KEYS, BIOME_KEYS.map(k => CFG.biomes[k].w[d - 1]))) });
+      sites.push({ x: p.x, y: p.y, t: BIOME_KEYS.indexOf(U.wpick(BIOME_KEYS, BIOME_KEYS.map(k => CFG.biomes[k].w[d - 1]), this.R)) });
     }
     this.bg = new Uint8Array(this.N * this.N);
     for (let cy = 0; cy < this.N; cy++) for (let cx = 0; cx < this.N; cx++) {
@@ -123,12 +123,17 @@ class World {
   inWater(x, y) { for (const w of this.water) if (((x - w.x) / w.rx) ** 2 + ((y - w.y) / w.ry) ** 2 < 1) return true; return false; }
 
   // ---- аномалии: поля (плотные, между ними тропы) + одиночки ----
-  tryPlace(x, y, R) {
+  // force — принудительный тип аномалии (для лабораторий); иначе тип выбирается по сектору и биому
+  tryPlace(x, y, R, force) {
     const d = this.danger(x, y), bm = CFG.biomes[this.biomeAt(x, y)], types = Object.keys(CFG.anoms);
     if (Math.hypot(x - this.C.x, y - this.C.y) < this.C.r + 160) return null;
-    const w = types.map(k => CFG.anoms[k].w[d - 1] * (bm.am[k] == null ? 1 : bm.am[k]));
-    if (!w.some(v => v > 0)) return null;
-    const type = U.wpick(types, w), c = CFG.anoms[type], r = c.r * (0.85 + R() * 0.3);
+    let type = force;
+    if (!type) {
+      const w = types.map(k => CFG.anoms[k].w[d - 1] * (bm.am[k] == null ? 1 : bm.am[k]));
+      if (!w.some(v => v > 0)) return null;
+      type = U.wpick(types, w, R);
+    }
+    const c = CFG.anoms[type], r = c.r * (0.85 + R() * 0.3);
     if (this.anoms.some(a => Math.hypot(a.x - x, a.y - y) < a.r + r + 42)) return null;
     const a = { id: this.uid++, type, x, y, r, t: R() * (c.period || c.cycle || 1), state: 0, known: false, flash: 0, revealed: 0, vx: 0, vy: 0, ph: R() * 6.28, act: false };
     if (type === 'fluff') { const ang = R() * 6.28; a.vx = Math.cos(ang) * c.drift; a.vy = Math.sin(ang) * c.drift; }
@@ -176,6 +181,44 @@ class World {
       if (ok) { this.rest.push({ x: p.x, y: p.y }); break; }
     }
   }
+  // ---- лаборатории: обнесённые площадки в опасных секторах; вокруг — пружины и магнитные ямы, внутри — шкафы с хорошей добычей ----
+  genLabs() {
+    const R = this.R;
+    for (let i = 0; i < (CFG.counts.labs || 0); i++) {
+      let p = null;
+      for (let t = 0; t < 60 && !p; t++) {
+        const q = this.spot(this.C.r + 900);
+        if (this.danger(q.x, q.y) >= 3 && !this.labs.some(l => Math.hypot(l.x - q.x, l.y - q.y) < 1200)) p = q;
+      }
+      if (!p) continue;
+      const lab = { x: p.x, y: p.y, r: 170, known: false }; this.labs.push(lab);
+      this.rad.push({ x: p.x, y: p.y, r: 210, i: 1.3 });
+      // ограда с двумя проёмами
+      const N = 12, gap1 = Math.floor(R() * N), gap2 = (gap1 + 5 + Math.floor(R() * 3)) % N;
+      for (let k = 0; k < N; k++) {
+        if (k === gap1 || k === gap2) continue;
+        const a = k / N * 6.28, name = k % 4 === 0 ? 'pylon' : 'wall';
+        this.addProp(name, p.x + Math.cos(a) * 120, p.y + Math.sin(a) * 120, R);
+      }
+      for (let k = 0; k < 3; k++) { const a = R() * 6.28, r = 30 + R() * 40; this.addProp('tank', p.x + Math.cos(a) * r, p.y + Math.sin(a) * r, R); }
+      // шкафы: три штуки внутри кольца
+      for (let k = 0; k < 3; k++) {
+        const a = (k + R() * 0.5) / 3 * 6.28, r = 55 + R() * 20, x = p.x + Math.cos(a) * r, y = p.y + Math.sin(a) * r;
+        this.og.add({ x: x - 12, y: y + 3, r: 8 }); this.og.add({ x, y: y + 3, r: 8 }); this.og.add({ x: x + 12, y: y + 3, r: 8 });
+        this.dg.add({ x, y, spr: 'cont_b', sc: 1, flip: false, ys: y + 6, decor: false });
+        this.conts.push({ x, y, kind: 'lab', opened: false, loot: this.rollLab(R) });
+      }
+      // охрана: пружины на подходах, магнитные ямы у ограды
+      const guard = [['spring', 200], ['spring', 215], ['magnet', 240], ['magnet', 260]];
+      for (const [type, dist] of guard) for (let t = 0; t < 12; t++) { const a = R() * 6.28; if (this.tryPlace(p.x + Math.cos(a) * dist, p.y + Math.sin(a) * dist, R, type)) break; }
+    }
+  }
+  rollLab(rnd) {
+    const R = rnd || this.R, L = [['circuit', 3 + Math.floor(R() * 3)], ['battery', 2 + Math.floor(R() * 3)]];
+    if (R() < 0.6) L.push(['reagent', 1]); if (R() < 0.5) L.push(['medkit', 1 + Math.floor(R() * 2)]); if (R() < 0.35) L.push(['antibiotic', 1]);
+    L.push(['ammo', 6 + Math.floor(R() * 8)]); L.push(['money', 90 + Math.floor(R() * 90)]);
+    return L;
+  }
   rollLoot(d, rich, rnd) {
     const R = rnd || this.R, L = [], m = rich ? 2 : 1, junk = ['scrap', 'circuit', 'battery'];
     for (let i = 0, n = 1 + Math.floor(R() * 2 * m); i < n; i++) L.push([junk[Math.floor(R() * junk.length)], 1 + Math.floor(R() * 2 * m)]);
@@ -198,10 +241,10 @@ class World {
       if (this.R() < 0.55) items.push(['money', 8 + Math.floor(this.R() * 35)]);
       if (this.R() < 0.6) items.push(['bolt', 3 + Math.floor(this.R() * 6)]);
       const c = { x: p.x, y: p.y, items, looted: false, art: null, note: null };
-      if (this.R() < 0.18 + d * 0.06) c.art = U.pick(['medusa', 'soul', 'thorn', 'stoneflower', 'dud']);
+      if (this.R() < 0.18 + d * 0.06) c.art = U.pick(['medusa', 'soul', 'thorn', 'stoneflower', 'dud'], this.R);
       const near = this.anoms.filter(a => Math.hypot(a.x - p.x, a.y - p.y) < 500);
       if (this.R() < 0.5 && near.length) {
-        const a = U.pick(near);
+        const a = U.pick(near, this.R);
         c.note = { txt: 'Пометил на карте: «' + CFG.anoms[a.type].name + '». Обойди.', anom: a };
       } else c.note = { txt: CFG.notes[Math.floor(this.R() * CFG.notes.length)], anom: null };
       this.corpses.push(c);
@@ -226,6 +269,10 @@ class World {
         a.t += dt; const act = (a.t % c.cycle) > c.cycle - c.act;
         if (act && !a.act && Math.hypot(a.x - P.x, a.y - P.y) < 500) Snd.grind();
         a.act = act;
+      } else if (a.type === 'spring') {
+        a.t += dt;
+        if (a.state === 0 && a.t >= c.period) { a.state = 1; a.t = 0; }
+        else if (a.state === 1 && a.t >= c.charge) this.launch(a, ents);
       }
     }
     for (const e of ents) if (!e.dead) this.applyAnoms(e, dt);
@@ -233,6 +280,17 @@ class World {
   discharge(a, ents) {
     const c = CFG.anoms.electra; a.state = 0; a.t = 0; a.flash = 0.4;
     for (const e of ents) if (!e.dead && Math.hypot(e.x - a.x, e.y - a.y) < a.r) e.hurt(c.dmg, 'anom');
+    if (Math.hypot(a.x - P.x, a.y - P.y) < 500) Snd.zap();
+  }
+  // Пружина: короткий заряд, затем всех в круге подбрасывает и отшвыривает от центра
+  launch(a, ents) {
+    const c = CFG.anoms.spring; a.state = 0; a.t = 0; a.flash = 0.4;
+    for (const e of ents) {
+      if (e.dead) continue; const dx = e.x - a.x, dy = e.y - a.y, d = Math.hypot(dx, dy);
+      if (d >= a.r) continue;
+      const k = c.push * (1 - d / a.r * 0.5) / (d || 1); e.x = U.clamp(e.x + dx * k, 20, this.S - 20); e.y = U.clamp(e.y + dy * k, 20, this.S - 20);
+      e.hurt(c.dmg, 'anom');
+    }
     if (Math.hypot(a.x - P.x, a.y - P.y) < 500) Snd.zap();
   }
   applyAnoms(e, dt) {
@@ -252,6 +310,14 @@ class World {
       else if (a.type === 'plesh' && d < a.r) { e.hurt(c.dps * dt, 'anom'); const pl = 45 * (1 - d / a.r) * dt; e.x -= dx / d * pl; e.y -= dy / d * pl; e.slow = Math.min(e.slow, 0.55); cur = a; }
       else if (a.type === 'grinder' && d < a.r) { cur = a; if (a.act) e.hurt(c.dps * dt, 'anom'); }
       else if (a.type === 'electra' && d < a.r) cur = a;
+      else if (a.type === 'spring' && d < a.r) cur = a;
+      else if (a.type === 'magnet') {
+        const pr = a.r * 1.5, metal = !!(e.c && e.c.metal);
+        if (d < pr) {
+          const pull = c.pull * (metal ? 1.6 : 0.6) * (1 - d / pr) * dt; e.x -= dx / d * pull; e.y -= dy / d * pull;
+          if (d < a.r) { e.hurt(c.dps * dt, 'anom'); if (metal) e.hurt(c.metalDps * dt, 'anom'); cur = a; }
+        }
+      }
     }
     e.inAnom = cur;
   }
@@ -263,6 +329,7 @@ class World {
         if (a.type === 'electra' && a.state === 0) { a.state = 1; a.t = c.charge - 0.5; }
         else if (a.type === 'electra' && a.state === 1) a.t = c.charge;
         else if (a.type === 'grinder' && !a.act) a.t = c.cycle - c.act - 0.3;
+        else if (a.type === 'spring' && a.state === 0) { a.state = 1; a.t = c.charge - 0.5; }
         return { a, first };
       }
     }
@@ -290,7 +357,7 @@ class World {
     for (const a of this.anoms) {
       if (this.arts.length < 140 && !this.arts.some(r => r.anom === a.id) && Math.random() < 0.3) this.addArtifact(a, this.danger(a.x, a.y), Math.random);
     }
-    for (const c of this.conts) if (c.opened && Math.random() < 0.45) { c.opened = false; c.loot = this.rollLoot(this.danger(c.x, c.y), c.kind !== 'wreck', Math.random); }
+    for (const c of this.conts) if (c.opened && Math.random() < 0.45) { c.opened = false; c.loot = c.kind === 'lab' ? this.rollLab(Math.random) : this.rollLoot(this.danger(c.x, c.y), c.kind !== 'wreck', Math.random); }
     for (const z of this.rad) z.i = Math.max(0.4, z.i * (0.7 + Math.random() * 0.7));
   }
 }

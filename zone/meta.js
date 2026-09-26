@@ -8,7 +8,7 @@ const Meta = {
   DIRS: ['востоке', 'юго-востоке', 'юге', 'юго-западе', 'западе', 'северо-западе', 'севере', 'северо-востоке'],
 
   reset() { this._bountyCd = 0; this.sensors = []; this.lures = []; this.lureShots = []; this.genOffers(); this.pickEvents(); },
-  afterLoad() { this._bountyCd = 0; for (const q of P.quests || []) if (q.type === 'bounty' && q.prog < 1) this.spawnBounty(q); this.sensors = []; this.lures = []; this.lureShots = []; if (!P.offers || !P.offers.length) this.genOffers(); if (!G.events || !G.events.length) this.pickEvents(); },
+  afterLoad() { for (const k in CFG.weapons) if (P.cond[k] == null) P.cond[k] = 100; this._bountyCd = 0; for (const q of P.quests || []) if (q.type === 'bounty' && q.prog < 1) this.spawnBounty(q); this.sensors = []; this.lures = []; this.lureShots = []; if (!P.offers || !P.offers.length) this.genOffers(); if (!G.events || !G.events.length) this.pickEvents(); },
   saveFields() { const o = {}; for (const k of ['rep', 'karma', 'quests', 'offers', 'lore', 'weapons', 'weapon', 'cond', 'suitCond', 'insured', 'pass', 'earned', 'researched', 'kills', 'mapSold', 'stash', 'bld', 'chainDone']) o[k] = P[k]; return o; },
 
   // ---- костюм ----
@@ -50,7 +50,7 @@ const Meta = {
   rewardMul() { return 1 + 0.15 * (Camp.lvl('bar') - 1); },
   bmName(x, y) { return CFG.biomes[W.biomeAt(x, y)].name; },
   genOffers() {
-    const offers = [], pool = ['fetch', 'hunt', 'recon', 'bring', 'bring', 'discover', 'sensor', 'help', 'bounty', 'rescue'].sort(() => Math.random() - 0.5), n = 4 + (Camp.lvl('bar') - 1);
+    const offers = [], pool = ['fetch', 'hunt', 'recon', 'bring', 'bring', 'discover', 'sensor', 'help', 'bounty', 'rescue', 'lab'].sort(() => Math.random() - 0.5), n = 4 + (Camp.lvl('bar') - 1);
     for (const t of pool) { if (offers.length >= n) break; const o = this.makeOffer(t); if (o) offers.push(o); }
     if (!P.chainDone && !P.quests.some(q => q.type === 'chain') && P.lore >= 2 && Math.random() < 0.8) offers.unshift(this.makeOffer('chain'));
     const bl = this.rewardMul(); for (const o of offers) o.reward = Math.round(o.reward * bl);
@@ -59,22 +59,23 @@ const Meta = {
   makeOffer(t) {
     const R = Math.random;
     if (t === 'fetch') { const ids = Object.keys(CFG.arts).filter(k => k !== 'dud'), a = U.pick(ids), ad = CFG.arts[a]; return { type: 'fetch', art: a, reward: Math.round(ad.val * 1.7), rep: 3, text: 'Принести «' + ad.name + '» (подойдёт и неопознанный)' }; }
-    if (t === 'hunt') { const sp = U.pick(['listener', 'tin', 'fogger']), n = sp === 'fogger' ? 1 : sp === 'tin' ? 2 : 3; return { type: 'hunt', sp, n, prog: 0, reward: 60 + n * 35, rep: 4, text: 'Истребить: ' + CFG.mut[sp].name + ' ×' + n }; }
+    if (t === 'hunt') { const sp = U.pick(Object.keys(CFG.mut)), n = CFG.mut[sp].stalker ? 1 : CFG.mut[sp].hp >= 80 ? 2 : 3; return { type: 'hunt', sp, n, prog: 0, reward: 60 + n * 35, rep: 4, text: 'Истребить: ' + CFG.mut[sp].name + ' ×' + n }; }
     if (t === 'recon') { const p = W.spot(1500, R); return { type: 'recon', x: p.x, y: p.y, reached: false, reward: 80 + W.danger(p.x, p.y) * 45, rep: 5, text: 'Разведка: дойти до отмеченной точки (' + this.bmName(p.x, p.y) + ') и вернуться' }; }
     if (t === 'rescue') { const p = W.spot(1800, R); return { type: 'rescue', x: p.x, y: p.y, reward: 170, rep: 9, text: 'Экспедиция не вернулась. Найти жетон группы.' }; }
     if (t === 'bring') {
-      const o = U.pick([['scrap', 8, 55], ['circuit', 4, 70], ['battery', 4, 60], ['earbone', 3, 80], ['glassgland', 3, 95], ['plate', 2, 80], ['mistvial', 1, 110], ['meat', 5, 45]]);
+      const o = U.pick([['scrap', 8, 55], ['circuit', 4, 70], ['battery', 4, 60], ['earbone', 3, 80], ['glassgland', 3, 95], ['plate', 2, 80], ['mistvial', 1, 110], ['meat', 5, 45], ['quill', 3, 75], ['fang', 3, 85]]);
       return { type: 'bring', mat: o[0], n: o[1], reward: o[2] + Math.floor(R() * 20), rep: 2, text: 'Снабжение лагеря: принести «' + CFG.items[o[0]].name + '» ×' + o[1] };
     }
     if (t === 'discover') { const n = 3 + Math.floor(R() * 3); return { type: 'discover', n, prog: 0, reward: 50 + n * 22, rep: 3, text: 'Картограф: отметить болтами новые аномалии ×' + n }; }
     if (t === 'sensor') { const p = W.spot(1200, R); return { type: 'sensor', x: p.x, y: p.y, placed: false, reward: 120 + W.danger(p.x, p.y) * 30, rep: 4, text: 'Установить датчик движения в точке (' + this.bmName(p.x, p.y) + '). Датчик выдадим.' }; }
+    if (t === 'lab') return W.labs.length ? { type: 'lab', prog: 0, n: 1, reward: 210, rep: 6, text: 'Лаборатория: найти заброшенную площадку с оградой (сектор 3–4, фонит, у подходов «пружины» и магнитные ямы) и вскрыть шкаф' } : null;
     if (t === 'help') return { type: 'help', n: 1, prog: 0, reward: 70, rep: 6, text: 'Найти раненого сталкера и спасти его аптечкой' };
     if (t === 'bounty') { const p = W.spot(1500, R); return { type: 'bounty', x: p.x, y: p.y, prog: 0, name: U.pick(STALKER_NAMES), reward: 180 + W.danger(p.x, p.y) * 40, rep: 8, text: 'Награда за голову: главарь бандитов (' + this.bmName(p.x, p.y) + '). Опасен.' }; }
     if (t === 'chain') { const p = W.spot(1400, R), p2 = W.spot(1700, R); return { type: 'chain', stage: 0, x: p.x, y: p.y, bx: p2.x, by: p2.y, reward: 420, rep: 12, item: ['art', 'mirage'], text: 'Цепочка «Сумерки»: найти следы экспедиции Штейна (3 этапа)' }; }
   },
   progText(q) {
     const st = this.done(q) ? 'готово: сдай Сидору' : 'в работе';
-    if (q.type === 'hunt' || q.type === 'discover' || q.type === 'help') return q.prog + '/' + q.n + ' · ' + st;
+    if (q.type === 'hunt' || q.type === 'discover' || q.type === 'help' || q.type === 'lab') return q.prog + '/' + q.n + ' · ' + st;
     if (q.type === 'bring') return invCount(q.mat) + '/' + q.n + ' · ' + st;
     if (q.type === 'chain') return ['этап 1: дойти до отмеченной точки', 'этап 2: найти дневник в отмеченном месте', 'этап 3: отнести дневник Сидору'][Math.min(q.stage, 2)];
     if (q.type === 'sensor') return q.placed ? 'датчик стоит · ' + st : 'поставь датчик в точке';
@@ -94,7 +95,7 @@ const Meta = {
   },
   done(q) {
     if (q.type === 'fetch') return P.inv.some(s => s.art === q.art);
-    if (q.type === 'hunt' || q.type === 'discover' || q.type === 'help') return q.prog >= q.n;
+    if (q.type === 'hunt' || q.type === 'discover' || q.type === 'help' || q.type === 'lab') return q.prog >= q.n;
     if (q.type === 'recon') return q.reached;
     if (q.type === 'rescue') return invCount('dogtag') > 0;
     if (q.type === 'bring') return invCount(q.mat) >= q.n;
@@ -112,6 +113,7 @@ const Meta = {
     P.money += q.reward; P.earned += q.reward; P.rep += q.rep; addXp(30 + q.rep * 5); P.quests.splice(i, 1);
     log('Задание выполнено: +' + q.reward + ' ₽, репутация +' + q.rep, '#e8c060'); if (q.type === 'rescue' || q.type === 'help') P.karma.mercy += 1; this.gainLore();
   },
+  onLab() { for (const q of P.quests) if (q.type === 'lab' && q.prog < q.n) { q.prog = q.n; log('Шкаф вскрыт. Возвращайся к Сидору.', '#e8c060'); } },
   onKill(kind) {
     for (const q of P.quests) {
       if (q.type === 'hunt' && q.sp === kind && q.prog < q.n) { q.prog++; log('Задание: ' + q.prog + '/' + q.n, '#e8c060'); }

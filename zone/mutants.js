@@ -160,6 +160,7 @@ class Mutant {
             this.cd = c.cd; t.hurt(c.dmg, this); if (c.pack && !c.timid) this.back = 0.7;
             if (t === P && c.bleed && Math.random() < c.bleed) P.bleed = 8;
             if (t === P && c.fracture && Math.random() < c.fracture) Meta.breakLeg('Удар сломал тебе ногу. Нужна шина.');
+            if (t === P && c.infect && P.infect <= 0 && Math.random() < c.infect) { P.infect = 0.01; log('Укус загноился. Нужен антибиотик.', '#c0e060'); }
             Snd.hit();
           }
         }

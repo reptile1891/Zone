@@ -7,8 +7,9 @@ const U = {
   dist: (a, b) => Math.hypot(a.x - b.x, a.y - b.y),
   hash(x, y) { let h = (x * 374761393 + y * 668265263) | 0; h = (h ^ (h >>> 13)) * 1274126177 | 0; return ((h ^ (h >>> 16)) >>> 0) / 4294967296; },
   angDiff(a, b) { let d = a - b; while (d > Math.PI) d -= 2 * Math.PI; while (d < -Math.PI) d += 2 * Math.PI; return Math.abs(d); },
-  pick(arr) { return arr[Math.floor(Math.random() * arr.length)]; },
-  wpick(arr, w) { let s = 0; for (const x of w) s += x; let r = Math.random() * s; for (let i = 0; i < arr.length; i++) { r -= w[i]; if (r <= 0) return arr[i]; } return arr[arr.length - 1]; },
+  // rnd — необязательный генератор (для детерминированной генерации мира по сиду)
+  pick(arr, rnd) { return arr[Math.floor((rnd || Math.random)() * arr.length)]; },
+  wpick(arr, w, rnd) { let s = 0; for (const x of w) s += x; let r = (rnd || Math.random)() * s; for (let i = 0; i < arr.length; i++) { r -= w[i]; if (r <= 0) return arr[i]; } return arr[arr.length - 1]; },
 };
 
 class Grid {
