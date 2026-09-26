@@ -11,7 +11,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--fg);font:14px/1.
 canvas#cv{position:fixed;inset:0;display:block;cursor:crosshair}
 #hud{position:fixed;inset:0;pointer-events:none}
 #bars{position:absolute;left:12px;top:12px;width:clamp(150px,18vw,230px)}
-.bar{position:relative;height:16px;margin-bottom:4px;background:rgba(0,0,0,.55);border:1px solid #3a3a30}
+.bar{pointer-events:auto;position:relative;height:16px;margin-bottom:4px;background:rgba(0,0,0,.55);border:1px solid #3a3a30}
 .bar i{position:absolute;left:0;top:0;bottom:0;width:50%}
 .bar span{position:absolute;left:5px;top:0;font-size:11px;line-height:14px;text-shadow:0 0 3px #000}
 #top{position:absolute;right:12px;top:12px;text-align:right;text-shadow:0 0 4px #000;font-size:15px}
@@ -107,5 +107,6 @@ canvas#cv{position:fixed;inset:0;display:block;cursor:crosshair}
 <script src="rooms.js"></script>
 <script src="dungeon.js"></script>
 <script src="tips.js"></script>
+<script src="hints.js"></script>
 </body>
 </html>

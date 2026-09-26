@@ -8,7 +8,7 @@ const G = { t: 0, clock: 0, hour: 7, night: 0, fog: 0.3, dead: false, deadT: 0, 
 let W = null;
 const P = { x: 0, y: 0, ang: 0, r: CFG.player.r, hp: 100, stam: 100, rad: 0, food: 80, stress: 0, bleed: 0, xp: 0, lvl: 1, sp: 0,
   sk: {}, money: 0, inv: [], equip: [null, null], notes: [], known: {}, sel: 0, cd: 0, slow: 1, sneak: false, running: false,
-  dead: false, goal: false, wasOut: false, noiseT: 0, geigerRate: 0, burn: 0, fuel: 0, grab: 0,
+  dead: false, goal: false, wasOut: false, noiseT: 0, geigerRate: 0, burn: 0, fuel: 0, grab: 0, hints: {}, hintsOff: false,
   rep: 0, karma: { greed: 0, cruelty: 0, mercy: 0, study: 0 }, quests: [], offers: [], lore: 0, weapons: ['pistol'], weapon: 'pistol',
   cond: Object.fromEntries(Object.keys(CFG.weapons).map(k => [k, 100])), suitCond: 100, insured: false, pass: false, fracture: false, infect: 0, earned: 0, researched: {}, kills: 0, mapSold: 0,
   hurt(d, src) {
@@ -76,7 +76,7 @@ function reveal(x, y, r) {
 }
 function resetPlayer() {
   Object.assign(P, { hp: 100, stam: 100, rad: 0, food: 80, stress: 0, bleed: 0, xp: 0, lvl: 1, sp: 0, money: 50, inv: [], equip: [null, null],
-    notes: [], known: {}, sel: 0, cd: 0, dead: false, goal: false, wasOut: false, burn: 0, fuel: 0, grab: 0, talked: {},
+    notes: [], known: {}, sel: 0, cd: 0, dead: false, goal: false, wasOut: false, burn: 0, fuel: 0, grab: 0, talked: {}, hints: {},
     rep: 0, karma: { greed: 0, cruelty: 0, mercy: 0, study: 0 }, quests: [], offers: [], lore: 0, weapons: ['pistol'], weapon: 'pistol',
     cond: Object.fromEntries(Object.keys(CFG.weapons).map(k => [k, 100])), suitCond: 100, insured: false, pass: false, fracture: false, infect: 0, earned: 0, researched: {}, kills: 0, mapSold: 0 });
   for (const k in CFG.skills) P.sk[k] = 0;
@@ -711,6 +711,7 @@ function menuHTML(u) {
   return `<div class="x" data-a="resume">✕ Esc</div><h2>Меню — игра на паузе</h2><div class="cols"><div><h3>Управление</h3>${ctl.map(([k, d]) => row('', '<b>' + k + '</b>', d)).join('')}</div>
     <div><h3>Как заработать</h3>${tips.map(t => '<div class="note">' + t + '</div>').join('')}<h3>Игра</h3>
     <div class="row"><div class="nm">Громкость: <b>${Math.round(Snd.vol * 100)}%</b></div>${btn('vol:down', '−')}${btn('vol:up', '+')}</div>
+    <div class="row"><div class="nm">Подсказки по ходу игры: <b>${P.hintsOff ? 'выключены' : 'включены'}</b><div class="sub">советы по ситуации, каждый один раз</div></div>${btn('hintsToggle', P.hintsOff ? 'Включить' : 'Выключить')}${btn('hintsReset', 'Показать заново')}</div>
     <div class="row"><div class="nm">Сохранение<div class="sub">в лагере; в Зоне — автосейв каждые 30 с (при обрыве связи: −10% денег)</div></div>${btn('savenow', 'Сохранить', !inCamp())}</div>
     <div class="row"><div class="nm">Новая игра<div class="sub">${u.conf ? 'Нажми ещё раз: сохранение будет стёрто' : 'Начать заново'}</div></div>${btn('newgame', u.conf ? 'Точно?' : 'Новая')}</div>
     <div style="margin-top:12px">${btn('resume', '▶ Продолжить')}</div></div></div>`;
