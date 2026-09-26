@@ -89,6 +89,7 @@ const CFG = {
     quill:      { name: 'Игла щетинника',   w: 0.2, val: 24, icon: '↟', part: true },
     fang:       { name: 'Гнилой клык',      w: 0.2, val: 28, icon: '⌵', part: true },
     mistvial:   { name: 'Капля тумана',     w: 0.1, val: 45, icon: '⚗', part: true },
+    gill:       { name: 'Жабра Топляка',    w: 0.2, val: 32, icon: '≋', part: true },
     coalfang:   { name: 'Угольный зуб',     w: 0.2, val: 30, icon: '⌵', part: true },
     canister:   { name: 'Канистра горючего', w: 0.8, val: 14, buy: 28, icon: '⛽', desc: 'Топливо для огнемёта. Хватает на 25 выдохов.' },
     firecoat:   { name: 'Огнеупорный плащ', w: 4, val: 110, buy: 260, icon: '🧥', desc: 'Ожог и вспышки колодцев −60%. Носится поверх костюма, места занимает много.' },
@@ -154,6 +155,10 @@ const CFG = {
     saltflat:   { name: 'Солончак', patch: 'rgba(200,200,180,.26)', map: '#6a6a5c', w: [0, 1, 3, 3], grass: 0.1,
       props: { crater: 0.4, bones: 0.25, dtuft: 0.5, rock: 0.5, boulder: 0.3, deadtree: 0.08, rail: 0.25, pylon: 0.1, tower: 0.05 },
       am: { spring: 2.2, magnet: 1.2, electra: 0.8, funnel: 1.2, plesh: 0.8, fluff: 0.5, slime: 0.1, grinder: 0.4, smolder: 0.3 } },
+    // Озёрный край — большие озёра с камышом: вода замедляет, а в воде живёт Топляк
+    lake:       { name: 'Озёрный край', patch: 'rgba(40,86,116,.46)', map: '#1f3a4c', w: [1, 2, 2, 1], water: 0.95, waterSize: 1.6, grass: 0.2,
+      props: { reed: 2.2, deadtree: 0.3, bush: 0.4, tuft: 0.5, bones: 0.08, tires: 0.05, rock: 0.1 },
+      am: { slime: 1.6, fluff: 0.6, funnel: 0.4, electra: 0.9, plesh: 0.5, grinder: 0.1, spring: 0.3, magnet: 0.2, smolder: 0.02 } },
     // Гарь — выжженный лес: пепел, обугленные стволы, тлеющие колодцы. Ночью здесь охотится Углеглот.
     burnt:      { name: 'Гарь', patch: 'rgba(96,58,40,.62)', map: '#3c2b24', w: [0, 1, 3, 3],
       props: { burntree: 2.2, deadtree: 0.2, char: 1.6, ashpile: 1.1, rock: 0.1, bones: 0.12, crater: 0.15 },
@@ -175,6 +180,10 @@ const CFG = {
     // Гнилозуб — ночная стая из болот и руин; укус заражает рану (нужен антибиотик).
     rotter:   { name: 'Гнилозуб', hp: 60, walk: 32, run: 88, dmg: 11, cd: 1.1, r: 9, sight: 130, hear: 1.2, active: 'night', pack: [2, 4], infect: 0.45,
                 count: 8, biomes: ['swamp', 'deadfield', 'town'], xp: 15, meat: 2, part: 'fang', roam: 260, dmin: 2, dmax: 4 },
+    // Топляк — живёт в воде озёр и болот. Лежит на дне, невидимый; кто подойдёт к воде ближе ~64 пикс — хватает и держит (нужно рваться или стрелять).
+    // Из пруда не выходит: на берегу безопасно, кроме полосы у самой кромки.
+    drowner:  { name: 'Топляк', hp: 65, armor: 0.1, walk: 28, run: 125, dmg: 9, cd: 1.2, r: 10, sight: 0, hear: 0, active: 'day', aquatic: true, wakeR: 64, grab: 1.8,
+                count: 12, biomes: ['lake', 'swamp'], xp: 18, meat: 2, part: 'gill', roam: 0, dmin: 1, dmax: 4 },
     // Углеглот — ночной хищник Гари. Днём спит в золе (не виден, пока не подойдёшь на ~70 пикс), бросается из засады, огнеупорен.
     // Бегущий оставляет тлеющие угли, укус может поджечь.
     cinder:   { name: 'Углеглот', hp: 70, armor: 0.3, walk: 42, run: 118, dmg: 14, cd: 1.1, r: 10, sight: 150, hear: 1, active: 'night', ambush: true, wakeR: 70, hideR: 130,
@@ -257,6 +266,7 @@ const CFG = {
     { id: 'lure',     st: 'gun', name: 'Приманка',            lvl: 2, mat: { meat: 1, scrap: 1 }, out: ['lure', 1] },
     { id: 'sensor',   st: 'gun', name: 'Датчик движения',     lvl: 2, mat: { circuit: 2, battery: 1 }, out: ['sensor', 1] },
     { id: 'remelt',   st: 'gun', name: 'Переплавка: 3 пустышки → артефакт', lvl: 2, mat: { 'art:dud': 3 }, out: ['art', ['medusa', 'thorn', 'soul', 'stoneflower']] },
+    { id: 'antirad2', st: 'sci', name: 'Антирад из жабр',   lvl: 1, mat: { gill: 2 }, out: ['antirad', 2] },
     { id: 'canister', st: 'gun', name: 'Канистра горючего',   lvl: 3, mat: { scrap: 3, meat: 2 }, out: ['canister', 1] },
     { id: 'shock',    st: 'gun', name: 'Шок-бомба',           lvl: 3, mat: { battery: 2, circuit: 1, scrap: 1 }, out: ['shock', 1] },
     { id: 'antirad',  st: 'gun', name: 'Антирад',             lvl: 3, mat: { battery: 1, circuit: 1, meat: 1 }, out: ['antirad', 1] },
@@ -279,7 +289,7 @@ const CFG = {
     buyer: { name: 'Скупщик «Борода»',   ang: 0.2,  col: '#c9a24a', buys: { art: 1, part: 1, meat: 1, junk: 1 }, likes: { battery: 1.3, circuit: 1.4 }, sells: [] },
     gun:   { name: 'Оружейник «Ржавый»', ang: 1.5,  col: '#a5a5a5', buys: { part: 0.8, junk: 1 }, likes: { plate: 2, earbone: 1.4, scrap: 1.6 }, sells: ['ammo', 'bolt', 'canister'] },
     gear:  { name: 'Снабженец «Кум»',    ang: 2.7,  col: '#7fa06a', buys: {}, sells: ['food', 'medkit', 'antirad', 'splint', 'antibiotic', 'suit', 'suit2', 'firecoat', 'headlamp', 'detector', 'detector2', 'lure', 'sensor', 'bolt'] },
-    sci:   { name: 'Учёный «Лис»',       ang: 3.9,  col: '#7fb8ff', buys: { art: 1.25, part: 0.6 }, likes: { mistvial: 2.2, glassgland: 1.7 }, sells: [], ident: 20 },
+    sci:   { name: 'Учёный «Лис»',       ang: 3.9,  col: '#7fb8ff', buys: { art: 1.25, part: 0.6 }, likes: { mistvial: 2.2, glassgland: 1.7, gill: 1.5 }, sells: [], ident: 20 },
     bar:   { name: 'Бармен «Сидор»',     ang: 5.1,  col: '#d08a5a', buys: {}, sells: [], sleep: 15, map: 60, noteSell: 15 },
   },
 
@@ -336,6 +346,7 @@ const CFG = {
     'Пружина сначала притихает, потом подбрасывает. Слышишь тишину под ногами — прыгай в сторону, не вперёд.',
     'Магнитная яма съедает железо. Жестянку туда заманишь — сама разберётся. Себе оставь только то, что не звенит.',
     'Щетинник днём стоит на своём участке. Иглы у него не для красоты — обходи стороной или бей с расстояния.',
+    'В озёрах кто-то живёт. Идёшь вдоль воды — держись на шаг от кромки. Схватит — рвись вбок, а не стой.',
     'Гнилозуб кусает — рана гноится. Аптечка без антибиотика тут не помощница.',
     'В Гари днём кажется, что всё вымерло. Ночью из золы встаёт Углеглот. Смотри под ноги — там, где пепел свежий.',
     'Тлеющий колодец не бьёт наугад: он смотрит в одну сторону, светится и на секунду набирает воздух. Не стой в этой стороне.',

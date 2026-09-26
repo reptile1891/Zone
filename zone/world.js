@@ -113,7 +113,7 @@ class World {
         }
       }
       if (b.water && R() < b.water) {
-        const w = { x: wx + R() * CELL, y: wy + R() * CELL, rx: 55 + R() * 70, ry: 35 + R() * 45 };
+        const ws = b.waterSize || 1, w = { x: wx + R() * CELL, y: wy + R() * CELL, rx: (55 + R() * 70) * ws, ry: (35 + R() * 45) * ws };
         this.water.push(w);
         for (let i = 0; i < 10; i++) { const a = R() * 6.28; this.addProp('reed', w.x + Math.cos(a) * w.rx * 0.95, w.y + Math.sin(a) * w.ry * 0.95, R); }
       }

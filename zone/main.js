@@ -8,7 +8,7 @@ const G = { t: 0, clock: 0, hour: 7, night: 0, fog: 0.3, dead: false, deadT: 0, 
 let W = null;
 const P = { x: 0, y: 0, ang: 0, r: CFG.player.r, hp: 100, stam: 100, rad: 0, food: 80, stress: 0, bleed: 0, xp: 0, lvl: 1, sp: 0,
   sk: {}, money: 0, inv: [], equip: [null, null], notes: [], known: {}, sel: 0, cd: 0, slow: 1, sneak: false, running: false,
-  dead: false, goal: false, wasOut: false, noiseT: 0, geigerRate: 0, burn: 0, fuel: 0,
+  dead: false, goal: false, wasOut: false, noiseT: 0, geigerRate: 0, burn: 0, fuel: 0, grab: 0,
   rep: 0, karma: { greed: 0, cruelty: 0, mercy: 0, study: 0 }, quests: [], offers: [], lore: 0, weapons: ['pistol'], weapon: 'pistol',
   cond: Object.fromEntries(Object.keys(CFG.weapons).map(k => [k, 100])), suitCond: 100, insured: false, pass: false, fracture: false, infect: 0, earned: 0, researched: {}, kills: 0, mapSold: 0,
   hurt(d, src) {
@@ -76,7 +76,7 @@ function reveal(x, y, r) {
 }
 function resetPlayer() {
   Object.assign(P, { hp: 100, stam: 100, rad: 0, food: 80, stress: 0, bleed: 0, xp: 0, lvl: 1, sp: 0, money: 50, inv: [], equip: [null, null],
-    notes: [], known: {}, sel: 0, cd: 0, dead: false, goal: false, wasOut: false, burn: 0, fuel: 0, talked: {},
+    notes: [], known: {}, sel: 0, cd: 0, dead: false, goal: false, wasOut: false, burn: 0, fuel: 0, grab: 0, talked: {},
     rep: 0, karma: { greed: 0, cruelty: 0, mercy: 0, study: 0 }, quests: [], offers: [], lore: 0, weapons: ['pistol'], weapon: 'pistol',
     cond: Object.fromEntries(Object.keys(CFG.weapons).map(k => [k, 100])), suitCond: 100, insured: false, pass: false, fracture: false, infect: 0, earned: 0, researched: {}, kills: 0, mapSold: 0 });
   for (const k in CFG.skills) P.sk[k] = 0;
@@ -136,7 +136,7 @@ function die() {
 }
 function respawn() {
   G.dead = false; P.dead = false; $('death').style.display = 'none';
-  Camp.enter(true); P.hp = CFG.death.hpOnRespawn; P.fracture = false; P.infect = 0; P.rad = Math.min(P.rad, 30); P.bleed = 0; P.burn = 0; P.stress = 0; P.wasOut = false;
+  Camp.enter(true); P.hp = CFG.death.hpOnRespawn; P.fracture = false; P.infect = 0; P.rad = Math.min(P.rad, 30); P.bleed = 0; P.burn = 0; P.grab = 0; P.stress = 0; P.wasOut = false;
   Mutants.refill(); save();
 }
 
@@ -277,6 +277,7 @@ function update(dt) {
   let sp = CFG.player.speed * (P.running ? CFG.player.run : 1) * (P.sneak ? CFG.player.sneak : 1) * P.slow * (1 - Math.min(0.65, over * 1.2));
   if (P.food <= 0) sp *= 0.8;
   if (P.fracture) sp *= 0.6;
+  if (P.grab > 0) { P.grab -= dt * (moving ? 2.5 : 1); sp = 0; if (P.grab <= 0) log('Ты вырвался.', '#9ab8d8'); }   // Топляк держит; рывок сокращает хватку
   if (moving) { const l = Math.hypot(mx, my); P.x += mx / l * sp * dt; P.y += my / l * sp * dt; }
   Camp.grid().query(P.x, P.y, P.r + 40, o => {
     const ox = P.x - o.x, oy = P.y - o.y, od = Math.hypot(ox, oy), m = o.r + P.r;
@@ -582,6 +583,7 @@ function drawAnom(a) {
 function drawMutant(m) {
   const asleep = m.state === 'sleep', pd = Math.hypot(m.x - P.x, m.y - P.y); let al = asleep ? 0.75 : 1;
   if (m.sp === 'fogger') { if (asleep) return; al = U.clamp(0.22 + (m.watched ? 0.5 : 0) + (pd < 90 ? 0.3 : 0), 0, 1) * (pd > 300 ? 0 : 1); if (al <= 0.02) return; }
+  if (m.c.aquatic && asleep) { if (pd < 200) { ctx.strokeStyle = `rgba(170,215,215,${0.35 * (1 - pd / 200)})`; ctx.lineWidth = 1; for (let i = 0; i < 2; i++) { const ph = (G.t * 0.7 + i * 0.5) % 1; ctx.beginPath(); ctx.ellipse(m.x, m.y, 3 + ph * 9, 1.5 + ph * 4, 0, 0, 6.28); ctx.stroke(); } } return; }
   if (m.sp === 'cinder' && asleep) { if (pd < 220) { ctx.globalAlpha = 0.3 * (1 - pd / 220) + 0.1; Spr.draw(ctx, 'ashpile', m.x, m.y, false, null, 1.1); ctx.globalAlpha = 1; } return; }
   shadow(m.x, m.y + m.r * 0.7, m.r); Spr.draw(ctx, m.sp, m.x, m.y - 2, m.face < 0, al);
   if (m.burn > 0) { px(m.x - 3 + Math.sin(G.t * 20) * 2, m.y - 12 - (G.t * 30) % 6, '#ff8a30', 4); px(m.x + 3, m.y - 8 - (G.t * 24) % 6, '#ffd070', 3); }

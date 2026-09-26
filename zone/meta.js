@@ -29,7 +29,7 @@ const Meta = {
   flame(w) {
     let seen = false; const dun = G.scene === 'dungeon';
     for (const list of dun ? [Dungeon.enemies] : [Mutants.list, Stalkers.list]) for (const m of list) {
-      if (m.dead) continue; const dx = m.x - P.x, dy = m.y - P.y, d = Math.hypot(dx, dy);
+      if (m.dead || Mutants.hidden(m)) continue; const dx = m.x - P.x, dy = m.y - P.y, d = Math.hypot(dx, dy);
       if (d > w.range + m.r || U.angDiff(P.ang, Math.atan2(dy, dx)) > w.cone) continue;
       if (dun && !Dungeon.los(P.x, P.y, m.x, m.y)) continue;
       if (m.c && m.c.fireproof) { seen = true; continue; }
@@ -85,7 +85,7 @@ const Meta = {
     if (t === 'recon') { const p = W.spot(1500, R); return { type: 'recon', x: p.x, y: p.y, reached: false, reward: 80 + W.danger(p.x, p.y) * 45, rep: 5, text: 'Разведка: дойти до отмеченной точки (' + this.bmName(p.x, p.y) + ') и вернуться' }; }
     if (t === 'rescue') { const p = W.spot(1800, R); return { type: 'rescue', x: p.x, y: p.y, reward: 170, rep: 9, text: 'Экспедиция не вернулась. Найти жетон группы.' }; }
     if (t === 'bring') {
-      const o = U.pick([['scrap', 8, 55], ['circuit', 4, 70], ['battery', 4, 60], ['earbone', 3, 80], ['glassgland', 3, 95], ['plate', 2, 80], ['mistvial', 1, 110], ['meat', 5, 45], ['quill', 3, 75], ['fang', 3, 85], ['coalfang', 3, 90]]);
+      const o = U.pick([['scrap', 8, 55], ['circuit', 4, 70], ['battery', 4, 60], ['earbone', 3, 80], ['glassgland', 3, 95], ['plate', 2, 80], ['mistvial', 1, 110], ['meat', 5, 45], ['quill', 3, 75], ['fang', 3, 85], ['coalfang', 3, 90], ['gill', 3, 85]]);
       return { type: 'bring', mat: o[0], n: o[1], reward: o[2] + Math.floor(R() * 20), rep: 2, text: 'Снабжение лагеря: принести «' + CFG.items[o[0]].name + '» ×' + o[1] };
     }
     if (t === 'discover') { const n = 3 + Math.floor(R() * 3); return { type: 'discover', n, prog: 0, reward: 50 + n * 22, rep: 3, text: 'Картограф: отметить болтами новые аномалии ×' + n }; }
@@ -229,6 +229,7 @@ const Meta = {
     let h = '';
     if (P.fracture) h += ' <b style="color:#e06060">ПЕРЕЛОМ</b>';
     if (P.burn > 0) h += ' <b style="color:#ff8a30">ОЖОГ</b>';
+    if (P.grab > 0) h += ' <b style="color:#60c0a0">СХВАЧЕН</b>';
     if (P.infect > 0) h += ' <b style="color:#c0e060">ИНФЕКЦИЯ</b>';
     if (G.scene === 'zone' && W.danger(P.x, P.y) >= 4 && !P.pass && P.rep < CFG.gate.rep) h += ' <b style="color:#e06060">ЗАКРЫТЫЙ СЕКТОР</b>';
     return h + ' · реп ' + (P.rep | 0);
@@ -446,7 +447,7 @@ function shoot() {
     const a = P.ang + (Math.random() - 0.5) * w.spread * (P.sneak ? 0.6 : 1) * (moving ? 1.6 : 1) * (cond < 50 ? 1.3 : 1);
     const dx = Math.cos(a), dy = Math.sin(a), dun = G.scene === 'dungeon'; let best = null, bt = dun ? Dungeon.rayLen(P.x, P.y, dx, dy, w.range) : w.range;
     for (const list of dun ? [Dungeon.enemies] : [Mutants.list, Stalkers.list]) for (const m of list) {
-      if (m.dead) continue; const rx = m.x - P.x, ry = m.y - P.y, t = rx * dx + ry * dy; if (t < 0 || t > bt) continue;
+      if (m.dead || Mutants.hidden(m)) continue; const rx = m.x - P.x, ry = m.y - P.y, t = rx * dx + ry * dy; if (t < 0 || t > bt) continue;
       if (Math.abs(rx * dy - ry * dx) < m.r + 3) { best = m; bt = t; }
     }
     tracers.push({ x1: P.x, y1: P.y, x2: P.x + dx * bt, y2: P.y + dy * bt, t: 0.07 });

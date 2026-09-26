@@ -4,17 +4,19 @@
 //  Стеклоед  — пугливое стадо, добыча для остальных.
 //  Жестянка  — броня, территория, тянется к звону металла, ест брошенные болты.
 //  Туманник  — выходит в туман/дождь, замирает, пока на него смотришь.
+//  Топляк    — прячется в воде, хватает у кромки и держит (P.grab); из пруда не выходит.
 //  Углеглот  — днём спит в золе (не виден), ночью бросается из засады; огнеупорен, оставляет угли и поджигает.
 class Mutant {
   constructor(sp, x, y, pack) {
     const c = CFG.mut[sp];
     Object.assign(this, { sp, c, x, y, pack, hp: c.hp, ang: Math.random() * 6.28, hunger: Math.random() * 0.4, fear: 0,
-      state: sp === 'fogger' || sp === 'cinder' ? 'sleep' : 'wander', st: 0, burn: 0, burner: null, trailT: 0, tx: x, ty: y, hx: x, hy: y, cd: 0, chargeCd: 0, target: null,
+      state: sp === 'fogger' || sp === 'cinder' || c.aquatic ? 'sleep' : 'wander', st: 0, burn: 0, burner: null, trailT: 0, tx: x, ty: y, hx: x, hy: y, cd: 0, chargeCd: 0, target: null,
       perc: Math.random() * 0.25, slow: 1, dead: false, reckless: 0, lost: 0, r: c.r, eatT: 0, idx: 0, sndT: Math.random() * 3, watched: false, face: 1 });
   }
   hurt(d, src, pierce) {
     if (this.dead) return;
     this.hp -= d * (pierce ? 1 : 1 - (this.c.armor || 0));
+    if (this.c.aquatic && src === P && P.grab > 0) P.grab = Math.max(0, P.grab - 0.6);   // раненый Топляк ослабляет хватку
     if (this.hp <= 0) return this.die(src);
     if (src && src !== 'anom') {
       if (this.c.timid) this.flee(src.x, src.y, 5);
@@ -23,7 +25,7 @@ class Mutant {
     }
   }
   die(src) {
-    this.dead = true; Mutants.corpses.push({ x: this.x, y: this.y, sp: this.sp, meat: this.c.meat, age: 0 });
+    this.dead = true; if (this.c.aquatic && this.state === 'hunt') P.grab = 0; Mutants.corpses.push({ x: this.x, y: this.y, sp: this.sp, meat: this.c.meat, age: 0 });
     if (src === P) { addXp(this.c.xp); Meta.onKill(this.sp); Mutants.learn(this.sp, 'player'); } else if (src === 'anom') Mutants.learn(this.sp, 'anom');
     Snd.at('die', this.x, this.y);
     Mutants.onDeath(this);
@@ -96,6 +98,7 @@ class Mutant {
     const c = this.c;
     this.cd -= dt; this.st -= dt; this.chargeCd -= dt; this.sndT -= dt; this.reckless = Math.max(0, this.reckless - dt);
     this.fear = Math.max(0, this.fear - dt * 0.08); this.hunger = Math.min(1, this.hunger + dt * 0.004);
+    if (c.aquatic) return this.aquatic(dt);
     this.perc -= dt; if (this.perc <= 0) { this.perc = 0.2 + Math.random() * 0.1; this.perceive(); }
     if (this.burn > 0) { this.burn -= dt; this.hp -= 6 * dt; if (this.hp <= 0) return this.die(this.burner); }
     if (this.state === 'sleep') return;
@@ -176,6 +179,28 @@ class Mutant {
     if (c.trail && this.state === 'hunt') { this.trailT -= dt; if (this.trailT <= 0) { this.trailT = 0.3; Mutants.embers.push({ x: this.x, y: this.y, t: 3.5 }); if (Mutants.embers.length > 80) Mutants.embers.shift(); } }
     this.move(dt, tx, ty, speed);
   }
+  // Топляк: под водой (state sleep) дрейфует по пруду, невидим и неуязвим; проснувшись, гонится по воде и хватает
+  aquatic(dt) {
+    const c = this.c, p = this.pond, pd = Math.hypot(P.x - this.x, P.y - this.y);
+    const inPond = ((P.x - p.x) / (p.rx * 1.2 + 34)) ** 2 + ((P.y - p.y) / (p.ry * 1.2 + 34)) ** 2 < 1;
+    if (this.state !== 'hunt') {
+      this.state = 'sleep';
+      if (this.st <= 0) { const a = Math.random() * 6.28, d = Math.sqrt(Math.random()); this.tx = p.x + Math.cos(a) * p.rx * d * 0.9; this.ty = p.y + Math.sin(a) * p.ry * d * 0.9; this.st = 4 + Math.random() * 5; }
+      this.stepTo(this.tx, this.ty, c.walk, dt);
+      if (!G.dead && !inCamp() && inPond && pd < c.wakeR) { this.state = 'hunt'; this.lost = 0; Snd.at('whisper', this.x, this.y); }
+      return;
+    }
+    if (G.dead || !inPond) { if ((this.lost += dt) > 3) { this.state = 'sleep'; return; } } else this.lost = 0;
+    if (pd < this.r + P.r + 6) {
+      if (this.cd <= 0) { this.cd = c.cd; P.hurt(c.dmg, this); if (!(P.grab > 0)) log('Что-то схватило тебя за ногу! Рвись (беги) или стреляй.', '#60c0a0'); P.grab = Math.max(P.grab || 0, c.grab); Snd.hit(); }
+    } else this.stepTo(P.x, P.y, c.run, dt);
+  }
+  stepTo(tx, ty, speed, dt) {
+    const dx = tx - this.x, dy = ty - this.y, d = Math.hypot(dx, dy) || 1, s = Math.min(speed * dt, d), p = this.pond;
+    this.x += dx / d * s; this.y += dy / d * s; this.face = dx < 0 ? -1 : 1;
+    const kx = p.rx * 1.2, ky = p.ry * 1.2, nx = (this.x - p.x) / kx, ny = (this.y - p.y) / ky, r = Math.hypot(nx, ny);
+    if (r > 1) { this.x = p.x + nx / r * kx; this.y = p.y + ny / r * ky; }     // из пруда не выходит
+  }
   move(dt, tx, ty, speed) {
     speed *= this.slow;
     let dx = tx - this.x, dy = ty - this.y; const d = Math.hypot(dx, dy) || 1; dx /= d; dy /= d;
@@ -225,7 +250,16 @@ const Mutants = {
     }
     return W.spot(500);
   },
+  // Топляк живёт в конкретном пруду: берём пруд подходящего биома, не рядом с игроком (при пополнении)
+  spawnAquatic(sp, far) {
+    const c = CFG.mut[sp]; let ponds = W.water.filter(w => c.biomes.includes(W.biomeAt(w.x, w.y)) && (!far || Math.hypot(w.x - P.x, w.y - P.y) > 700));
+    if (!ponds.length) ponds = W.water.filter(w => !far || Math.hypot(w.x - P.x, w.y - P.y) > 700); if (!ponds.length) return;
+    const w = ponds[Math.floor(Math.random() * ponds.length)], m = new Mutant(sp, w.x + (Math.random() - 0.5) * w.rx, w.y + (Math.random() - 0.5) * w.ry, null);
+    m.pond = w; m.hx = w.x; m.hy = w.y; this.list.push(m);
+  },
+  hidden(m) { return !!(m.c && m.c.aquatic && m.state === 'sleep'); },   // Топляк под водой — не цель
   spawnGroup(sp, far) {
+    if (CFG.mut[sp].aquatic) return this.spawnAquatic(sp, far);
     const c = CFG.mut[sp], p = this.farSpot(far ? 700 : 0, c);
     if (!c.pack) { const m = new Mutant(sp, p.x, p.y, null); m.hx = p.x; m.hy = p.y; this.list.push(m); return; }
     const n = c.pack[0] + Math.floor(Math.random() * (c.pack[1] - c.pack[0] + 1)), pack = { members: [], leader: null };

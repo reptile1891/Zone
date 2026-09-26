@@ -24,6 +24,7 @@ const Spr = {
     M('glass', ['.........aa.', '........aaba', '..aaaaaaaaa.', '.aabbabbbaa.', '.aabbbbbbaa.', '.aaaaaaaaaa.', '..a.a..a.a..', '..a.a..a.a..'], { a: '#8fb8d8', b: '#d8f0ff' });
     M('bristler', ['...k.k.k.k.k....', '..kqkqkqkqkqk...', '.bbbbbbbbbbbbbh.', 'bbBbbbbbbbbbbbhh', 'bbbbbbbbbbbbbhwh', '.bbbbbbbbbbbbbh.', '..kk..kk..kk.kk.', '..kk..kk..kk.kk.'], { b: '#6a4e3a', B: '#8a6a4a', q: '#d8cfa8', k: '#2a2018', h: '#4a3a2a', w: '#e8e0c0' });
     M('cinder', ['.........kk.....', '.......kkKKk....', '..kkkkkkKKeEk...', '.kKKkKKkkKKKKk..', 'kKKrKKKrKKKKkk..', '.kKKKKKKKKKKk...', '..k.k....k.k....', '..k.k....k.k....'], { k: '#1a1512', K: '#3a302a', e: '#ffd050', E: '#e0702a', r: '#e05a22' });
+    M('drowner', ['..gggg..', '.gGGGGg.', 'gGyGGyGg', '.gGGGGg.', 'wwwwwwwwww'], { g: '#3a5a48', G: '#5a8a6a', y: '#e0d040', w: '#2a5a68' });
     M('rotter', ['....gg....', '..ggGGg...', '.ggggggggg', 'gggwrwgggg', '.gggggggg.', '.g.g..g.g.', '.k.k..k.k.'], { g: '#5a6a3a', G: '#7a8a4a', w: '#e8e4c0', r: '#a03030', k: '#2a3018' });
     M('fogger',['..wwww..', '.wwwwww.', '.wkwwkw.', '..wwww..', '..dddd..', '.dddddd.', '.dddddd.', 'dddddddd', '.d.dd.d.', '.d.dd.d.', '.d....d.', '.d....d.'], { w: '#dcdcd0', k: '#101010', d: '#2a2c34' });
     M('tree', ['...gggg...', '..gGggGg..', '.gggGgggg.', '.gGggggGg.', '..gggggg..', '...gggg...', '....tt....', '....tt....'], { g: '#1e2c1a', G: '#2c4024', t: '#3a2a1a' });

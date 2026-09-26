@@ -177,7 +177,7 @@ function drawInterior() {
 // ---- обёртки методов Camp ----
 (() => {
   const _enter = Camp.enter.bind(Camp), _clamp = Camp.clampP.bind(Camp), _tick = Camp.tick.bind(Camp), _render = Camp.render.bind(Camp), _click = Camp.click.bind(Camp);
-  Camp.enter = function (s) { if (!P.bld) P.bld = this.DEFAULT_BLD(); this.room = null; P.burn = 0; _enter(s); };
+  Camp.enter = function (s) { if (!P.bld) P.bld = this.DEFAULT_BLD(); this.room = null; P.burn = 0; P.grab = 0; _enter(s); };
   Camp.clampP = function () {
     if (G.scene !== 'interior' || !this.room) return _clamp(); const R = this.room;
     P.x = U.clamp(P.x, 96, R.w - 96); P.y = U.clamp(P.y, 130, Math.abs(P.x - R.door) < 45 ? R.h - 30 : R.h - 90);
