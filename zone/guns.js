@@ -8,6 +8,7 @@ const Gun = {
     rifle:   { px: 6, py: 3, my: 2 },
     revolver: { px: 2, py: 2, my: 1 },
     flamer:  { px: 2, py: 3, my: 2 },
+    crossbow: { px: 5, py: 3, my: 2 },
     smg:     { px: 2, py: 2, my: 1 },
   },
   init() {
@@ -17,6 +18,7 @@ const Gun = {
     Spr.make('gun_revolver', ['..kkkkkkkkkk', '.GGGGGGGGGGm', '.GGcccGGGGGk', '.sGGGGGss...', '.hhs..s.....', '.hHh........', '.hh.........'], { G: '#3c4046', c: '#8a8f98', k: '#181a1c', s: '#24272b', m: '#b8bec8', h: '#4e3220', H: '#7a5230' });
     Spr.make('gun_smg', ['..........kkk.', '.kkGGGGGGGGGGm', '.kGGGgGGGGGGGk', '.sGGGGGGssss..', '..sMMs.hhs....', '..sMMs.hHh....', '...MM..hh.....'], { G: '#3c4046', g: '#6a707a', k: '#181a1c', s: '#24272b', M: '#5a5e66', m: '#b8bec8', h: '#4e3220', H: '#7a5230' });
     Spr.make('gun_flamer', ['.tttt.........', 'tTTTTt.kkkkkkk', 'tTTTTGGGGGGGGm', 'tTTTTtGGGGGGGk', '.tttt.hs.ssss.', '......hhs.....', '......hH......'], { t: '#5a2a1a', T: '#a04a2a', G: '#3c4046', k: '#181a1c', m: '#e08a30', s: '#24272b', h: '#4e3220', H: '#7a5230' });
+    Spr.make('gun_crossbow', ['........k.....', '.......kk.....', 'wwwwwGGGGGGGmk', 'wWWwsGGGGGGGGk', '.wwwh.kk......', '..ww...k......'], { w: '#5a3a22', W: '#805632', G: '#4a4e54', k: '#181a1c', m: '#b8bec8', s: '#24272b', h: '#4a3020' });
     Spr.make('gun_rifle', ['......SSSS..........', '..kkkkSSSSkkkkkkkkkk', 'wwwwGGGGGGGGGGGGGGGm', 'wWWwsGGGGGss........', '.wwwhhs.s...........', '..ww.h..............'], { k: '#181a1c', S: '#5a80a0', G: '#3c4046', m: '#b8bec8', w: '#5a3a22', W: '#805632', s: '#24272b', h: '#4a3020' });
   },
   draw(ctx, x, y, ang, key, rec) {

@@ -13,6 +13,7 @@ const armorOf = m => m.armor || 0;
 // Стоимость одного выстрела/выдоха
 function shotCost(w) {
   if (w.perAmmo) return CFG.items[w.ammo].buy / w.perAmmo;
+  if (w.ammo) return CFG.items[w.ammo].buy / (CFG.items[w.ammo].pack || 1);
   return AMMO_COST;
 }
 // Урон за выстрел по цели с бронёй

@@ -92,6 +92,7 @@ const CFG = {
     coalfang:   { name: 'Угольный зуб',     w: 0.2, val: 30, icon: '⌵', part: true },
     canister:   { name: 'Канистра горючего', w: 0.8, val: 14, buy: 28, icon: '⛽', desc: 'Топливо для огнемёта. Хватает на 25 выдохов.' },
     firecoat:   { name: 'Огнеупорный плащ', w: 4, val: 110, buy: 260, icon: '🧥', desc: 'Ожог и вспышки колодцев −60%. Носится поверх костюма, места занимает много.' },
+    headlamp: { name: 'Налобный фонарь', w: 0.5, val: 70, buy: 180, icon: '🔦', desc: 'Под землёй светлее (+80), а Тени различимы с большего расстояния. Работает, пока лежит в рюкзаке.' },
     suit:     { name: 'Плащ сталкера',   w: 3,    val: 60, buy: 130, icon: '🧥', desc: 'Радиация −25%, аномалии −10%.' },
     scrap:    { name: 'Металлолом',     w: 0.5, val: 6,  icon: '🔩', junk: true },
     circuit:  { name: 'Плата',          w: 0.2, val: 15, icon: '▦',  junk: true },
@@ -188,6 +189,8 @@ const CFG = {
     rifle:   { lvl: 2, name: 'Винтовка', dmg: 64, cd: 0.85, spread: 0.02, pellets: 1, range: 800, noise: 950, price: 520, wear: 0.4,  repair: 1.0 },
     flamer:  { lvl: 3, name: 'Огнемёт-самоделка', dmg: 9, cd: 0.16, spread: 0, pellets: 1, range: 150, noise: 500, price: 540, wear: 0.3, repair: 1.0,
                cone: 0.42, pierce: true, ammo: 'canister', perAmmo: 25, note: 'конус, игнорирует броню, поджигает; топливо — канистры' },
+    // Самострел — почти бесшумный (Тени и Слухачи не слышат), стреляет болтами; сильный выстрел, но медленный
+    crossbow: { lvl: 2, name: 'Самострел', dmg: 34, cd: 1.1, spread: 0.025, pellets: 1, range: 480, noise: 60, price: 340, wear: 0.3, repair: 0.7, ammo: 'bolt', note: 'бесшумный, стреляет болтами' },
     smg:     { lvl: 3, name: 'ПП «Оса»', dmg: 15, cd: 0.14, spread: 0.16, pellets: 1, range: 430, noise: 1000, price: 620, wear: 0.28, repair: 1.1 },
   },
   gate: { rep: 15 },
@@ -244,7 +247,7 @@ const CFG = {
     storage:  { name: 'Склад', ups: [{ money: 200, mat: { scrap: 6 } }, { money: 500, mat: { scrap: 10, circuit: 3 } }],
       fx: ['24 ячейки.', '48 ячеек.', 'Без ограничения.'] },
   },
-  gearStock: { suit: 2, detector: 2, sensor: 2, suit2: 3, detector2: 3, firecoat: 3 },
+  gearStock: { suit: 2, detector: 2, sensor: 2, suit2: 3, detector2: 3, firecoat: 3, headlamp: 2 },
   recipes: [
     { id: 'bolts',    st: 'gun', name: 'Болты ×10',           lvl: 1, mat: { scrap: 2 }, out: ['bolt', 10] },
     { id: 'splint',   st: 'gun', name: 'Шина',                lvl: 1, mat: { scrap: 2 }, out: ['splint', 1] },
@@ -275,7 +278,7 @@ const CFG = {
   vendors: {
     buyer: { name: 'Скупщик «Борода»',   ang: 0.2,  col: '#c9a24a', buys: { art: 1, part: 1, meat: 1, junk: 1 }, likes: { battery: 1.3, circuit: 1.4 }, sells: [] },
     gun:   { name: 'Оружейник «Ржавый»', ang: 1.5,  col: '#a5a5a5', buys: { part: 0.8, junk: 1 }, likes: { plate: 2, earbone: 1.4, scrap: 1.6 }, sells: ['ammo', 'bolt', 'canister'] },
-    gear:  { name: 'Снабженец «Кум»',    ang: 2.7,  col: '#7fa06a', buys: {}, sells: ['food', 'medkit', 'antirad', 'splint', 'antibiotic', 'suit', 'suit2', 'firecoat', 'detector', 'detector2', 'lure', 'sensor', 'bolt'] },
+    gear:  { name: 'Снабженец «Кум»',    ang: 2.7,  col: '#7fa06a', buys: {}, sells: ['food', 'medkit', 'antirad', 'splint', 'antibiotic', 'suit', 'suit2', 'firecoat', 'headlamp', 'detector', 'detector2', 'lure', 'sensor', 'bolt'] },
     sci:   { name: 'Учёный «Лис»',       ang: 3.9,  col: '#7fb8ff', buys: { art: 1.25, part: 0.6 }, likes: { mistvial: 2.2, glassgland: 1.7 }, sells: [], ident: 20 },
     bar:   { name: 'Бармен «Сидор»',     ang: 5.1,  col: '#d08a5a', buys: {}, sells: [], sleep: 15, map: 60, noteSell: 15 },
   },

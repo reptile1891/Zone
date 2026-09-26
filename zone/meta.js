@@ -438,7 +438,7 @@ function shoot() {
   if (invCount(w.ammo || 'ammo') < 1 && !(w.perAmmo && P.fuel > 0)) { Snd.tick(); P.cd = 0.3; log(w.perAmmo ? 'Топлива нет.' : 'Патронов нет.'); return; }
   const cond = P.cond[P.weapon];
   if (cond < 25 && Math.random() < 0.15 + 0.3 * (1 - cond / 25)) { P.cd = 0.6; Snd.tick(); log('Осечка! Оружие изношено — почини у оружейника.', '#e0a060'); return; }
-  if (w.perAmmo) { if (P.fuel <= 0) { invTake(w.ammo, 1); P.fuel = w.perAmmo; } P.fuel--; } else invTake('ammo', 1);
+  if (w.perAmmo) { if (P.fuel <= 0) { invTake(w.ammo, 1); P.fuel = w.perAmmo; } P.fuel--; } else invTake(w.ammo || 'ammo', 1);
   P.cd = w.cd; P.recoil = 1; P.cond[P.weapon] = Math.max(0, cond - w.wear);
   if (w.cone) return Meta.flame(w);
   const moving = Math.hypot(keys.mx || 0, keys.my || 0) > 0;

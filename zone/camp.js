@@ -73,8 +73,8 @@ const Camp = {
   confirmChecks() {
     const c = [], w = weight(), cap = carryCap(), ok = (t) => c.push(['✔', t, '#8fbf7f']), bad = (t) => c.push(['⚠', t, '#e0a060']);
     w > cap ? bad('Перегруз: ' + w.toFixed(1) + '/' + cap + ' кг — будешь медленным и шумным') : ok('Вес в норме: ' + w.toFixed(1) + '/' + cap + ' кг');
-    const ai = CFG.weapons[P.weapon].ammo || 'ammo', an = ai === 'ammo' ? 'патронов' : 'топлива';
-    invCount(ai) < (ai === 'ammo' ? 6 : 2) ? bad('Мало ' + an + ': ' + invCount(ai)) : ok((ai === 'ammo' ? 'Патроны' : 'Топливо') + ': ' + invCount(ai));
+    const ai = CFG.weapons[P.weapon].ammo || 'ammo', an = ai === 'ammo' ? 'патронов' : ai === 'bolt' ? 'болтов' : 'топлива';
+    invCount(ai) < (ai === 'ammo' ? 6 : 2) ? bad('Мало ' + an + ': ' + invCount(ai)) : ok((ai === 'ammo' ? 'Патроны' : ai === 'bolt' ? 'Болты' : 'Топливо') + ': ' + invCount(ai));
     invCount('bolt') < 10 ? bad('Мало болтов: ' + invCount('bolt') + ' — в полях аномалий это гибель') : ok('Болты: ' + invCount('bolt'));
     invCount('medkit') < 1 ? bad('Нет аптечек') : ok('Аптечек: ' + invCount('medkit'));
     invCount('splint') < 1 ? bad('Нет шины — перелом на дороге хуже пули') : ok('Шина есть');

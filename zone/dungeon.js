@@ -250,7 +250,7 @@ class DEnemy {
   // Видимость для отрисовки: тень различима только вблизи, горящая или только что раненая — всегда
   alpha() {
     if (this.c.kind !== 'shade' || this.burn > 0 || this.flash > 0) return 1;
-    return U.clamp(1 - (Math.hypot(P.x - this.x, P.y - this.y) - 70) / 60, 0, 1);
+    return U.clamp(1 - (Math.hypot(P.x - this.x, P.y - this.y) - (70 + (hasItem('headlamp') ? 60 : 0))) / 60, 0, 1);   // фонарь расширяет круг, где тень видна
   }
   hurt(d, src, pierce) {
     if (this.dead) return;

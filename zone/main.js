@@ -515,7 +515,7 @@ function drawLight() {
   const dark = G.scene === 'dungeon' ? 0.93 : G.scene === 'interior' ? 0.42 : Math.min(0.95, 0.2 + 0.65 * G.night + G.cloud * 0.16 + G.fog * 0.1);
   lc.fillStyle = `rgba(4,6,8,${dark})`; lc.fillRect(0, 0, VW, VH);
   lc.globalCompositeOperation = 'destination-out';
-  const vis = (U.lerp(CFG.player.vision, CFG.player.visionNight, G.night) + fx('sight')) * (1 - G.fog * 0.28) * (1 - G.rain * 0.1) * (P.sneak ? 0.95 : 1) * (G.scene === 'zone' && W.biomeAt(P.x, P.y) === 'forest' ? 0.82 : G.scene === 'dungeon' ? 0.7 : 1);
+  const vis = (U.lerp(CFG.player.vision, CFG.player.visionNight, G.night) + fx('sight') + (G.scene === 'dungeon' && hasItem('headlamp') ? 80 : 0)) * (1 - G.fog * 0.28) * (1 - G.rain * 0.1) * (P.sneak ? 0.95 : 1) * (G.scene === 'zone' && W.biomeAt(P.x, P.y) === 'forest' ? 0.82 : G.scene === 'dungeon' ? 0.7 : 1);
   const hole = (x, y, r, a) => { const g = lc.createRadialGradient(x, y, r * 0.2, x, y, r); g.addColorStop(0, `rgba(0,0,0,${a})`); g.addColorStop(1, 'rgba(0,0,0,0)'); lc.fillStyle = g; lc.fillRect(x - r, y - r, r * 2, r * 2); };
   hole(P.x - cam.x, P.y - cam.y, vis, 1);
   if (G.scene !== 'zone') { const fl = 0.85 + 0.15 * Math.sin(G.t * 9); for (const l of Camp.curLights()) hole(l.x - cam.x, l.y - cam.y, l.r, Math.min(1, l.a * fl)); }
