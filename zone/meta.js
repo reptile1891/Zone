@@ -56,19 +56,19 @@ const Meta = {
   // Строки «Доработать» под оружием: ремонт из хлама и тюнинг
   weaponWorkHTML(id) {
     const cap = Camp.lvl('gun'), n = Wpn.tuneCount(id), wear = 100 - P.cond[id], rc = this.repairMats(wear, 'gun'), full = n >= cap, tc = this.tuneCost(n);
-    let h = row('🔧', 'Починить из хлама', wear < 1 ? 'Исправно' : 'Износ ' + Math.round(wear) + '% → 0. ' + this.matsText(rc), btn('wrepairm:' + id, 'Починить', wear < 1 || !this.canPay(rc)));
+    let h = row('🔧', 'Починить из хлама', wear < 1 ? 'Исправно' : 'Износ ' + Math.round(wear) + '% → 0%. ' + this.matsText(rc), btn('wrepairm:' + id, 'Починить', wear < 1 || !this.canPay(rc)));
     h += '<div class="stat">Тюнинг: ' + n + ' / ' + cap + (full && cap < 3 ? ' (больше — с уровнем мастерской)' : '') + (full ? '' : ' · каждое улучшение: ' + this.matsText(tc)) + '</div>';
-    for (const k of Wpn.tuneKeys(id)) h += row('⚙', Wpn.TUNE[k].text, full ? 'Мест для улучшений нет' : '', btn('wtune:' + id + ':' + k, 'Улучшить', full || !this.canPay(tc)));
+    if (!full) for (const k of Wpn.tuneKeys(id)) h += row('⚙', Wpn.TUNE[k].text, '', btn('wtune:' + id + ':' + k, 'Улучшить', !this.canPay(tc)));
     return h;
   },
   // Костюм и плащ: ремонт износа (общий) и тюнинг
   suitWorkHTML() {
     const cap = Camp.lvl('gear'), wear = 100 - P.suitCond, rc = this.repairMats(wear, 'gear'); let h = '';
-    if (this.bestSuit()) h += row('🧵', 'Починить из хлама', wear < 1 ? 'Исправно' : 'Износ ' + Math.round(wear) + '% → 0. ' + this.matsText(rc), btn('srepairm', 'Починить', wear < 1 || !this.canPay(rc)));
+    if (this.bestSuit()) h += row('🧵', 'Починить из хлама', wear < 1 ? 'Исправно' : 'Износ ' + Math.round(wear) + '% → 0%. ' + this.matsText(rc), btn('srepairm', 'Починить', wear < 1 || !this.canPay(rc)));
     for (const s of [this.bestSuit(), this.bestCoat()]) {
       if (!s) continue; const n = (s.g && s.g.t) || 0, full = n >= cap, tc = this.tuneCost(n), i = P.inv.indexOf(s);
       h += '<div class="stat"><b>' + Gear.name(s) + '</b> · тюнинг ' + n + ' / ' + cap + (full && cap < 3 ? ' (больше — с уровнем снабжения)' : '') + (full ? '' : ' · ' + this.matsText(tc)) + '</div>';
-      for (const k of Gear.keys(s.id)) h += row('⚙', Gear.TUNE[k].text, full ? 'Мест для улучшений нет' : '', btn('gtune:' + i + ':' + k, 'Улучшить', full || !this.canPay(tc)));
+      if (!full) for (const k of Gear.keys(s.id)) h += row('⚙', Gear.TUNE[k].text, '', btn('gtune:' + i + ':' + k, 'Улучшить', !this.canPay(tc)));
     }
     return h;
   },
