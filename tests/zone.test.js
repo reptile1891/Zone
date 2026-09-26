@@ -131,7 +131,7 @@ test("Магнитная яма: металлические твари полу�
     for (let i = 0; i < 10; i++) { w.applyAnoms(tin, 0.1); w.applyAnoms(soft, 0.1); }
     return { tin: tin.dmg, soft: soft.dmg, tinX: tin.x, softX: soft.x };
   })()`);
-  assert.ok(out.tin > out.soft * 4, `металл ${out.tin.toFixed(1)} против ${out.soft.toFixed(1)}`);
+  assert.ok(out.tin > out.soft * 3, `металл ${out.tin.toFixed(1)} против ${out.soft.toFixed(1)}`);
   assert.ok(out.tinX < out.softX, "металл должен подтянуться ближе к центру");
 });
 

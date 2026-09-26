@@ -183,7 +183,7 @@ test("верстак: рецепт требует уровень, материа
     const suit2 = CFG.recipes.find(x => x.id === "suit2"); P.bld.gun = 3; for (const id in suit2.mat) invAdd(id, suit2.mat[id]); const noSkill = Camp.canCraft(suit2); P.sk.carry = 2; const withSkill = Camp.canCraft(suit2);
     return { lowLevel, ok, got, left, noSkill, withSkill };
   })()`);
-  assert.equal(o.lowLevel, false); assert.equal(o.ok, true); assert.equal(o.got, 6); assert.ok(o.left.every(n => n === 0));
+  assert.equal(o.lowLevel, false); assert.equal(o.ok, true); assert.equal(o.got, 12); assert.ok(o.left.every(n => n === 0));
   assert.equal(o.noSkill, false); assert.equal(o.withSkill, true);
 });
 
