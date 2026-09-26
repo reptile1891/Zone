@@ -194,15 +194,15 @@ const CFG = {
 
 
   weapons: {
-    pistol:  { name: 'Пистолет', dmg: 30, cd: 0.32, spread: 0.06, pellets: 1, range: 520, noise: 750, price: 0,   wear: 0.35, repair: 0.6 },
-    sawnoff: { name: 'Обрез',    dmg: 13, cd: 1.0,  spread: 0.32, pellets: 6, range: 260, noise: 900, price: 260, wear: 0.5,  repair: 0.7 },
-    revolver: { lvl: 2, name: 'Револьвер', dmg: 44, cd: 0.5, spread: 0.03, pellets: 1, range: 640, noise: 850, price: 380, wear: 0.35, repair: 0.8 },
-    rifle:   { lvl: 2, name: 'Винтовка', dmg: 64, cd: 0.85, spread: 0.02, pellets: 1, range: 800, noise: 950, price: 520, wear: 0.4,  repair: 1.0 },
-    flamer:  { lvl: 3, name: 'Огнемёт-самоделка', dmg: 9, cd: 0.16, spread: 0, pellets: 1, range: 150, noise: 500, price: 540, wear: 0.3, repair: 1.0,
+    pistol:  { name: 'Пистолет', dmg: 30, cd: 0.32, spread: 0.06, pellets: 1, range: 520, noise: 750, price: 0,   wear: 0.175, repair: 0.6 },
+    sawnoff: { name: 'Обрез',    dmg: 13, cd: 1.0,  spread: 0.32, pellets: 6, range: 260, noise: 900, price: 260, wear: 0.25,  repair: 0.7 },
+    revolver: { lvl: 2, name: 'Револьвер', dmg: 44, cd: 0.5, spread: 0.03, pellets: 1, range: 640, noise: 850, price: 380, wear: 0.175, repair: 0.8 },
+    rifle:   { lvl: 2, name: 'Винтовка', dmg: 64, cd: 0.85, spread: 0.02, pellets: 1, range: 800, noise: 950, price: 520, wear: 0.2,  repair: 1.0 },
+    flamer:  { lvl: 3, name: 'Огнемёт-самоделка', dmg: 9, cd: 0.16, spread: 0, pellets: 1, range: 150, noise: 500, price: 540, wear: 0.15, repair: 1.0,
                cone: 0.42, pierce: true, ammo: 'canister', perAmmo: 25, note: 'конус, игнорирует броню, поджигает; топливо — канистры' },
     // Самострел — почти бесшумный (Тени и Слухачи не слышат), стреляет болтами; сильный выстрел, но медленный
-    crossbow: { lvl: 2, name: 'Самострел', dmg: 34, cd: 1.1, spread: 0.025, pellets: 1, range: 480, noise: 60, price: 340, wear: 0.3, repair: 0.7, ammo: 'bolt', ambush: 2, note: 'бесшумный, стреляет болтами; по не заметившим — двойной урон' },
-    smg:     { lvl: 3, name: 'ПП «Оса»', dmg: 15, cd: 0.14, spread: 0.16, pellets: 1, range: 430, noise: 1000, price: 620, wear: 0.28, repair: 1.1 },
+    crossbow: { lvl: 2, name: 'Самострел', dmg: 34, cd: 1.1, spread: 0.025, pellets: 1, range: 480, noise: 60, price: 340, wear: 0.15, repair: 0.7, ammo: 'bolt', ambush: 2, note: 'бесшумный, стреляет болтами; по не заметившим — двойной урон' },
+    smg:     { lvl: 3, name: 'ПП «Оса»', dmg: 15, cd: 0.14, spread: 0.16, pellets: 1, range: 430, noise: 1000, price: 620, wear: 0.14, repair: 1.1 },
   },
   gate: { rep: 15 },
   stalkers: {
@@ -258,6 +258,8 @@ const CFG = {
     storage:  { name: 'Склад', ups: [{ money: 200, mat: { scrap: 6 } }, { money: 500, mat: { scrap: 10, circuit: 3 } }],
       fx: ['24 ячейки.', '48 ячеек.', 'Без ограничения.'] },
   },
+  // Ремонт из хлама и тюнинг. repair: сколько % износа закрывает 1 металлолом / 1 схема; cost[n] — цена (n+1)-го улучшения; максимум улучшений = уровень мастерской (оружие) или снабжения (костюм)
+  tune: { repair: { scrap: 8, circuit: 35 }, cost: [{ scrap: 4, circuit: 2 }, { scrap: 7, circuit: 3, plate: 1 }, { scrap: 10, circuit: 4, plate: 2, battery: 1 }] },
   gearStock: { suit: 2, detector: 2, sensor: 2, suit2: 3, detector2: 3, firecoat: 3, headlamp: 2 },
   recipes: [
     { id: 'bolts',    st: 'gun', name: 'Болты ×10',           lvl: 1, mat: { scrap: 2 }, out: ['bolt', 10] },

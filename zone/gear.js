@@ -36,6 +36,12 @@ const Gear = {
     w:    { sign: -1, lo: 0.08, hi: 0.25, lim: [0.70, 1.25], w: 0.4,  adj: ['Лёгкий', 'Тяжёлый'] },
     wear: { sign: -1, lo: 0.10, hi: 0.35, lim: [0.60, 1.30], w: 0.5,  adj: ['Крепкий', 'Ветхий'] },
   },
+  // Тюнинг: множитель к множителю параметра (растёт защита, падают вес и износ)
+  TUNE: { rad: { k: 1.06, text: 'Защита от радиации +6%' }, anom: { k: 1.08, text: 'Защита от аномалий +8%' }, fire: { k: 1.06, text: 'Огнестойкость +6%' }, w: { k: 0.92, text: 'Вес −8%' }, wear: { k: 0.88, text: 'Износ −12%' } },
+  tune(s, k) {
+    if (!s.g) s.g = { rar: 0, m: {}, name: CFG.items[s.id].name };
+    s.g.m[k] = +((s.g.m[k] || 1) * this.TUNE[k].k).toFixed(3); s.g.t = (s.g.t || 0) + 1; return s.g;
+  },
   isGear(id) { return !!this.BASE[id]; },
   keys(id) { return Object.keys(this.BASE[id]).concat(['w', 'wear']); },
   pickTier(rnd, luck = 0, min = 0, weights) {

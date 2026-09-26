@@ -17,7 +17,7 @@ const Meta = {
   suitEff() { return 0.4 + 0.6 * P.suitCond / 100; },
   suitRad() { const s = this.bestSuit(); return s ? Gear.eff(s).rad * this.suitEff() : 0; },
   suitAnom() { const s = this.bestSuit(); return s ? Gear.eff(s).anom * this.suitEff() : 0; },
-  wearSuit(d) { const s = this.bestSuit(); if (s) P.suitCond = Math.max(0, P.suitCond - d * 0.12 * Gear.eff(s).wear); },
+  wearSuit(d) { const s = this.bestSuit(); if (s) P.suitCond = Math.max(0, P.suitCond - d * 0.06 * Gear.eff(s).wear); },
   bestCoat() { let b = null; for (const s of P.inv) if (s.id === 'firecoat' && (!b || Gear.eff(s).fire > Gear.eff(b).fire)) b = s; return b; },
 
   // ---- огонь ----
@@ -42,6 +42,36 @@ const Meta = {
     Snd.crackle(); G.shake = Math.max(G.shake, 0.04); Mutants.hear(P.x, P.y, w.noise);
   },
 
+  // ---- ремонт из хлама и тюнинг ----
+  matsText(cost) { return Object.keys(cost).map(m => '<span style="color:' + (Camp.have(m) >= cost[m] ? '#8fbf7f' : '#e06060') + '">' + Camp.matName(m) + ' ' + cost[m] + '</span>').join(', '); },
+  canPay(cost) { return Object.keys(cost).every(m => Camp.have(m) >= cost[m]); },
+  pay(cost) { for (const m in cost) Camp.take(m, cost[m]); },
+  // Сколько хлама нужно, чтобы убрать износ wear % (навык и уровень здания удешевляют)
+  repairMats(wear, vk) {
+    const r = CFG.tune.repair, m = (1 - 0.12 * P.sk.repair) * Camp.repairMul(vk), c = {}; if (wear < 1) return c;
+    c.scrap = Math.max(1, Math.ceil(wear / r.scrap * m)); const k = wear >= 30 ? Math.ceil(wear / r.circuit * m) : 0; if (k) c.circuit = k; return c;
+  },
+  tuneCost(n) { return CFG.tune.cost[Math.min(n, CFG.tune.cost.length - 1)]; },
+  // Строки «Доработать» под оружием: ремонт из хлама и тюнинг
+  weaponWorkHTML(id) {
+    const cap = Camp.lvl('gun'), n = Wpn.tuneCount(id), wear = 100 - P.cond[id], rc = this.repairMats(wear, 'gun'), full = n >= cap, tc = this.tuneCost(n);
+    let h = row('🔧', 'Починить из хлама', wear < 1 ? 'Исправно' : 'Износ ' + Math.round(wear) + '% → 0. ' + this.matsText(rc), btn('wrepairm:' + id, 'Починить', wear < 1 || !this.canPay(rc)));
+    h += '<div class="stat">Тюнинг: ' + n + ' / ' + cap + (full && cap < 3 ? ' (больше — с уровнем мастерской)' : '') + (full ? '' : ' · каждое улучшение: ' + this.matsText(tc)) + '</div>';
+    for (const k of Wpn.tuneKeys(id)) h += row('⚙', Wpn.TUNE[k].text, full ? 'Мест для улучшений нет' : '', btn('wtune:' + id + ':' + k, 'Улучшить', full || !this.canPay(tc)));
+    return h;
+  },
+  // Костюм и плащ: ремонт износа (общий) и тюнинг
+  suitWorkHTML() {
+    const cap = Camp.lvl('gear'), wear = 100 - P.suitCond, rc = this.repairMats(wear, 'gear'); let h = '';
+    if (this.bestSuit()) h += row('🧵', 'Починить из хлама', wear < 1 ? 'Исправно' : 'Износ ' + Math.round(wear) + '% → 0. ' + this.matsText(rc), btn('srepairm', 'Починить', wear < 1 || !this.canPay(rc)));
+    for (const s of [this.bestSuit(), this.bestCoat()]) {
+      if (!s) continue; const n = (s.g && s.g.t) || 0, full = n >= cap, tc = this.tuneCost(n), i = P.inv.indexOf(s);
+      h += '<div class="stat"><b>' + Gear.name(s) + '</b> · тюнинг ' + n + ' / ' + cap + (full && cap < 3 ? ' (больше — с уровнем снабжения)' : '') + (full ? '' : ' · ' + this.matsText(tc)) + '</div>';
+      for (const k of Gear.keys(s.id)) h += row('⚙', Gear.TUNE[k].text, full ? 'Мест для улучшений нет' : '', btn('gtune:' + i + ':' + k, 'Улучшить', full || !this.canPay(tc)));
+    }
+    return h;
+  },
+
   // ---- оружие ----
   cycleWeapon() { const i = P.weapons.indexOf(P.weapon); P.weapon = P.weapons[(i + 1) % P.weapons.length]; log('Оружие: ' + Wpn.name(P.weapon), Wpn.color(P.weapon)); },
   repairCost(k) { return Math.ceil((100 - P.cond[k]) * Wpn.of(k).repair * (1 - 0.12 * P.sk.repair) * Camp.repairMul('gun')); },
@@ -56,7 +86,8 @@ const Meta = {
     for (const id of P.weapons) {
       const w = Wpn.of(id), c = this.repairCost(id), d = Wpn.defOf(id), df = Wpn.diff(d).map(x => '<span style="color:' + (x.good ? '#8fbf7f' : '#e0a060') + '">' + x.text + '</span>').join(', ');
       h += row(Icons.html('w_' + Wpn.base(id)), '<span style="color:' + col(w) + '">' + w.name + '</span>' + (P.weapon === id ? ' ★' : ''), 'Износ ' + Math.round(100 - P.cond[id]) + '% · ' + st(w) + (df ? '<br>' + df : ''),
-        '<div style="display:flex;flex-direction:column;gap:3px;min-width:104px">' + btn('wequip:' + id, 'В руки', P.weapon === id) + btn('wrepair:' + id, c ? 'Починить ' + c + ' ₽' : 'Исправно', !c || P.money < c) + btn('wsell:' + id, 'Продать ' + Wpn.sellPrice(id) + ' ₽', P.weapons.length <= 1) + '</div>');
+        '<div style="display:flex;flex-direction:column;gap:3px;min-width:104px">' + btn('wequip:' + id, 'В руки', P.weapon === id) + btn('wrepair:' + id, c ? 'Починить ' + c + ' ₽' : 'Исправно', !c || P.money < c) + btn('wsell:' + id, 'Продать ' + Wpn.sellPrice(id) + ' ₽', P.weapons.length <= 1) + btn('wwork:' + id, (G.ui && G.ui.wsel === id ? 'Закрыть' : 'Доработать') + (Wpn.tuneCount(id) ? ' (' + Wpn.tuneCount(id) + ')' : '')) + '</div>');
+      if (G.ui && G.ui.wsel === id) h += '<div class="note">' + this.weaponWorkHTML(id) + '</div>';
     }
     h += '</div><div><h3>Стандартный товар</h3>'; let any = false;
     for (const k in CFG.weapons) {
@@ -374,6 +405,7 @@ const Meta = {
     } else if (vk === 'gear') {
       h += '<div><h3>Услуги</h3>'; const bs = this.bestSuit();
       if (bs) { const c = this.suitRepairCost(); h += row('🧥', 'Ремонт костюма', 'Износ ' + Math.round(100 - P.suitCond) + '%', btn('srepair', c ? c + ' ₽' : 'Исправно', !c || P.money < c)); }
+      if (bs || this.bestCoat()) { h += row('⚙', 'Доработка снаряжения', 'Ремонт из хлама и тюнинг костюма', btn('swork', G.ui && G.ui.ssel ? 'Закрыть' : 'Открыть')); if (G.ui && G.ui.ssel) h += '<div class="note">' + this.suitWorkHTML() + '</div>'; }
       const up = this.slotPrice(); if (up) h += row('✦', 'Ещё один контейнер', 'Слотов под артефакты: ' + P.equip.length + ' → ' + (P.equip.length + 1), btn('upslot', up + ' ₽', P.money < up));
       h += '</div>';
     } else if (vk === 'sci') {
@@ -428,6 +460,18 @@ const Meta = {
       case 'wequip': P.weapon = arg; return true;
       case 'wbuyg': Wpn.buyOffer(i); return true;
       case 'wsell': { if (P.weapons.length > 1 && P.weapons.includes(arg)) { const p = Wpn.sellPrice(arg), nm = Wpn.name(arg); Wpn.remove(arg); P.money += p; P.earned += p; Snd.pick(); log('Продано: ' + nm + ' за ' + p + ' ₽'); } return true; }
+      case 'wwork': u.wsel = u.wsel === arg ? null : arg; return true;
+      case 'wrepairm': { if (!P.weapons.includes(arg)) return true; const c = this.repairMats(100 - P.cond[arg], 'gun'); if (Object.keys(c).length && this.canPay(c)) { this.pay(c); P.cond[arg] = 100; Snd.pick(); log('Оружие починено из хлама.', '#a8c890'); } return true; }
+      case 'wtune': {
+        if (!P.weapons.includes(arg) || !Wpn.tuneKeys(arg).includes(arg2)) return true; const n = Wpn.tuneCount(arg), c = this.tuneCost(n);
+        if (n >= Camp.lvl('gun') || !this.canPay(c)) return true; this.pay(c); Wpn.tune(arg, arg2); Snd.pick(); addXp(8); log('Тюнинг: ' + Wpn.name(arg) + ' — ' + Wpn.TUNE[arg2].text.toLowerCase() + '.', '#8fbf7f'); return true;
+      }
+      case 'swork': u.ssel = !u.ssel; return true;
+      case 'srepairm': { const c = this.repairMats(100 - P.suitCond, 'gear'); if (this.bestSuit() && Object.keys(c).length && this.canPay(c)) { this.pay(c); P.suitCond = 100; Snd.pick(); log('Костюм починен из хлама.', '#a8c890'); } return true; }
+      case 'gtune': {
+        const s = P.inv[i]; if (!s || !Gear.isGear(s.id) || !Gear.keys(s.id).includes(arg2)) return true; const n = (s.g && s.g.t) || 0, c = this.tuneCost(n);
+        if (n >= Camp.lvl('gear') || !this.canPay(c)) return true; this.pay(c); Gear.tune(s, arg2); Snd.pick(); addXp(8); log('Тюнинг: ' + Gear.name(s) + ' — ' + Gear.TUNE[arg2].text.toLowerCase() + '.', '#8fbf7f'); return true;
+      }
       case 'wrepair': { const c = this.repairCost(arg); if (P.money >= c) { P.money -= c; P.cond[arg] = 100; Snd.pick(); } return true; }
       case 'srepair': { const c = this.suitRepairCost(); if (P.money >= c) { P.money -= c; P.suitCond = 100; Snd.pick(); } return true; }
       case 'upslot': { const c = this.slotPrice(); if (c && P.money >= c) { P.money -= c; P.equip.push(null); Snd.pick(); log('Контейнер добавлен.'); } return true; }

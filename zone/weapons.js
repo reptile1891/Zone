@@ -71,6 +71,16 @@ const Wpn = {
   // Цена (без наценки магазина): цена типа × (1 + 3·(power−1)), не ниже половины; у пистолета цены нет — берём 200
   value(def) { const b = CFG.weapons[def.base], bp = b.price || 200; return Math.max(5, Math.round(bp * Math.max(0.5, 1 + 3 * (this.power(def) - 1)) / 5) * 5); },
 
+  // ---------- тюнинг: улучшения за материалы (число ограничено уровнем мастерской) ----------
+  // k — множитель к множителю параметра; каждое улучшение записывается прямо в def.mods, поэтому цена, подсказки и сравнение с базой работают сами
+  TUNE: { dmg: { k: 1.06, text: 'Урон +6%' }, cd: { k: 0.94, text: 'Темп стрельбы +6%' }, spread: { k: 0.88, text: 'Разброс −12%' }, range: { k: 1.06, text: 'Дальность +6%' }, noise: { k: 0.9, text: 'Шум −10%' }, wear: { k: 0.85, text: 'Износ −15%' } },
+  tuneKeys(id) { return this.statKeys(CFG.weapons[this.base(id)]); },
+  tuneCount(id) { const d = this.def(id); return (d && d.tune) || 0; },
+  tune(id, k) {
+    let d = this.def(id); if (!d) { d = this.plain(id); P.wdefs[id] = d; }   // обычное оружие становится экземпляром с описанием
+    d.mods[k] = +((d.mods[k] || 1) * this.TUNE[k].k).toFixed(3); d.tune = (d.tune || 0) + 1; this._cache.delete(d); return d;
+  },
+
   // ---------- экземпляры: доступ и хранение ----------
   def(id) { return (P.wdefs && P.wdefs[id]) || null; },
   base(id) { const d = this.def(id); return d ? d.base : id; },

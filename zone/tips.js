@@ -74,6 +74,10 @@ const Tip = {
     else if (defo) h += this.row('Сила:', Wpn.power(d).toFixed(2) + ' (обычное оружие ≈ 1.00)'); else h += this.row('Цена:', b.price + ' ₽') + this.row('Мастерская:', 'уровень ' + (b.lvl || 1));
     return h;
   },
+  tuneTip(t, n, cap) {
+    if (!t) return null; const c = Meta.tuneCost(n);
+    return this.head('Тюнинг', n + ' / ' + cap, '#8fbf7f') + '<div class="ti-d">' + t.text + '. Улучшения необратимы, их число ограничено уровнем мастерской (или снабжения).</div>' + (n >= cap ? this.row('', 'Мест для улучшений нет', '#e0a060') : this.row('Цена:', Meta.matsText(c)));
+  },
   recipe(id) {
     const r = CFG.recipes.find(x => x.id === id); if (!r) return null;
     const lvl = Camp.lvl(r.st), out = r.out[0] === 'art' ? null : CFG.items[r.out[0]];
@@ -153,7 +157,7 @@ const Tip = {
   },
   // Подсказка по атрибуту кнопки строки (data-a)
   fromAttr(attr) {
-    const [a, arg] = String(attr).split(':'), i = +arg, u = G.ui || {}, vk = u.k === 'trade' ? u.v : null;
+    const [a, arg, arg2] = String(attr).split(':'), i = +arg, u = G.ui || {}, vk = u.k === 'trade' ? u.v : null;
     switch (a) {
       case 'equip': case 'use': case 'drop': case 'sell': case 'sellall': case 'ident': case 'research': case 'stash': return this.slot(P.inv[i], vk);
       case 'unstash': return this.slot((P.stash || [])[i]);
@@ -162,6 +166,11 @@ const Tip = {
       case 'wbuy': case 'wequip': case 'wrepair': case 'wsell': return this.weapon(arg);
       case 'wbuyg': return (P.gunOffers || [])[i] ? this.weapon(null, P.gunOffers[i].def) : null;
       case 'craft': return this.recipe(arg);
+      case 'wwork': return this.weapon(arg);
+      case 'wtune': return this.tuneTip(Wpn.TUNE[arg2], Wpn.tuneCount(arg), Camp.lvl('gun'));
+      case 'gtune': { const s = P.inv[i]; return s && Gear.TUNE[arg2] ? this.tuneTip(Gear.TUNE[arg2], (s.g && s.g.t) || 0, Camp.lvl('gear')) : null; }
+      case 'wrepairm': return this.head('Ремонт из хлама', 'без денег', '#a8c890') + '<div class="ti-d">Снимает весь износ оружия за металлолом и схемы. Навык «Ремонт» и уровень мастерской удешевляют.</div>';
+      case 'srepairm': return this.head('Ремонт из хлама', 'без денег', '#a8c890') + '<div class="ti-d">Снимает весь износ костюма за металлолом и схемы.</div>';
       case 'skill': return this.skill(arg);
       case 'qacc': return this.offer(P.offers[i]);
       case 'qturn': case 'qdrop': return this.quest(P.quests[i]);
