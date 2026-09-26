@@ -1,0 +1,80 @@
+'use strict';
+// Пиксельные иконки предметов и оружия 16×16 (вместо эмодзи). Генерируются в data-URL, подменяют CFG.items[*].icon.
+const Icons = {
+  cache: {},
+  make(key, rows, pal) {
+    const c = document.createElement('canvas'); c.width = c.height = 16; const g = c.getContext('2d');
+    rows.forEach((r, y) => { for (let x = 0; x < 16; x++) { const col = pal[r[x]]; if (col) { g.fillStyle = col; g.fillRect(x, y, 1, 1); } } });
+    this.cache[key] = c.toDataURL();
+  },
+  html(key) { const u = this.cache[key]; return u ? '<img class="ico" src="' + u + '" alt="">' : '?'; },
+  init() {
+    const M = (k, rows, pal) => this.make(k, rows, pal);
+    // ---- оружие ----
+    M('w_pistol', ['................', '................', '..mmmmmmmmmmmm..', '.GGGGGGGGGGGGGG.', '.GGgGGGGGGGGGGGk', '.GGGGGGGGGGGGGG.', '.GGGGGGGGGGGGG..', '.ssGGGGGGGGssss.', '.hhsssssssss....', '.hHhs....ss.....', '.hHh.....s.s....', '.hHh.....sss....', '.hHh............', 'hHHh............', 'hhhh............', '................'],
+      { m: '#b8bec8', G: '#3c4046', g: '#6a707a', k: '#181a1c', s: '#24272b', h: '#4e3220', H: '#7a5230' });
+    M('w_sawnoff', ['................', '................', '................', '................', '................', '........kkkkkkkk', '........GGGGGGGm', '........GGGGGGGm', '..wwwwwkkkkkkkk.', '.wwWWwwwwss.....', 'wwWWww..ss......', 'wwWww..s.s......', 'wWww............', '.www............', '................', '................'],
+      { k: '#181a1c', G: '#4a4e54', m: '#b8bec8', w: '#5a3a22', W: '#805632', s: '#24272b' });
+    M('w_rifle', ['................', '................', '................', '.....ssss.......', '..kkkSSSSkkkkkkk', '.wwwGGGGGGGGGGGm', 'wwWwGGGGGGGGGGGm', 'wWWwsGGGGGss....', 'wwwww.hhs.s.....', '.ww...hh........', '................', '................', '................', '................', '................', '................'],
+      { k: '#181a1c', S: '#5a80a0', s: '#2c3036', G: '#3c4046', m: '#b8bec8', w: '#5a3a22', W: '#805632', h: '#4a3020' });
+    // ---- расходники и снаряжение ----
+    M('bolt', ['................', '................', '....hhhhhhhh....', '...hHHHHHHHHh...', '...hHmmHHHHHh...', '...hhhhhhhhhh...', '......sSSs......', '......sTTs......', '......sSSs......', '......sTTs......', '......sSSs......', '......sTTs......', '......sSSs......', '.......ss.......', '................', '................'],
+      { h: '#5a5e66', H: '#9aa0aa', m: '#e0e4ea', s: '#5a5e66', S: '#8a909a', T: '#b8beca' });
+    M('ammo', ['................', '..c....c....c...', '.ccc..ccc..ccc..', '.yyy..yyy..yyy..', '.yYy..yYy..yYy..', '.yYy..yYy..yYy..', '.yYy..yYy..yYy..', '.yyy..yyy..yyy..', '.yyy..yyy..yyy..', '.kkk..kkk..kkk..', '................', '................', '................', '................', '................', '................'],
+      { c: '#b87333', y: '#c8a030', Y: '#e8c860', k: '#3a2a10' });
+    M('medkit', ['................', '................', '....kkkkkkkk....', '..kkkkkkkkkkkk..', '.kwwwwwrrwwwwwk.', '.kwwwwwrrwwwwwk.', '.kwwwrrrrrrwwwk.', '.kwwwrrrrrrwwwk.', '.kwwwwwrrwwwwwk.', '.kwwwwwrrwwwwwk.', '.kwwwwwwwwwwwwk.', '..kkkkkkkkkkkk..', '................', '................', '................', '................'],
+      { k: '#20242a', w: '#e8ece8', r: '#c02828' });
+    M('food', ['................', '................', '................', '...kkkkkkkkkk...', '..kSSSSSSSSSSk..', '..kbbbbbbbbbbk..', '..kbrrrrrrrrbk..', '..kbrwwwwwwrbk..', '..kbrwwwwwwrbk..', '..kbrrrrrrrrbk..', '..kbbbbbbbbbbk..', '..kSSSSSSSSSSk..', '...kkkkkkkkkk...', '................', '................', '................'],
+      { k: '#1a1a1a', S: '#a0a4aa', b: '#7a6a3a', r: '#a03828', w: '#e0d8b8' });
+    M('antirad', ['................', '................', '.....kkkk.......', '.....kSSk.......', '....kggggk......', '...kggyyggk.....', '...kgyKKygk.....', '...kggyyggk.....', '...kgggggggk....', '...kgggggggk....', '...kgggggggk....', '....kkkkkkk.....', '................', '................', '................', '................'],
+      { k: '#14201a', S: '#8a8a90', g: '#4ea070', y: '#e8d030', K: '#1a1a10' });
+    M('meat', ['................', '................', '................', '................', '..rrrrrrrr......', '.rRRRRRRRRr.....', 'rRRppRRRRRRr....', 'rRRRRRRRRRRRrw..', 'rRRRRRppRRRRwww.', '.rRRRRRRRRRr.w..', '..rrrrrrrrr.....', '................', '................', '................', '................', '................'],
+      { r: '#6a1e1e', R: '#a83a3a', p: '#e0a0a0', w: '#e8e0c8' });
+    M('earbone', ['................', '................', '................', '................', '..ww............', '.wWWw...........', '.wWWWw..........', '..wWWWww........', '...wWWWWww......', '.....wWWWWw.....', '......wwWWWw....', '.......wWWWw....', '.......wwwww....', '................', '................', '................'],
+      { w: '#a8a090', W: '#e8e0d0' });
+    M('glassgland', ['................', '................', '................', '.......b........', '......bBb.......', '.....bBBBb......', '....bBwBBBb.....', '...bBBwBBBBb....', '...bBBBBBBBb....', '...bBBBBBBBb....', '....bBBBBBb.....', '.....bbbbb......', '................', '................', '................', '................'],
+      { b: '#3a6a90', B: '#7ac0e8', w: '#e8f8ff' });
+    M('plate', ['................', '................', '................', '..kkkkkkkkkkkk..', '.krrrrrrrrrrrrk.', '.krRrrrrrrrrRrk.', '.krrrrrrrrrrrrk.', '.krrrrRRrrrrrrk.', '.krrrrrrrrrrrrk.', '.krRrrrrrrrrRrk.', '.krrrrrrrrrrrrk.', '..kkkkkkkkkkkk..', '................', '................', '................', '................'],
+      { k: '#2a1c12', r: '#7a4a2a', R: '#b0784a' });
+    M('mistvial', ['................', '................', '....kkkk........', '....kSSk........', '....kwwk........', '...kwwwwk.......', '..kwwWwwwk......', '..kwWWwWwk......', '..kwwWWwwk......', '..kwwwwwwk......', '...kkkkkk.......', '................', '................', '................', '................', '................'],
+      { k: '#28303a', S: '#8a8a90', w: '#a8c0d0', W: '#e8f4ff' });
+    const suit = ['................', '................', '....kkkkkkkk....', '..kkOOOOOOOOkk..', '.kOOOOOoOOOOOOk.', '.kOOOOOoOOOOOOk.', '.kOOkOOoOOkOOOk.', '.kOOkOOoOOkOOOk.', '.kOOkOOoOOkOOOk.', '..kkkOOoOOkkkk..', '....kOOoOOk.....', '....kOOoOOk.....', '....kkkkkkk.....', '................', '................', '................'];
+    M('suit', suit, { k: '#1c2014', O: '#5a6a3a', o: '#8a9a5a' });
+    const s2 = suit.slice(); s2[3] = '..kkyyOOOOyykk..'; s2[6] = '.kOOkOOoOOkOOOk.'; M('suit2', s2, { k: '#14161a', O: '#3a3f48', o: '#8a8f98', y: '#d0a020' });
+    const det = ['................', '..........k.....', '..........k.....', '..kkkkkkkkkkk...', '..kddddddddddk..', '..kdggggggggdk..', '..kdgGGgGGGgdk..', '..kdggggggggdk..', '..kddddddddddk..', '..kdrddyddbddk..', '..kddddddddddk..', '..kkkkkkkkkkkk..', '................', '................', '................', '................'];
+    M('detector', det, { k: '#14161a', d: '#5a5e52', g: '#2a4a2a', G: '#7ae07a', r: '#c04030', y: '#d0b030', b: '#3a70c0' });
+    const d2 = det.slice(); d2[1] = '......k...k.....'; d2[2] = '......k...k.....'; d2[3] = '..kkkkkkkkkkk...'; d2[6] = '..kdgGGGGGGGgdk.'.slice(0, 16); M('detector2', d2, { k: '#14161a', d: '#3a4a5a', g: '#1a3a4a', G: '#60e0e0', r: '#c04030', y: '#d0b030', b: '#3a70c0' });
+    M('scrap', ['................', '................', '................', '....k..kk..k....', '...kSk.SS.kSk...', '..kkSSSSSSSSkk..', '...kSSkkkkSSk...', '.kkSSk....kSSkk.', '.kSSSk....kSSSk.', '.kkSSk....kSSkk.', '...kSSkkkkSSk...', '..kkSSSSSSSSkk..', '...kSk.SS.kSk...', '....k..kk..k....', '................', '................'],
+      { k: '#24242a', S: '#8a8e96' });
+    M('circuit', ['................', '................', '................', '..kkkkkkkkkkkk..', '.kggggggggggggk.', '.kgcccgggttgggk.', '.kgcKcgggttgggk.', '.kgcccgtggggggk.', '.kggggggggkkkgk.', '.kgtttgggkKkkgk.', '.kggggggggkkkgk.', '..kkkkkkkkkkkk..', '................', '................', '................', '................'],
+      { k: '#12241a', g: '#2a7a4a', c: '#8a8e96', K: '#2a2a2e', t: '#d0b060' });
+    M('battery', ['................', '................', '......kkkk......', '......kyyk......', '....kkkkkkkk....', '....kbbbbbbk....', '....kbyyyybk....', '....kbbbbbbk....', '....kgggggbk....', '....kgggggbk....', '....kgggggbk....', '....kkkkkkkk....', '................', '................', '................', '................'],
+      { k: '#1a1a1a', y: '#d0b030', b: '#3a3a3e', g: '#4a9a4a' });
+    M('splint', ['................', '................', '................', '..wwwwwwwwwwww..', '..wWWWWWWWWWWw..', '..wbbwwbbwwbbw..', '..wbbwwbbwwbbw..', '..wbbwwbbwwbbw..', '..wWWWWWWWWWWw..', '..wwwwwwwwwwww..', '................', '................', '................', '................', '................', '................'],
+      { w: '#5a3a22', W: '#8a6032', b: '#e8e4d8' });
+    M('antibiotic', ['................', '................', '................', '..kkkkkkkkkk....', '.krrrrwwwwwwk...', '.krRrrwwWwwwk...', '.krrrrwwwwwwk...', '..kkkkkkkkkk....', '................', '.....kkkkkk.....', '....kwwwwwwk....', '....kwwkkwwk....', '....kwwwwwwk....', '.....kkkkkk.....', '................', '................'],
+      { k: '#20242a', r: '#c03030', R: '#e07070', w: '#eceae4' });
+    M('lure', ['................', '................', '................', '......kk........', '.....k..k.......', '.rrrrrrrrrr.k...', 'rRRRRRRRRRRr.k..', 'rRpRRRRpRRRr.k..', 'rRRRRRRRRRRr..k.', '.rrrrrrrrrr.k.k.', '................', '................', '................', '................', '................', '................'],
+      { k: '#6a5a3a', r: '#7a2a2a', R: '#c05050', p: '#f0c0c0' });
+    M('sensor', ['................', '........k.......', '........k.......', '........k.......', '....kkkkkkkk....', '..kkddddddddkk..', '.kddddbbbbdddk..', '.kddddbBBbdddk..', '.kdddddddddddk..', '..kkkkkkkkkkkk..', '................', '................', '................', '................', '................', '................'],
+      { k: '#14161a', d: '#4a5058', b: '#2a5ac0', B: '#80b0ff' });
+    M('repairkit', ['................', '....kk..kk......', '...kSSkkSSk.....', '...kSSSSSSk.....', '...kSk..kSk.....', '....kSSSSk......', '.....kSSk.......', '.....kSSk.......', '.....kSSk.......', '.....kSSk.......', '....kSSSSk......', '....kkkkkk......', '................', '................', '................', '................'],
+      { k: '#20242a', S: '#a0a6b0' });
+    M('suitpatch', ['................', '................', '................', '..kkkkkkkkkkkk..', '.kfffffffffffk..', '.kftfttfttfttk..', '.kf..........fk.', '.kt....oo....tk.', '.kf...oooo...fk.', '.kt....oo....tk.', '.kf..........fk.', '.kftfttfttfttk..', '..kkkkkkkkkkkk..', '................', '................', '................'],
+      { k: '#1c2014', f: '#5a6a3a', t: '#e8e4d0', o: '#8a9a5a' });
+    M('reagent', ['................', '................', '......kkkk......', '......kSSk......', '......kSSk......', '.....kSppSk.....', '....kSppppSk....', '...kSpppPpppSk..', '..kSppPppppppSk.', '..kSpppppppppSk.', '..kkkkkkkkkkkkk.', '................', '................', '................', '................', '................'],
+      { k: '#20242a', S: '#b8d0d8', p: '#a050d0', P: '#e0a0ff' });
+    M('shock', ['................', '................', '......kk........', '.....kKKk.......', '....kkggkk......', '...kggggggk.....', '..kgggbbgggk....', '..kggbyybggk....', '..kggggbyggk....', '..kgggbbgggk....', '..kgggggggk.....', '...kkggggkk.....', '.....kkkk.......', '................', '................', '................'],
+      { k: '#181c22', K: '#a0a6b0', g: '#3a4a6a', b: '#6a90e0', y: '#f0e060' });
+    M('diary', ['................', '................', '................', '..kkkkkkkkkkk...', '.kbbbbbbbbbbbk..', '.kbBBBBBBBBBbk..', '.kbBwwwwwwwBbk..', '.kbBwwwwwwwBbk..', '.kbBBBBBBBBBbk..', '.kbbbbbbbbbbbk..', '.kbbbbbsbbbbbk..', '..kkkkkkkkkkk...', '................', '................', '................', '................'],
+      { k: '#1c1208', b: '#6a3e22', B: '#8a5a34', w: '#d8d0b0', s: '#c0a040' });
+    M('dogtag', ['................', '................', '....kkkkkk......', '...k......k.....', '...k......k.....', '....k....k......', '...kkkkkkkk.....', '..kSSSSSSSSk....', '..kSkkkkkkSk....', '..kSSSSSSSSk....', '..kSkkkkkSSk....', '..kSSSSSSSSk....', '...kkkkkkkk.....', '................', '................', '................'],
+      { k: '#28282c', S: '#b8bec8' });
+    const gem = ['................', '................', '.......c........', '......cCc.......', '.....cCCCc......', '....cCwCCCc.....', '...cCCwCCCCc....', '..cCCCCCCCCCc...', '...cCCCCCCCc....', '....cCCCCCc.....', '.....cCCCc......', '......cCc.......', '.......c........', '................', '................', '................'];
+    M('art', gem, { c: '#a06a10', C: '#f0c040', w: '#fff8d0' });
+    const gu = gem.slice(); gu[7] = '..cCCCCKCCCCc...'.slice(0, 16); M('art_u', gu, { c: '#4a4e54', C: '#8a9098', w: '#c8ccd0', K: '#20242a' });
+    // подменяем иконки в конфиге
+    for (const k in CFG.items) if (this.cache[k]) CFG.items[k].icon = this.html(k);
+  },
+};
+Icons.init();

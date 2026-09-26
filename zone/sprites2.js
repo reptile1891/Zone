@@ -1,0 +1,44 @@
+'use strict';
+// Пиксель-арт реквизита Зоны: лес, город, свалка, болото, завод, карьер, мёртвое поле.
+Spr.init2 = function () {
+  const M = (n, r, p) => this.make(n, r, p);
+  M('pine', ['.....g.....', '....ggg....', '....gGg....', '...ggGgg...', '...gggGg...', '..gGgggGg..', '..ggggggg..', '.gggGgggGg.', '.ggggggggg.', 'gggGggggGgg', '....ttt....', '....ttt....'], { g: '#1a2c1e', G: '#284030', t: '#3a2a1a' });
+  M('deadtree', ['.d.....d.', '.d..d..d.', '..d.d.d..', '..dddd...', '...dd..d.', 'd..dd.d..', '.d.dd.d..', '..ddd.d..', '...dd....', '...dd....', '...dd....', '..dddd...'], { d: '#4a4030' });
+  M('bush', ['..gggg..', '.gGgggg.', 'gggGgggg', '.gggggg.'], { g: '#2a3f22', G: '#3c5a2c' });
+  M('tuft', ['.g..g.', '.g.gg.', 'gg.gg.', 'gggggg'], { g: '#3d5a2a' });
+  M('tuft_d', ['.y..y.', '.y.yy.', 'yy.yy.', 'yyyyyy'], { y: '#6a5a30' });
+  M('reed', ['.b..b.', '.g..g.', '.g.gg.', 'gg.gg.', 'gggggg'], { b: '#5a3a20', g: '#4a5a30' });
+  M('boulder', ['....rrrrrr....', '..rrRRRRrrrr..', '.rrRRrrrrrrrr.', 'rrRRrrrrrrrkrr', 'rrrrrrrrrrrkkr', 'rrrrrrrrrrkkkr', '.rrrrrrrkkkkr.', '..kkkkkkkkkk..'], { r: '#5c5c54', R: '#80806f', k: '#34342e' });
+  const carRows = ['..rrrrrr....', '.rRRRRRRr...', 'rrrrrrrrrrrr', 'rkkrrrrkkrrr', 'rkkrrrrkkrrr', '.kk......kk.'];
+  M('car_b', carRows, { r: '#3a4a5a', R: '#5a7088', k: '#1a1e22' });
+  M('truck', ['.wwwwwwwwwwwwwwwwww.hhhh...', '.wwwwwwwwwwwwwwwwww.hHHhh..', '.wwwwwwwwwwwwwwwwww.hHHhhh.', '.wwwwwwwwwwwwwwwwww.hhhhhhh', '.wwwwwwwwwwwwwwwwww.hhhhhhh', 'kkkkkkkkkkkkkkkkkkkkkkkkkkk', '..kk.kk.........kk.kk.kk...'], { w: '#6a4a2a', h: '#4a4a3a', H: '#7a9098', k: '#1e1810' });
+  M('bus', ['.gggggggggggggggggggggggg.', 'gGGwwGGwwGGwwGGwwGGwwGGwwg', 'gGGwwGGwwGGwwGGwwGGwwGGwwg', 'gggggggggggggggggggggggggg', 'gggggggggggggggggggggggggg', 'kkkkkkkkkkkkkkkkkkkkkkkkkk', '..kkk.....kkk.....kkk.....'], { g: '#5a6a3a', G: '#4a5a30', w: '#20282a', k: '#1a1a14' });
+  const cont = (name, c, C) => M(name, ['cccccccccccccccccc', 'cCcCcCcCcCcCcCcCcC', 'cCcCcCcCcCcCcCcCcC', 'cCcCcCcCcCcCcCcCcC', 'cCcCcCcCcCcCcCcCcC', 'cCcCcCcCcCcCcCcCcC', 'cccccccccccccccccc'], { c, C });
+  cont('cont_r', '#7a3a2a', '#6a3020'); cont('cont_b', '#2a4a6a', '#203a58'); cont('cont_g', '#3a5a3a', '#2c4a2c');
+  M('barrel', ['.bbb.', 'bBBBb', 'bbbbb', 'bBBBb', 'bbbbb', 'bBBBb', '.bbb.'], { b: '#7a3a1a', B: '#a05a2a' });
+  M('tires', ['.kkkk...', 'kkddkk..', 'kdddkkkk', '.kkkkddk', '...kkkk.'], { k: '#222222', d: '#0e0e0e' });
+  M('pylon', ['...kk...', '..k..k..', '..kkkk..', '...kk...', '..k..k..', '.kkkkkk.', '..k..k..', '..k..k..', '.kkkkkk.', '...kk...', '...kk...', '..k..k..', '.k....k.', '.k....k.'], { k: '#484c50' });
+  M('lamp', ['.kkk', '.k..', '.k..', '.k..', '.k..', '.k..', '.k..', '.k..', 'kkk.'], { k: '#3a3a3a' });
+  M('fence', ['k..k..k..k.', 'kkkkkkkkkkk', 'k..k..k..k.', 'kkkkkkkkkkk', 'k..k..k..k.', 'k..k..k..k.'], { k: '#5a4a34' });
+  M('house', ['........rrrrrrrr........', '......rrrrrrrrrrrr......', '....rrrrrrrrrrrrrrrr....', '..rrrrrrrrrRRrrrrrrrrr..', '.rrrrrrrrrrrrrrrrrrrrrr.', 'wwwwwwwwwwwwwwwwwwwwwwww', 'wWWwwwwwwwwwwwwwwwWWwwww', 'wWWwwwwwddwwwwwwwWWwwwww', 'wwwwwwwwddwwwwwwwwwwwwww', 'wwwwwwwwddwwwwwwwwwwwwww', 'wwwwwwwwddwwwwwwwwwwwwww'], { w: '#8a8676', W: '#20242a', d: '#3a2a1a', r: '#5a3a30', R: '#6a4838' });
+  M('ruin', ['....r.r.....rr.......', '..rrr...rrrrrr.rr....', '.rr..rrr..rr.rrrrr...', 'wwwwww.wwwwwwwwwwww..', 'wWWwwwwwwwwwwWWwwww..', 'wWWwwwwwwwwwwWWwwww..', 'wwwwwddwwwwwwwwwwww..', 'wwwwwddwwwwwwwwwwww..', 'w.wwwddwwwwwww.wwww..'], { w: '#77736a', W: '#181c20', d: '#221810', r: '#4a3028' });
+  M('wall', ['wwwwwwww', 'wWwwwwWw', 'wwwwwwww', '.ww.wwww', '..w..ww.'], { w: '#77736a', W: '#5a564e' });
+  M('tank', ['...tttttttttt...', '.tttTTTTTTTTttt.', 'tttTTttttttttttt', 'ttTTtttttttttttt', 'ttTtttttttttkttt', 'ttttttttttttkktt', '.tttttttttttkkt.', '..kkkkkkkkkkkk..'], { t: '#5a6068', T: '#8a9098', k: '#30343a' });
+  M('pipe', ['pppppppppppppppp', 'pPPPPPPPPPPPPPPp', 'pppppppppppppppp', '.k....k....k....'], { p: '#6a5a44', P: '#8a7a5a', k: '#333' });
+  M('billboard', ['bbbbbbbbbbbbbb', 'bBBBBBBBBBBBBb', 'bBrrrBBBBBBBBb', 'bBBBBBBBBBBBBb', 'bbbbbbbbbbbbbb', '.....pp.......', '.....pp.......', '.....pp.......'], { b: '#3a3a34', B: '#5a5a4a', r: '#8a3a2a', p: '#3a2a1a' });
+  M('well', ['.rrrrrr.', 'rRRRRRRr', 'rRkkkkRr', 'rRkkkkRr', 'rRRRRRRr', '.rrrrrr.'], { r: '#5a5a54', R: '#77776c', k: '#101418' });
+  M('hay', ['yyyyyyyy', 'yYyYyYyy', 'yyyyyyyy', 'yYyYyYyy', 'yyyyyyyy'], { y: '#8a7a3a', Y: '#a8964a' });
+  M('grave', ['.rrr.', 'rRRRr', 'rRRRr', 'rRRRr', 'rRRRr', 'rrrrr', '.ggg.'], { r: '#4a4a44', R: '#66665c', g: '#2a3a20' });
+  M('bones', ['.w.......w', 'wwww.w.www', '.w.wwwww..', 'wwww.w.ww.', '.w.......w'], { w: '#a09a88' });
+  M('tower', ['kkkkkkkkkk', 'kbbbbbbbbk', 'kbbbbbbbbk', 'kkkkkkkkkk', '.k......k.', '.kk....kk.', '..k....k..', '..kk..kk..', '...k..k...', '...kkkk...', '...k..k...', '..kk..kk..', '..k....k..', '.kk....kk.', '.k......k.'], { k: '#4a4030', b: '#2a2418' });
+  M('rail', ['tttttttttttttttt', 'rrrrrrrrrrrrrrrr', '.t..t..t..t..t..'], { t: '#3a2a1a', r: '#6a6a66' });
+  M('crater', ['....dddddd....', '..dddDDDDddd..', '.ddDDDDDDDdd.', '..dddDDDDddd..', '....dddddd....'], { d: '#24201a', D: '#14120e' });
+  M('fire_l', ['..y..', '.yyy.', 'yyoyy', 'ooooo', '.kkk.'], { y: '#ffd870', o: '#e08a30', k: '#3a2010' });
+  const human = ['..gggg..', '.gggggg.', '.gffffg.', '..ffff..', '.bbbbbb.', 'bbbbbbbb', 'bb.bb.bb', '.bbbbbb.', '.dd..dd.', '.dd..dd.', '.kk..kk.', '.kk..kk.'];
+  M('st_loner', human, { g: '#6a7a4a', f: '#d0a878', b: '#4a5a3a', d: '#3a3a30', k: '#22201a' });
+  M('st_bandit', human, { g: '#3a2a2a', f: '#c09868', b: '#7a2a2a', d: '#2a2a2e', k: '#161410' });
+  M('st_patrol', human, { g: '#4a5060', f: '#d0a878', b: '#5a6070', d: '#2e3238', k: '#1a1c20' });
+  M('lying', ['.........', '.ff.bbbbb.', 'fff.bbbbbdd', '.ff.bbbbb.', '.........'], { f: '#d0a878', b: '#7a7048', d: '#3a3a30' });
+  // мутные ландшафтные пятна по биомам (мягкие градиенты)
+  this.patch = BIOME_KEYS.map(k => { const c = document.createElement('canvas'); c.width = c.height = 256; const p = c.getContext('2d'), gr = p.createRadialGradient(128, 128, 0, 128, 128, 128); gr.addColorStop(0, CFG.biomes[k].patch); gr.addColorStop(1, 'rgba(0,0,0,0)'); p.fillStyle = gr; p.fillRect(0, 0, 256, 256); return c; });
+};

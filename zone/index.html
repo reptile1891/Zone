@@ -1,0 +1,106 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<title>Обочина — прототип</title>
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<style>
+:root{--bg:#0b0d0a;--fg:#c9c2a8;--dim:#7d7864;--acc:#b5742a;--red:#b04040;--grn:#6f9a55;--blu:#5f8fc0;--pan:rgba(16,18,14,.94)}
+*{box-sizing:border-box}
+html,body{margin:0;height:100%;background:var(--bg);color:var(--fg);font:14px/1.35 Consolas,"Courier New",monospace;overflow:hidden;user-select:none}
+canvas#cv{position:fixed;inset:0;display:block;cursor:crosshair}
+#hud{position:fixed;inset:0;pointer-events:none}
+#bars{position:absolute;left:12px;top:12px;width:clamp(150px,18vw,230px)}
+.bar{position:relative;height:16px;margin-bottom:4px;background:rgba(0,0,0,.55);border:1px solid #3a3a30}
+.bar i{position:absolute;left:0;top:0;bottom:0;width:50%}
+.bar span{position:absolute;left:5px;top:0;font-size:11px;line-height:14px;text-shadow:0 0 3px #000}
+#top{position:absolute;right:12px;top:12px;text-align:right;text-shadow:0 0 4px #000;font-size:15px}
+#top .warn{color:var(--red);font-weight:bold;animation:bl 1s infinite}
+@keyframes bl{50%{opacity:.35}}
+#quick{position:absolute;left:50%;bottom:14px;transform:translateX(-50%);display:flex;gap:6px}
+.qs{width:clamp(48px,6vw,64px);height:clamp(48px,6vw,64px);background:rgba(0,0,0,.6);border:2px solid #3a3a30;position:relative;display:flex;align-items:center;justify-content:center;font-size:26px;pointer-events:auto;cursor:pointer}
+.ico{width:28px;height:28px;image-rendering:pixelated;display:block}
+.qs .ico{width:42px;height:42px}
+.slot .ico{width:44px;height:44px}
+.qs.on{border-color:var(--acc);box-shadow:0 0 8px var(--acc)}
+.qs b{position:absolute;right:3px;bottom:1px;font-size:12px}
+.qs u{position:absolute;left:3px;top:0;font-size:10px;color:var(--dim);text-decoration:none}
+#log{position:absolute;left:12px;bottom:14px;width:min(420px,40vw);font-size:13px;text-shadow:0 0 4px #000}
+#log div{margin-top:2px;animation:fd 9s forwards}
+@keyframes fd{0%,80%{opacity:1}100%{opacity:0}}
+#prompt{position:absolute;left:50%;top:62%;transform:translateX(-50%);color:#f0d9a0;text-shadow:0 0 5px #000;font-size:15px}
+#menubtn{position:absolute;right:12px;bottom:14px;pointer-events:auto;cursor:pointer;padding:6px 12px;background:rgba(0,0,0,.55);border:1px solid #4a4634;color:var(--dim)}
+#menubtn:hover{color:var(--fg);border-color:var(--acc)}
+#tip{position:absolute;max-width:300px;padding:6px 9px;background:var(--pan);border:1px solid var(--acc);display:none;font-size:13px}
+#panel{position:fixed;left:50%;top:50%;transform:translate(-50%,-50%);width:min(880px,96vw);max-height:90vh;overflow:auto;background:var(--pan);border:1px solid #4a4634;padding:14px 16px;display:none;user-select:none}
+#panel h2{margin:0 0 8px;font-size:17px;color:var(--acc);font-weight:normal;letter-spacing:.05em}
+#panel h3{margin:12px 0 4px;font-size:13px;color:var(--dim);font-weight:normal;text-transform:uppercase}
+.x{position:absolute;right:10px;top:8px;cursor:pointer;color:var(--dim)}
+.cols{display:flex;gap:18px;flex-wrap:wrap}.cols>div{flex:1;min-width:250px}
+.row{display:flex;align-items:center;gap:8px;padding:4px 6px;border-bottom:1px solid #26251d}
+.row:hover{background:#1c1b14}
+.row .ic{width:30px;height:30px;display:flex;align-items:center;justify-content:center;font-size:20px;background:#0e0f0b;border:1px solid #33321f}
+.row .nm{flex:1}.row .sub{color:var(--dim);font-size:12px}
+.btn{cursor:pointer;padding:3px 9px;border:1px solid #6a5a34;background:#231f14;color:var(--fg);font:inherit;pointer-events:auto}
+.btn:hover{background:#3a2f16;border-color:var(--acc)}.btn.dis{opacity:.35;pointer-events:none}
+.slot{display:inline-flex;width:64px;height:64px;border:1px dashed #5a5030;align-items:center;justify-content:center;font-size:30px;margin-right:8px;cursor:pointer;vertical-align:middle}
+.stat{color:var(--dim)}.stat b{color:var(--fg);font-weight:normal}
+.note{margin:3px 0;padding-left:8px;border-left:2px solid #4a4634;color:#b8b298;font-size:13px}
+#mapwrap{position:fixed;inset:0;background:rgba(0,0,0,.86);display:none;align-items:center;justify-content:center}
+#splash,#death{position:fixed;inset:0;background:rgba(6,7,5,.93);display:flex;align-items:center;justify-content:center;flex-direction:column;text-align:center;padding:20px}
+#death{display:none;background:rgba(40,0,0,.85);z-index:5}
+#splash h1{font-size:clamp(28px,5vw,52px);letter-spacing:.2em;color:var(--acc);margin:0 0 4px;font-weight:normal}
+#splash p{max-width:640px;color:var(--dim)}
+#splash .keys{color:var(--fg);text-align:left;columns:2;column-gap:32px;font-size:13px;margin:12px 0}
+#splash .btn{font-size:17px;padding:8px 22px;margin:6px}
+</style>
+</head>
+<body>
+<canvas id="cv"></canvas>
+<div id="hud">
+  <div id="bars">
+    <div class="bar"><i id="b_hp" style="background:#a33"></i><span>Здоровье</span></div>
+    <div class="bar"><i id="b_st" style="background:#6a8a3a"></i><span>Силы</span></div>
+    <div class="bar"><i id="b_rad" style="background:#b8b030"></i><span>Радиация</span></div>
+    <div class="bar"><i id="b_food" style="background:#9a6a30"></i><span>Сытость</span></div>
+    <div class="bar"><i id="b_psy" style="background:#7050a0"></i><span>Напряжение</span></div>
+    <div id="state" class="stat"></div>
+  </div>
+  <div id="top"></div>
+  <div id="prompt"></div>
+  <div id="log"></div>
+  <div id="quick"></div>
+  <div id="tip"></div>
+  <div id="menubtn">☰ Меню (Esc)</div>
+</div>
+<div id="panel"></div>
+<div id="mapwrap"><canvas id="mapcv"></canvas></div>
+<div id="death"><h1 style="color:#c55">ВЫ ПОГИБЛИ</h1><p id="deathtxt"></p></div>
+<div id="splash">
+  <h1>ОБОЧИНА</h1>
+  <p>Зона не злая. Зона просто устроена не по-человечьи. Ты — сталкер: выйди, найди, вернись, продай. Не геройствуй.</p>
+  <div class="keys">
+    <div>WASD / стрелки — движение</div><div>Shift — бег · Ctrl / C — красться</div>
+    <div>Мышь — направление</div><div>ЛКМ — применить выбранное (пистолет / болт / …)</div>
+    <div>ПКМ (держать) — осмотреться у курсора</div><div>E / F — взаимодействие</div>
+    <div>1–5 / Q / колесо — быстрый выбор</div><div>Tab / I — инвентарь, навыки</div>
+    <div>M — карта</div><div>Esc — закрыть окно</div>
+  </div>
+  <div><button class="btn" id="bCont">Продолжить</button><button class="btn" id="bNew">Новая игра</button></div>
+  <p style="font-size:12px">Совет: бросай болты перед собой. Слушай Зону. Возвращайся до выброса.</p>
+</div>
+<script src="config.js"></script>
+<script src="icons.js"></script>
+<script src="core.js"></script>
+<script src="sprites.js"></script>
+<script src="sprites2.js"></script>
+<script src="guns.js"></script>
+<script src="world.js"></script>
+<script src="mutants.js"></script>
+<script src="stalkers.js"></script>
+<script src="main.js"></script>
+<script src="meta.js"></script>
+<script src="camp.js"></script>
+<script src="rooms.js"></script>
+</body>
+</html>
