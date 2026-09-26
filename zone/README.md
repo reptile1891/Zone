@@ -93,6 +93,7 @@
 
 ## Тесты
 
+Из корня проекта: `npm test` — `tests/zone.test.js` грузит скрипты в песочницу (`tests/zone-load.js`) и проверяет целостность конфига, детерминизм мира, поведение Пружины и Магнитной ямы, лаборатории и оружие; `tests/zone-gar.test.js` — Гарь (углеглот, колодец, тракт, огнемёт, ожог, задание); `tests/zone-dungeon.test.js` и `tests/zone-dungeon-enemies.test.js` — подземелья и их враги; `tests/zone-talk-tips.test.js` — подсказки и разговоры; `tests/zone-lake.test.js` — Озёрный край и Топляк; `tests/zone-story.test.js` — цепочка «Нижний ярус»; `tests/zone-dungeon-sim.test.js` — кривая сложности подземелий по бот-прогонам; `tests/zone-hover.test.js` — подсказки над миром; `tests/zone-hints.test.js` — советы по ходу игры; `tests/zone-weapons.test.js` — оружие со случайными характеристиками; `tests/zone-arms.test.js` — самострел и фонарь. Отчёт баланса: `npm run balance:zone`. Игровая логика покрыта `tests/zone-logic.test.js`; отрисовка, ввод и звук — нет.
 
 ## Известное
 

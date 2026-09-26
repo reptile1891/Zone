@@ -4,7 +4,7 @@
   "private": true,
   "description": "Браузерная игра «Обочина» на чистом JS",
   "scripts": {
-    "start": "node serve.js . 8124",
+    "start": "node serve.js zone 8124",
     "balance:zone": "node tests/zone-balance-report.js",
     "test": "node --test \"tests/*.test.js\"",
     "sim:dungeon": "node tests/zone-dungeon-sim-report.js"
