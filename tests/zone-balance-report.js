@@ -37,6 +37,16 @@ for (const [k, a] of Object.entries(CFG.anoms)) {
   console.log(pad(a.name, 18), "риск", pad(f(risk, 0), 5), "арт", pad(f(avg, 0), 5), "награда/риск", f(avg / Math.max(1, risk), 2), "сектора", a.w.join("/"));
 }
 
+line("Оружие со случайными характеристиками: 20 000 бросков (сила 1.00 = обычное оружие)");
+{
+  const z = b.z, r = JSON.parse(JSON.stringify(z.run(`(() => { const rnd = U.rng(7), by = [[], [], [], []], vals = [];
+    for (let i = 0; i < 20000; i++) { const base = Object.keys(CFG.weapons)[i % Object.keys(CFG.weapons).length], d = Wpn.roll(base, rnd); by[d.rar].push(Wpn.power(d)); if (d.rar === 3 && vals.length < 3) vals.push(d.name + " — " + Wpn.diff(d).map(x => x.text).join(", ")); }
+    const st = a => { a.sort((x, y) => x - y); return { share: a.length / 200, min: a[0], med: a[a.length >> 1], max: a[a.length - 1] }; }; return { tiers: by.map(st), sample: vals }; })()`)));
+  const names = ["Обычное", "Хорошее", "Редкое", "Уникальное"];
+  r.tiers.forEach((t, i) => console.log(pad(names[i], 11), "доля", pad(f(t.share, 1) + "%", 7), "сила мин", f(t.min, 2), "медиана", f(t.med, 2), "макс", f(t.max, 2)));
+  console.log("примеры уникальных:", r.sample.join(" | "));
+}
+
 line("Подземелье: враги (секунд до смерти под одним; выстрелов пистолета; цена патронов; ожидаемый трофей; опыт; вес по секторам)");
 for (const [k, e] of Object.entries(CFG.dungeon.enemies)) { const i = b.dungeonEnemy(e); console.log(pad(e.name, 10), "жив", pad(f(i.timeToDie), 5), "выстрелов", pad(i.shots, 3), "патроны", pad(f(i.ammo, 0), 4), "трофей", pad(f(i.drop, 0), 4), "опыт", pad(e.xp, 3), "опыт/HP", pad(f(e.xp / e.hp, 2), 5), "вес", e.w.join("/")); }
 

@@ -117,18 +117,21 @@ const Dungeon = {
     L.push(['ammo', 3 + Math.floor(R() * 6)]);
     if (R() < 0.45) L.push(['medkit', 1]); if (R() < 0.3) L.push(['antirad', 1]); if (R() < 0.2) L.push(['antibiotic', 1]); if (R() < 0.35) L.push(['canister', 1]);
     L.push(['money', Math.round((20 + R() * 40) * (0.8 + d * 0.2))]);
+    if (R() < 0.06 + 0.02 * d) L.push(['gun', Wpn.loot(R, d)]);
     return L;
   },
   vaultLoot(b) {
     const R = this.rng(b, 99), d = W.danger(b.x, b.y), arts = Meta.wildArts();
     const L = [['money', Math.round((150 + R() * 150) * (0.8 + d * 0.2))], ['medkit', 1 + Math.floor(R() * 2)], ['ammo', 8 + Math.floor(R() * 8)], ['circuit', 2 + Math.floor(R() * 3)], ['art', arts[Math.floor(R() * arts.length)]]];
     if (R() < 0.6) L.push(['reagent', 1]);
+    if (R() < 0.45 + 0.1 * d) L.push(['gun', Wpn.loot(R, d, { min: 1 })]);   // сейф чаще всего даёт оружие не хуже Хорошего
     return L;
   },
   give(loot) {
     const got = [];
     for (const [id, n] of loot) {
       if (id === 'money') { P.money += n; got.push(n + ' ₽'); }
+      else if (id === 'gun') { Wpn.found(n); got.push(n.name); }
       else if (id === 'art') { invAdd('art', 1, n); got.push(P.known[n] ? CFG.arts[n].name : 'неопознанный артефакт'); }
       else { invAdd(id, n); got.push(CFG.items[id].name + ' ×' + n); }
     }

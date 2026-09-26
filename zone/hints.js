@@ -18,7 +18,7 @@ const Hint = {
     { id: 'stress', when: () => P.stress > 70 && 'Напряжение высокое: мерещится всякое. Помогает костёр, койка, привал (E у палатки). Ночь и туман его копят.' },
     // ---- снаряжение ----
     { id: 'overweight', when: () => weight() > carryCap() && 'Перегруз: медленнее и шумнее. Лишнее — в ящик у Лёхи в лагере (или ↓ в рюкзаке). Навык «Грузоподъёмность» помогает.' },
-    { id: 'noammo', when: () => G.scene !== 'camp' && G.scene !== 'interior' && invCount(CFG.weapons[P.weapon].ammo || 'ammo') < 1 && !(CFG.weapons[P.weapon].perAmmo && P.fuel > 0) && (CFG.weapons[P.weapon].ammo === 'bolt' ? 'Болты кончились. Они же нужны, чтобы проверять аномалии — держи запас.' : CFG.weapons[P.weapon].ammo === 'canister' ? 'Топливо кончилось: канистры у оружейника или на верстаке (ур. 3).' : 'Патронов нет. Патроны — у Ржавого в мастерской, ещё их находят в остовах и на трупах.') },
+    { id: 'noammo', when: () => G.scene !== 'camp' && G.scene !== 'interior' && invCount(Wpn.of(P.weapon).ammo || 'ammo') < 1 && !(Wpn.of(P.weapon).perAmmo && P.fuel > 0) && (Wpn.of(P.weapon).ammo === 'bolt' ? 'Болты кончились. Они же нужны, чтобы проверять аномалии — держи запас.' : Wpn.of(P.weapon).ammo === 'canister' ? 'Топливо кончилось: канистры у оружейника или на верстаке (ур. 3).' : 'Патронов нет. Патроны — у Ржавого в мастерской, ещё их находят в остовах и на трупах.') },
     { id: 'gunwear', when: () => P.cond[P.weapon] < 30 && 'Оружие изношено: возможны осечки и разброс. Ремонт — у Ржавого или ремкомплектом (слот из рюкзака).' },
     { id: 'unknownart', when: () => P.inv.some(s => s.art && !P.known[s.art]) && 'Неопознанный артефакт: отнеси Учёному (Лис) — опознание 20 ₽. Пока не опознан, в контейнер не положишь и продаёшь дёшево.' },
     { id: 'equipart', when: () => G.scene === 'camp' && P.equip.some(a => !a) && P.inv.some(s => s.art && P.known[s.art]) && 'Опознанный артефакт лучше носить: Tab → «В контейнер». Слоты можно докупить у Кума.' },
@@ -32,6 +32,7 @@ const Hint = {
     { id: 'vault', when: () => G.scene === 'dungeon' && Dungeon.cur && Dungeon.lvl && Math.hypot(Dungeon.center(Dungeon.lvl.vault.tx, Dungeon.lvl.vault.ty).x - P.x, Dungeon.center(Dungeon.lvl.vault.tx, Dungeon.lvl.vault.ty).y - P.y) < 150 && !Dungeon.cur.opened.includes(99) && 'Сейф рядом: E. Шум привлечёт остальных — сначала зачисть окрестности.' },
     { id: 'gate', when: () => G.scene === 'zone' && W.danger(P.x, P.y) >= 4 && !P.pass && P.rep < CFG.gate.rep && 'Сектор 4 закрыт: нужна репутация ' + CFG.gate.rep + ' или пропуск (Сидор, 250 ₽, репутация 5+). Иначе оцепление.' },
     // ---- лагерь ----
+    { id: 'gunshop', when: () => G.scene === 'camp' && (P.gunOffers || []).some(o => o.def.rar >= 2 && P.money >= o.price) && 'На прилавке у Ржавого сегодня редкое оружие, и тебе хватает денег. Характеристики у каждой пушки свои — сравни в подсказке при наведении.' },
     { id: 'questdone', repeat: 90, when: () => (G.scene === 'camp' || G.scene === 'zone') && inCamp() && P.quests.some(q => Meta.done(q)) && 'Задание выполнено — сдай Сидору в баре (награда и репутация).' },
     { id: 'sell', when: () => G.scene === 'camp' && P.inv.some(s => !s.art && (CFG.items[s.id].junk || CFG.items[s.id].part)) && P.money < 150 && 'Хлам и трофеи продай Бороде (скупка), артефакты — ему или Лису. Деньги нужны на улучшения зданий.' },
   ],

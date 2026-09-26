@@ -13,7 +13,7 @@ const fresh = () => z.run(`(() => {
   W = new World(1234); resetPlayer(); P.stash = []; P.bld = null; Mutants.spawn(); Stalkers.spawn(); Meta.reset(); Camp.enter(true); Dungeon.levels = {};
   G.events = []; G.dead = false; G.started = true; G.ui = null; G.scene = "zone"; G.night = 0; G.hour = 12; G.fog = 0; G.rain = 0; G.emi = { s: "calm", left: 0, next: 99999 }; G.t = 1000;
   P.x = W.C.x + 50; P.y = W.C.y; P.hp = 100; P.rad = 0; P.food = 80; P.stress = 0; P.bleed = 0; P.fracture = false; P.infect = 0; P.burn = 0; P.grab = 0; P.sp = 0; P.money = 500; P.inv = []; invAdd("ammo", 12); invAdd("bolt", 15);
-  P.quests = []; P.offers = []; P.hints = {}; P.hintsOff = false; P.pass = false; P.rep = 0; P.weapon = "pistol"; P.cond.pistol = 100; P.known = {}; P.equip = [null, null];
+  P.quests = []; P.offers = []; P.gunOffers = []; P.hints = {}; P.hintsOff = false; P.pass = false; P.rep = 0; P.weapon = "pistol"; P.cond.pistol = 100; P.known = {}; P.equip = [null, null];
   Hint.t = 0; Hint.quiet = 0; Hint.last = {}; Hint.out = []; if (!Hint._log) { Hint._log = log; log = (t, c) => { Hint.out.push(String(t)); }; }
   localStorage.removeItem("zone_save_v2");
 })()`);
@@ -142,4 +142,10 @@ test("полоски состояния: наведение объясняет �
   })()`);
   assert.match(plain(o.b_hp), /Здоровье 42 \/ 100/); assert.match(plain(o.b_hp), /кровотечение/); assert.match(plain(o.b_st), /Силы/); assert.match(plain(o.b_rad), /Радиация 12 \/ 100/); assert.match(plain(o.b_rad), /Антирад снимает 35/);
   assert.match(plain(o.b_food), /Сытость 77/); assert.match(plain(o.b_psy), /Напряжение 9/); assert.equal(o.other, null); assert.equal(o.unknown, null);
+});
+
+test("совет про прилавок: только в лагере, если есть редкое оружие и хватает денег", () => {
+  fresh();
+  const mk = (rar, price, money, scene) => run(`(() => { P.gunOffers = [{ def: Wpn.roll("revolver", U.rng(3), { rar: ${rar} }), price: ${price} }]; P.money = ${money}; G.scene = "${scene}"; P.hints = {}; Hint.quiet = 0; Hint.out = []; for (let i = 0; i < 3; i++) { G.t += 0.6; Hint.tick(0.6); } return Hint.out.filter(t => t.startsWith("\u{1F4A1}")); })()`);
+  assert.match(mk(2, 500, 800, "camp")[0], /редкое оружие/); assert.deepEqual(mk(1, 500, 800, "camp"), [], "Хорошее — не повод"); assert.deepEqual(mk(2, 500, 100, "camp"), [], "денег не хватает"); assert.deepEqual(mk(2, 500, 800, "zone"), [], "не в лагере");
 });

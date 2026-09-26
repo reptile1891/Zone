@@ -262,6 +262,7 @@ class World {
     if (R() < 0.12 * m) L.push(['medkit', 1]);
     if (R() < 0.08) L.push(['antirad', 1]);
     if (R() < 0.3 * m) L.push(['money', Math.round((8 + R() * 22) * (0.7 + d * 0.3) * m)]);
+    if (d >= 2 && R() < 0.035 * m) L.push(['gun', Wpn.loot(R, d)]);
     return L;
   }
   genStashes() {

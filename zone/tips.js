@@ -46,13 +46,19 @@ const Tip = {
   },
   // Слот рюкзака (предмет или артефакт)
   slot(s, vendor) { if (!s) return null; return s.art ? this.art(s.art, vendor) : this.item(s.id, null, vendor, s.n); },
-  weapon(k) {
-    const w = CFG.weapons[k]; if (!w) return null;
-    const dps = w.dmg * w.pellets / w.cd, own = P.weapons.includes(k);
-    let h = this.head(w.name, 'оружие', '#c9c2a8') + (w.note ? '<div class="ti-d">' + w.note + '</div>' : '');
-    h += this.row('Урон:', w.dmg + (w.pellets > 1 ? ' ×' + w.pellets + ' (картечь)' : '')) + this.row('Скорострельность:', (1 / w.cd).toFixed(1) + ' выстр./с (≈ ' + dps.toFixed(0) + ' урона/с)');
-    h += this.row('Дальность:', w.range) + this.row('Шум:', w.noise) + this.row('Износ за выстрел:', w.wear + '%') + this.row('Боеприпас:', CFG.items[w.ammo || 'ammo'].name + (w.perAmmo ? ' (1 шт. = ' + w.perAmmo + ' выстрелов)' : ''));
-    if (own) h += this.row('Состояние:', Math.round(P.cond[k]) + '%', P.cond[k] < 40 ? '#e0a060' : '#8fbf7f'); else h += this.row('Цена:', w.price + ' ₽') + this.row('Мастерская:', 'уровень ' + (w.lvl || 1));
+  // Оружие: по id (своё, простое или со случайными характеристиками) или по описанию def (товар на прилавке)
+  weapon(k, defo) {
+    const d = defo || (Wpn.def(k) || (CFG.weapons[k] ? Wpn.plain(k) : null)); if (!d) return null;
+    const w = defo ? Wpn.eff(d) : Wpn.of(k), own = !defo && P.weapons.includes(k), tier = Wpn.TIERS[d.rar], dps = w.dmg * w.pellets / w.cd;
+    let h = this.head(w.name, tier.n + ' · оружие', tier.col) + (w.note ? '<div class="ti-d">' + w.note + '</div>' : '');
+    const b = CFG.weapons[d.base], cmp = (v, bv, lowGood) => { if (v === bv || !bv) return ''; const pc = Math.round((v / bv - 1) * 100); if (!pc) return ''; const good = lowGood ? pc < 0 : pc > 0; return ' <span style="color:' + (good ? '#8fbf7f' : '#e0a060') + '">(' + (pc > 0 ? '+' : '−') + Math.abs(pc) + '%)</span>'; };
+    h += this.row('Урон:', w.dmg + (w.pellets > 1 ? ' ×' + w.pellets + ' (картечь)' : '') + cmp(w.dmg, b.dmg)) + this.row('Скорострельность:', (1 / w.cd).toFixed(1) + ' выстр./с (≈ ' + dps.toFixed(0) + ' урона/с)' + cmp(1 / w.cd, 1 / b.cd));   // выше темп — лучше, поэтому сравниваем скорость, а не перезарядку
+    h += this.row('Дальность:', w.range + cmp(w.range, b.range)) + this.row('Шум:', w.noise + cmp(w.noise, b.noise, true)) + this.row('Износ за выстрел:', w.wear + '%' + cmp(w.wear, b.wear, true));
+    if (w.spread) h += this.row('Разброс:', w.spread + cmp(w.spread, b.spread, true));
+    if (w.crit) h += this.row('★ Критический удар:', Math.round(w.crit * 100) + '% (×2)', '#e8a040'); if (w.ammoSave) h += this.row('★ Экономия:', Math.round(w.ammoSave * 100) + '% выстрелов бесплатны', '#e8a040');
+    h += this.row('Боеприпас:', CFG.items[w.ammo || 'ammo'].name + (w.perAmmo ? ' (1 шт. = ' + w.perAmmo + ' выстрелов)' : ''));
+    if (own) h += this.row('Состояние:', Math.round(P.cond[k]) + '%', P.cond[k] < 40 ? '#e0a060' : '#8fbf7f') + this.row('Цена продажи:', Wpn.sellPrice(k) + ' ₽');
+    else if (defo) h += this.row('Сила:', Wpn.power(d).toFixed(2) + ' (обычное оружие ≈ 1.00)'); else h += this.row('Цена:', b.price + ' ₽') + this.row('Мастерская:', 'уровень ' + (b.lvl || 1));
     return h;
   },
   recipe(id) {
@@ -140,7 +146,8 @@ const Tip = {
       case 'unstash': return this.slot((P.stash || [])[i]);
       case 'unequip': return P.equip[i] ? this.art(P.equip[i]) : null;
       case 'buy': return this.item(arg, 'buy');
-      case 'wbuy': case 'wequip': case 'wrepair': return this.weapon(arg);
+      case 'wbuy': case 'wequip': case 'wrepair': case 'wsell': return this.weapon(arg);
+      case 'wbuyg': return (P.gunOffers || [])[i] ? this.weapon(null, P.gunOffers[i].def) : null;
       case 'craft': return this.recipe(arg);
       case 'skill': return this.skill(arg);
       case 'qacc': return this.offer(P.offers[i]);

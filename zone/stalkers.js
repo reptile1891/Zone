@@ -16,7 +16,7 @@ class Stalker {
   }
   die(src) {
     this.dead = true; const items = [];
-    if (this.kind === 'bandit' || this.kind === 'patrol') { items.push(['money', 15 + Math.floor(Math.random() * 55)], ['ammo', 3 + Math.floor(Math.random() * 6)]); if (Math.random() < 0.3) items.push(['medkit', 1]); }
+    if (this.kind === 'bandit' || this.kind === 'patrol') { items.push(['money', 15 + Math.floor(Math.random() * 55)], ['ammo', 3 + Math.floor(Math.random() * 6)]); if (Math.random() < 0.3) items.push(['medkit', 1]); if (Math.random() < (this.kind === 'patrol' ? 0.3 : 0.14)) items.push(['gun', Wpn.loot(Math.random, W.danger(this.x, this.y), { min: this.kind === 'patrol' ? 1 : 0 })]); }
     else { items.push(['money', 5 + Math.floor(Math.random() * 25)]); if (Math.random() < 0.5) items.push(['food', 1]); }
     W.corpses.push({ x: this.x, y: this.y, items, looted: false, art: null, note: null });
     Snd.at('die', this.x, this.y);

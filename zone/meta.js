@@ -8,8 +8,8 @@ const Meta = {
   DIRS: ['востоке', 'юго-востоке', 'юге', 'юго-западе', 'западе', 'северо-западе', 'севере', 'северо-востоке'],
 
   reset() { this._bountyCd = 0; this.sensors = []; this.lures = []; this.lureShots = []; this.genOffers(); this.pickEvents(); },
-  afterLoad() { P.burn = 0; if (!P.fuel) P.fuel = 0; if (!P.talked) P.talked = {}; if (!P.hints) P.hints = {}; for (const k in CFG.weapons) if (P.cond[k] == null) P.cond[k] = 100; this._bountyCd = 0; for (const q of P.quests || []) if (q.type === 'bounty' && q.prog < 1) this.spawnBounty(q); this.sensors = []; this.lures = []; this.lureShots = []; if (!P.offers || !P.offers.length) this.genOffers(); if (!G.events || !G.events.length) this.pickEvents(); },
-  saveFields() { const o = {}; for (const k of ['rep', 'karma', 'quests', 'offers', 'lore', 'weapons', 'weapon', 'cond', 'suitCond', 'insured', 'pass', 'earned', 'researched', 'kills', 'mapSold', 'stash', 'bld', 'chainDone', 'fuel', 'talked', 'deepDone', 'hints', 'hintsOff']) o[k] = P[k]; return o; },
+  afterLoad() { P.burn = 0; if (!P.fuel) P.fuel = 0; if (!P.talked) P.talked = {}; if (!P.hints) P.hints = {}; if (!P.wdefs) P.wdefs = {}; if (!P.wseq) P.wseq = 0; if ((!P.gunOffers || !P.gunOffers.length) && typeof Wpn !== 'undefined') Wpn.genShop(); for (const k in CFG.weapons) if (P.cond[k] == null) P.cond[k] = 100; this._bountyCd = 0; for (const q of P.quests || []) if (q.type === 'bounty' && q.prog < 1) this.spawnBounty(q); this.sensors = []; this.lures = []; this.lureShots = []; if (!P.offers || !P.offers.length) this.genOffers(); if (!G.events || !G.events.length) this.pickEvents(); },
+  saveFields() { const o = {}; for (const k of ['rep', 'karma', 'quests', 'offers', 'lore', 'weapons', 'weapon', 'cond', 'suitCond', 'insured', 'pass', 'earned', 'researched', 'kills', 'mapSold', 'stash', 'bld', 'chainDone', 'fuel', 'talked', 'deepDone', 'hints', 'hintsOff', 'wdefs', 'wseq', 'gunOffers']) o[k] = P[k]; return o; },
 
   // ---- костюм ----
   bestSuit() { return hasItem('suit2') ? 'suit2' : hasItem('suit') ? 'suit' : null; },
@@ -41,12 +41,35 @@ const Meta = {
   },
 
   // ---- оружие ----
-  cycleWeapon() { const i = P.weapons.indexOf(P.weapon); P.weapon = P.weapons[(i + 1) % P.weapons.length]; log('Оружие: ' + CFG.weapons[P.weapon].name); },
-  repairCost(k) { return Math.ceil((100 - P.cond[k]) * CFG.weapons[k].repair * (1 - 0.12 * P.sk.repair) * Camp.repairMul('gun')); },
+  cycleWeapon() { const i = P.weapons.indexOf(P.weapon); P.weapon = P.weapons[(i + 1) % P.weapons.length]; log('Оружие: ' + Wpn.name(P.weapon), Wpn.color(P.weapon)); },
+  repairCost(k) { return Math.ceil((100 - P.cond[k]) * Wpn.of(k).repair * (1 - 0.12 * P.sk.repair) * Camp.repairMul('gun')); },
   suitRepairCost() { return Math.ceil((100 - P.suitCond) * 0.8 * (1 - 0.12 * P.sk.repair) * Camp.repairMul('gear')); },
   slotPrice() { return [300, 700][P.equip.length - 2] || 0; },
 
   // ---- знания ----
+  // Оружейник: ваше оружие, стандартный товар, прилавок дня со случайными характеристиками
+  gunShopHTML() {
+    const st = w => 'урон ' + w.dmg + (w.pellets > 1 ? '×' + w.pellets : '') + ' · ' + (1 / w.cd).toFixed(1) + ' выстр./с · дальн. ' + w.range, col = w => Wpn.TIERS[w.rar || 0].col;
+    let h = '<div><h3>Твоё оружие</h3>';
+    for (const id of P.weapons) {
+      const w = Wpn.of(id), c = this.repairCost(id), d = Wpn.defOf(id), df = Wpn.diff(d).map(x => '<span style="color:' + (x.good ? '#8fbf7f' : '#e0a060') + '">' + x.text + '</span>').join(', ');
+      h += row(Icons.html('w_' + Wpn.base(id)), '<span style="color:' + col(w) + '">' + w.name + '</span>' + (P.weapon === id ? ' ★' : ''), 'Износ ' + Math.round(100 - P.cond[id]) + '% · ' + st(w) + (df ? '<br>' + df : ''),
+        '<div style="display:flex;flex-direction:column;gap:3px;min-width:104px">' + btn('wequip:' + id, 'В руки', P.weapon === id) + btn('wrepair:' + id, c ? 'Починить ' + c + ' ₽' : 'Исправно', !c || P.money < c) + btn('wsell:' + id, 'Продать ' + Wpn.sellPrice(id) + ' ₽', P.weapons.length <= 1) + '</div>');
+    }
+    h += '</div><div><h3>Стандартный товар</h3>'; let any = false;
+    for (const k in CFG.weapons) {
+      const w = CFG.weapons[k]; if ((w.lvl || 1) > Camp.lvl('gun') || P.weapons.includes(k)) continue; any = true;
+      h += row(Icons.html('w_' + k), w.name, st(w) + (w.note ? ' · ' + w.note : ''), btn('wbuy:' + k, w.price + ' ₽', P.money < w.price));
+    }
+    if (!any) h += '<div class="stat">Всё стандартное у тебя уже есть.</div>';
+    h += '<h3>На прилавке сегодня (обновляется после ночёвки и выброса)</h3>';
+    (P.gunOffers || []).forEach((o, i) => {
+      const w = Wpn.eff(o.def), df = Wpn.diff(o.def).map(x => '<span style="color:' + (x.good ? '#8fbf7f' : '#e0a060') + '">' + x.text + '</span>').join(', ');
+      h += row(Icons.html('w_' + o.def.base), '<span style="color:' + col(w) + '">' + w.name + '</span> <span class="stat">' + Wpn.TIERS[o.def.rar].n + '</span>', st(w) + (df ? '<br>' + df : ''), btn('wbuyg:' + i, o.price + ' ₽', P.money < o.price));
+    });
+    if (!(P.gunOffers || []).length) h += '<div class="stat">Пусто. Загляни после ночёвки.</div>';
+    return h;
+  },
   gainLore() { if (P.lore < CFG.lore.length) { log('Знание: ' + CFG.lore[P.lore++], '#c8b0e8'); } },
   itemName(s) {
     if (!s.art) return CFG.items[s.id].name;
@@ -77,7 +100,7 @@ const Meta = {
     if (!P.chainDone && !P.quests.some(q => q.type === 'chain') && P.lore >= 2 && Math.random() < 0.8) offers.unshift(this.makeOffer('chain'));
     if (P.chainDone && !P.deepDone && !P.quests.some(q => q.type === 'deep') && Math.random() < 0.8) { const d = this.makeOffer('deep'); if (d) offers.unshift(d); }
     const bl = this.rewardMul(); for (const o of offers) o.reward = Math.round(o.reward * bl);
-    P.offers = offers;
+    P.offers = offers; if (typeof Wpn !== 'undefined') Wpn.genShop();
   },
   makeOffer(t) {
     const R = Math.random;
@@ -337,13 +360,7 @@ const Meta = {
   tradeExtra(vk) {
     let h = '<div class="cols">';
     if (vk === 'gun') {
-      h += '<div><h3>Оружие и ремонт</h3>';
-      for (const k in CFG.weapons) {
-        if ((CFG.weapons[k].lvl || 1) > Camp.lvl('gun') && !P.weapons.includes(k)) continue;
-        const w = CFG.weapons[k], dmg = w.dmg + (w.pellets > 1 ? '×' + w.pellets : '');
-        if (P.weapons.includes(k)) { const c = this.repairCost(k); h += row(Icons.html('w_' + k), w.name + (P.weapon === k ? ' ★' : ''), 'Износ ' + Math.round(100 - P.cond[k]) + '% · урон ' + dmg, btn('wequip:' + k, 'В руки', P.weapon === k) + btn('wrepair:' + k, c ? 'Починить ' + c + ' ₽' : 'Исправно', !c || P.money < c)); }
-        else h += row(Icons.html('w_' + k), w.name, 'Урон ' + dmg + ', дальность ' + w.range + (w.note ? ' · ' + w.note : ''), btn('wbuy:' + k, w.price + ' ₽', P.money < w.price));
-      }
+      h += this.gunShopHTML();
       h += '</div>';
     } else if (vk === 'gear') {
       h += '<div><h3>Услуги</h3>'; const bs = this.bestSuit();
@@ -369,8 +386,8 @@ const Meta = {
     return h + '</div>';
   },
   invExtra() {
-    const w = CFG.weapons[P.weapon];
-    return `<div class="cols"><div><h3>Состояние</h3><div class="stat">Оружие: <b>${w.name}</b> (износ ${Math.round(100 - P.cond[P.weapon])}%) · сменить: клавиша 1 при выбранном слоте</div>
+    const w = Wpn.of(P.weapon);
+    return `<div class="cols"><div><h3>Состояние</h3><div class="stat">Оружие: <b style="color:${Wpn.color(P.weapon)}">${w.name}</b> (износ ${Math.round(100 - P.cond[P.weapon])}%) · сменить: клавиша 1 при выбранном слоте</div>
       <div class="stat">Костюм: <b>${this.bestSuit() ? CFG.items[this.bestSuit()].name + ' (износ ' + Math.round(100 - P.suitCond) + '%)' : 'нет'}</b></div>
       <div class="stat">Травмы: <b>${(P.fracture ? 'перелом (шина) ' : '') + (P.infect > 0 ? 'заражение (антибиотик) ' : '') + (P.burn > 0 ? 'ожог (вода или аптечка) ' : '') + (P.bleed > 0 ? 'кровотечение ' : '') || 'нет'}</b></div></div></div>`;
   },
@@ -400,6 +417,8 @@ const Meta = {
       }
       case 'wbuy': { const w = CFG.weapons[arg]; if (P.money >= w.price && !P.weapons.includes(arg)) { P.money -= w.price; P.weapons.push(arg); P.weapon = arg; Snd.pick(); log('Куплено: ' + w.name); } return true; }
       case 'wequip': P.weapon = arg; return true;
+      case 'wbuyg': Wpn.buyOffer(i); return true;
+      case 'wsell': { if (P.weapons.length > 1 && P.weapons.includes(arg)) { const p = Wpn.sellPrice(arg), nm = Wpn.name(arg); Wpn.remove(arg); P.money += p; P.earned += p; Snd.pick(); log('Продано: ' + nm + ' за ' + p + ' ₽'); } return true; }
       case 'wrepair': { const c = this.repairCost(arg); if (P.money >= c) { P.money -= c; P.cond[arg] = 100; Snd.pick(); } return true; }
       case 'srepair': { const c = this.suitRepairCost(); if (P.money >= c) { P.money -= c; P.suitCond = 100; Snd.pick(); } return true; }
       case 'upslot': { const c = this.slotPrice(); if (c && P.money >= c) { P.money -= c; P.equip.push(null); Snd.pick(); log('Контейнер добавлен.'); } return true; }
@@ -458,11 +477,12 @@ const Meta = {
 
 // ---- переопределения функций main.js ----
 function shoot() {
-  const w = CFG.weapons[P.weapon]; if (P.cd > 0) return;
+  const w = Wpn.of(P.weapon); if (P.cd > 0) return;
   if (invCount(w.ammo || 'ammo') < 1 && !(w.perAmmo && P.fuel > 0)) { Snd.tick(); P.cd = 0.3; log(w.perAmmo ? 'Топлива нет.' : 'Патронов нет.'); return; }
   const cond = P.cond[P.weapon];
   if (cond < 25 && Math.random() < 0.15 + 0.3 * (1 - cond / 25)) { P.cd = 0.6; Snd.tick(); log('Осечка! Оружие изношено — почини у оружейника.', '#e0a060'); return; }
-  if (w.perAmmo) { if (P.fuel <= 0) { invTake(w.ammo, 1); P.fuel = w.perAmmo; } P.fuel--; } else invTake(w.ammo || 'ammo', 1);
+  const saved = w.ammoSave && Math.random() < w.ammoSave;   // Уникальное «Скряга»: выстрел бесплатный
+  if (saved) { /* патрон цел */ } else if (w.perAmmo) { if (P.fuel <= 0) { invTake(w.ammo, 1); P.fuel = w.perAmmo; } P.fuel--; } else invTake(w.ammo || 'ammo', 1);
   P.cd = w.cd; P.recoil = 1; P.cond[P.weapon] = Math.max(0, cond - w.wear);
   if (w.cone) return Meta.flame(w);
   const moving = Math.hypot(keys.mx || 0, keys.my || 0) > 0;
@@ -474,7 +494,7 @@ function shoot() {
       if (Math.abs(rx * dy - ry * dx) < m.r + 3) { best = m; bt = t; }
     }
     tracers.push({ x1: P.x, y1: P.y, x2: P.x + dx * bt, y2: P.y + dy * bt, t: 0.07 });
-    if (best) { const unaware = w.ambush && (best.state === 'idle' || best.state === 'wander' || best.state === 'sleep'); best.hurt(w.dmg * (unaware ? w.ambush : 1), P); if (unaware) log('Удар из засады!', '#c8b0e8'); for (let i = 0; i < 4; i++) parts.push({ x: best.x, y: best.y, vx: (Math.random() - 0.5) * 80, vy: (Math.random() - 0.5) * 80, life: 0.5, col: '#7a1a1a' }); }
+    if (best) { const unaware = w.ambush && (best.state === 'idle' || best.state === 'wander' || best.state === 'sleep'); const crit = w.crit && Math.random() < w.crit; best.hurt(w.dmg * (unaware ? w.ambush : 1) * (crit ? 2 : 1), P); if (unaware) log('Удар из засады!', '#c8b0e8'); if (crit) log('Критический удар!', '#e8a040'); for (let i = 0; i < 4; i++) parts.push({ x: best.x, y: best.y, vx: (Math.random() - 0.5) * 80, vy: (Math.random() - 0.5) * 80, life: 0.5, col: '#7a1a1a' }); }
   }
   Snd.shot(); G.shake = 0.12; Mutants.hear(P.x, P.y, w.noise);
 }

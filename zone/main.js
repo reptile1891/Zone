@@ -10,7 +10,7 @@ const P = { x: 0, y: 0, ang: 0, r: CFG.player.r, hp: 100, stam: 100, rad: 0, foo
   sk: {}, money: 0, inv: [], equip: [null, null], notes: [], known: {}, sel: 0, cd: 0, slow: 1, sneak: false, running: false,
   dead: false, goal: false, wasOut: false, noiseT: 0, geigerRate: 0, burn: 0, fuel: 0, grab: 0, hints: {}, hintsOff: false,
   rep: 0, karma: { greed: 0, cruelty: 0, mercy: 0, study: 0 }, quests: [], offers: [], lore: 0, weapons: ['pistol'], weapon: 'pistol',
-  cond: Object.fromEntries(Object.keys(CFG.weapons).map(k => [k, 100])), suitCond: 100, insured: false, pass: false, fracture: false, infect: 0, earned: 0, researched: {}, kills: 0, mapSold: 0,
+  cond: Object.fromEntries(Object.keys(CFG.weapons).map(k => [k, 100])), wdefs: {}, wseq: 0, gunOffers: [], suitCond: 100, insured: false, pass: false, fracture: false, infect: 0, earned: 0, researched: {}, kills: 0, mapSold: 0,
   hurt(d, src) {
     if (G.dead) return;
     if (src === 'anom') d *= 1 - Meta.suitAnom();
@@ -78,7 +78,7 @@ function resetPlayer() {
   Object.assign(P, { hp: 100, stam: 100, rad: 0, food: 80, stress: 0, bleed: 0, xp: 0, lvl: 1, sp: 0, money: 50, inv: [], equip: [null, null],
     notes: [], known: {}, sel: 0, cd: 0, dead: false, goal: false, wasOut: false, burn: 0, fuel: 0, grab: 0, talked: {}, hints: {},
     rep: 0, karma: { greed: 0, cruelty: 0, mercy: 0, study: 0 }, quests: [], offers: [], lore: 0, weapons: ['pistol'], weapon: 'pistol',
-    cond: Object.fromEntries(Object.keys(CFG.weapons).map(k => [k, 100])), suitCond: 100, insured: false, pass: false, fracture: false, infect: 0, earned: 0, researched: {}, kills: 0, mapSold: 0 });
+    cond: Object.fromEntries(Object.keys(CFG.weapons).map(k => [k, 100])), wdefs: {}, wseq: 0, gunOffers: [], suitCond: 100, insured: false, pass: false, fracture: false, infect: 0, earned: 0, researched: {}, kills: 0, mapSold: 0 });
   for (const k in CFG.skills) P.sk[k] = 0;
   invAdd('ammo', 12); invAdd('bolt', 15); invAdd('medkit', 1); invAdd('food', 2);
   P.x = W.C.x; P.y = W.C.y + 40; known.fill(0); reveal(W.C.x, W.C.y, 320);
@@ -215,7 +215,7 @@ function takeArt(a) {
 }
 function lootCorpse(s) {
   s.looted = true; const got = [];
-  for (const [id, n] of s.items) { if (id === 'money') { P.money += n; got.push(n + ' ₽'); } else { invAdd(id, n); got.push(CFG.items[id].name + ' ×' + n); } }
+  for (const [id, n] of s.items) { if (id === 'money') { P.money += n; got.push(n + ' ₽'); } else if (id === 'gun') { Wpn.found(n); got.push(n.name); } else { invAdd(id, n); got.push(CFG.items[id].name + ' ×' + n); } }
   if (s.art) { invAdd('art', 1, s.art); got.push('артефакт'); }
   log('Найдено: ' + (got.join(', ') || 'пусто'), '#c8c090');
   if (s.note) { P.notes.push({ txt: s.note.txt, sold: false }); log('Записка: «' + s.note.txt + '»', '#b8b298'); if (s.note.anom) s.note.anom.known = true; addXp(5); }
@@ -223,7 +223,7 @@ function lootCorpse(s) {
 }
 function openCont(c) {
   c.opened = true; const got = [];
-  for (const [id, n] of c.loot) { if (id === 'money') { P.money += n; got.push(n + ' ₽'); } else { invAdd(id, n); got.push(CFG.items[id].name + ' ×' + n); } }
+  for (const [id, n] of c.loot) { if (id === 'money') { P.money += n; got.push(n + ' ₽'); } else if (id === 'gun') { Wpn.found(n); got.push(n.name); } else { invAdd(id, n); got.push(CFG.items[id].name + ' ×' + n); } }
   log('Найдено: ' + got.join(', '), '#c8c090'); Snd.pick(); Mutants.hear(P.x, P.y, 90);
   if (c.kind === 'lab') Meta.onLab();
 }
@@ -472,7 +472,7 @@ function draw() {
     else {
       const mv = keys.mx || keys.my, bob = mv ? (Math.floor(G.t * 10) % 2 ? -1 : 0) : 0;
       shadow(P.x, P.y + 10, 8); Spr.draw(ctx, P.sneak ? 'player_s' : 'player', P.x, P.y + bob - 2, Math.cos(P.ang) < 0);
-      if (P.sel === 0) Gun.draw(ctx, P.x, P.y + 2, P.ang, P.weapon, P.recoil || 0);
+      if (P.sel === 0) Gun.draw(ctx, P.x, P.y + 2, P.ang, Wpn.base(P.weapon), P.recoil || 0);
     }
   }
   for (const b of bolts) px(b.x, b.y, '#d0d0d0', 3);
@@ -605,7 +605,7 @@ function hud(dt) {
   const ez = e.s === 'warn' ? `<div class="warn">ВЫБРОС ЧЕРЕЗ ${Math.ceil(e.left)} с${isSheltered() ? ' · ты в укрытии' : ' · В УКРЫТИЕ!'}</div>` : e.s === 'blast' ? '<div class="warn">ВЫБРОС!</div>' : '';
   $('top').innerHTML = `<div class="stat">${WX[G.wx].name}</div>${String(hh).padStart(2, '0')}:${String(mm).padStart(2, '0')} ${G.night > 0.5 ? '☾' : '☀'} · <b style="color:#e8c060">${P.money} ₽</b>${ez}<div class="stat">${G.scene === 'dungeon' ? Dungeon.title() : G.scene === 'interior' ? Camp.roomName() : G.scene === 'camp' ? 'Лагерь «Обочина»' : inCamp() ? 'Блокпост' : CFG.biomes[W.biomeAt(P.x, P.y)].name + ' · сектор ' + W.danger(P.x, P.y)}</div>`;
   $('prompt').textContent = G.near ? '[E] ' + G.near.label : '';
-  let q = ''; heldNames.forEach((h, i) => { const ic = h === 'weapon' ? Icons.html('w_' + P.weapon) : CFG.items[h].icon, n = h === 'weapon' ? invCount(CFG.weapons[P.weapon].ammo || 'ammo') : invCount(h); q += `<div class="qs ${P.sel === i ? 'on' : ''}" data-q="${i}"><u>${i + 1}</u>${ic}<b>${n}</b></div>`; });
+  let q = ''; heldNames.forEach((h, i) => { const ic = h === 'weapon' ? Icons.html('w_' + Wpn.base(P.weapon)) : CFG.items[h].icon, n = h === 'weapon' ? invCount(Wpn.of(P.weapon).ammo || 'ammo') : invCount(h); q += `<div class="qs ${P.sel === i ? 'on' : ''}" data-q="${i}"><u>${i + 1}</u>${ic}<b>${n}</b></div>`; });
   if ($('quick').dataset.s !== q) { $('quick').innerHTML = q; $('quick').dataset.s = q; }
   // осмотр (ПКМ)
   const tip = $('tip');
