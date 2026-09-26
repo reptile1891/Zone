@@ -66,6 +66,15 @@ test("рецепты: выход стоит от 0.5× до 7× материал
   }
 });
 
+test("подземелье: враги — не убивают быстрее 3 с, опыт на HP в границах, вес по секторам растёт для сильных видов", () => {
+  for (const [k, e] of Object.entries(CFG.dungeon.enemies)) {
+    const i = b.dungeonEnemy(e); assert.ok(i.timeToDie >= 3, `${k}: ${i.timeToDie.toFixed(1)} с`);
+    const r = e.xp / e.hp; assert.ok(r >= 0.15 && r <= 0.8, `${k}: ${r.toFixed(2)} опыта на HP`);
+    assert.ok(i.ammo <= 40, `${k}: убийство пистолетом стоит ${i.ammo} ₽ патронов`);
+  }
+  const en = CFG.dungeon.enemies; assert.ok(en.carapace.w[3] >= en.carapace.w[2] && en.shade.w[3] >= en.shade.w[1], "опасные виды чаще в глубине");
+});
+
 test("прогрессия: до 10 уровня нужно не меньше 200 и не больше 1000 убийств слухача", () => {
   const n = b.totalXp(10) / CFG.mut.listener.xp; assert.ok(n >= 200 && n <= 1000, "убийств: " + Math.round(n));
 });

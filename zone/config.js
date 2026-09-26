@@ -14,7 +14,20 @@ const CFG = {
   death: { moneyLoss: 0.4, hpOnRespawn: 60 },
   // Подземелье под каждым бункером: лабиринт из клеток cols×rows (тайл tile пикселей), шкафчики в тупиках, сейф в самой дальней точке.
   dungeon: { tile: 48, cols: 8, rows: 6, loops: 0.12, rooms: 2, lockers: 4, radSpots: 2, radRate: 1.4, base: 2,
-    enemy: { name: 'Подземник', hp: 50, armor: 0, walk: 40, run: 105, dmg: 12, cd: 0.9, r: 9, sight: 230, xp: 14, bleed: 0.2 } },
+    // Виды подземных врагов. w — вес появления по секторам 1–4; kind задаёт поведение (см. DEnemy в dungeon.js); drop — шанс трофея.
+    enemies: {
+      // Подземник: обычный преследователь, кусает, может вызвать кровотечение.
+      crawler:  { name: 'Подземник', kind: 'crawl', spr: 'dweller', hp: 50, armor: 0, walk: 40, run: 105, dmg: 12, cd: 0.9, r: 9, sight: 230, xp: 14, bleed: 0.2, w: [4, 3, 2, 2] },
+      // Кислотник: держится на расстоянии, после короткого замаха плюёт медленным сгустком (урон + замедление). Уворачивайся вбок или прячься за угол.
+      spitter:  { name: 'Кислотник', kind: 'spit', spr: 'spitter', hp: 35, armor: 0, walk: 38, run: 85, dmg: 10, cd: 2.2, wind: 0.55, shot: 210, range: 260, keep: 110, r: 9, sight: 260, xp: 18, w: [0, 2, 3, 3],
+                  drop: { id: 'glassgland', p: 0.4 } },
+      // Тень: слепая, идёт на шум (бег слышно издалека, шаг — ближе, крадущегося почти не слышно), видна только вблизи. Горящую или раненую видно.
+      shade:    { name: 'Тень', kind: 'shade', spr: 'shade', hp: 30, armor: 0, walk: 55, run: 150, dmg: 18, cd: 0.8, r: 8, sight: 0, hear: { run: 260, walk: 110, sneak: 45, idle: 25 }, xp: 20, w: [0, 1, 2, 3],
+                  drop: { id: 'mistvial', p: 0.25 } },
+      // Панцирник: медленный и бронированный. Заметив тебя в прямом коридоре, замирает (замах), потом несётся по прямой; врезавшись в стену, оглушён и получает на 50% больше урона.
+      carapace: { name: 'Панцирник', kind: 'charge', spr: 'carapace', hp: 140, armor: 0.6, walk: 30, run: 62, dmg: 18, dash: 300, dashT: 1.1, reach: 300, dashDmg: 30, wind: 0.9, stun: 1.8, chargeCd: 3, cd: 1.4, r: 12, sight: 200, xp: 40, w: [0, 0, 1, 2],
+                  drop: { id: 'plate', p: 0.7 } },
+    } },
 
   anoms: {
     plesh: { name: 'Комариная плешь', r: 32, dps: 75, w: [0, 0.6, 1.2, 2], col: '#a08a5a', react: 'Болт вдавило в землю, будто на него встал слон.',

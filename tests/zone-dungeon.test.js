@@ -29,7 +29,7 @@ test("генерация: лабиринт детерминирован по с�
   assert.ok(o.same && o.diff); assert.equal(o.floors, o.reached, "весь пол достижим от входа");
   assert.equal(o.w, 2 * CFG.dungeon.cols + 1); assert.equal(o.startFloor, 0); assert.equal(o.vaultFloor, 0); assert.equal(o.vaultDist, o.maxCell, "сейф в самой дальней клетке");
   assert.equal(o.lockers, CFG.dungeon.lockers); assert.ok(o.lockersFloor); assert.equal(o.distinct, 2 + CFG.dungeon.lockers);
-  assert.equal(o.spawns, CFG.dungeon.base + 3); assert.ok(o.spawnFar, "подземники не рядом с входом"); assert.ok(o.border, "лабиринт обнесён стеной");
+  assert.equal(o.spawns, CFG.dungeon.base + 3 + 1, "по числу + страж сейфа с сектора 3"); assert.ok(o.spawnFar, "подземники не рядом с входом"); assert.ok(o.border, "лабиринт обнесён стеной");
 });
 
 test("генерация: у каждого бункера свой лабиринт, шкафчики в тупиках, есть очаги радиации", () => {
@@ -77,8 +77,8 @@ test("стрельба: в подземелье бьёт только подзе
     P.x = (L.start.tx + 0.5) * T; P.y = (L.start.ty + 0.5) * T; P.ang = 0; P.weapon = "pistol"; P.cd = 0; invAdd("ammo", 10); keys.mx = 0; keys.my = 0;
     let len = 0; while (!Dungeon.wall(L.start.tx + len + 1, L.start.ty)) len++;
     const zm = new Mutant("tin", P.x + 30, P.y, null); zm.state = "wander"; Mutants.list = [zm];
-    Dungeon.enemies = []; const seen = new DEnemy(P.x + Math.min(len, 3) * T * 0.9, P.y, CFG.dungeon.enemy, 1);
-    const hidden = new DEnemy(P.x + (len + 3) * T, P.y, CFG.dungeon.enemy, 1); Dungeon.enemies.push(seen, hidden);
+    Dungeon.enemies = []; const seen = new DEnemy(P.x + Math.min(len, 3) * T * 0.9, P.y, CFG.dungeon.enemies.crawler, 1);
+    const hidden = new DEnemy(P.x + (len + 3) * T, P.y, CFG.dungeon.enemies.crawler, 1); Dungeon.enemies.push(seen, hidden);
     const origRnd = Math.random; Math.random = () => 0.5; try { shoot(); } finally { Math.random = origRnd; }
     return { len, seenHp: seen.hp, seenMax: seen.max, hiddenHp: hidden.hp, tin: zm.hp, tinMax: CFG.mut.tin.hp, state: seen.state };
   })()`);
@@ -89,7 +89,7 @@ test("стрельба: в подземелье бьёт только подзе
 test("подземник: замечает игрока в прямой видимости, идёт по коридорам кратчайшим путём и кусает", () => {
   fresh();
   const o = run(`(() => {
-    const b = W.bunkers[0]; Dungeon.enter(b); const L = Dungeon.lvl, T = 48, c = CFG.dungeon.enemy;
+    const b = W.bunkers[0]; Dungeon.enter(b); const L = Dungeon.lvl, T = 48, c = CFG.dungeon.enemies.crawler;
     const far = Dungeon.center(L.vault.tx, L.vault.ty);                                   // враг в самой дальней клетке, игрок у входа — стены между ними
     Dungeon.enemies = []; const e = new DEnemy(far.x, far.y, c, 1); Dungeon.enemies.push(e); e.state = "hunt";
     const start = Math.hypot(e.x - P.x, e.y - P.y); P.hp = 100; P.sneak = false;
@@ -103,7 +103,7 @@ test("подземник: теряет след через 7 с без прям�
   fresh();
   const o = run(`(() => {
     const b = W.bunkers[0]; Dungeon.enter(b); const L = Dungeon.lvl; Dungeon.enemies = [];
-    const far = Dungeon.center(L.vault.tx, L.vault.ty), e = new DEnemy(far.x, far.y, CFG.dungeon.enemy, 1); Dungeon.enemies.push(e);
+    const far = Dungeon.center(L.vault.tx, L.vault.ty), e = new DEnemy(far.x, far.y, CFG.dungeon.enemies.crawler, 1); Dungeon.enemies.push(e);
     const idle0 = e.state; Dungeon.hear(P.x, P.y, 10); const deaf = e.state; Dungeon.hear(far.x + 20, far.y, 100); const woke = e.state;
     e.hp = 999; P.x = 10 * 48 + 24; for (let i = 0; i < 200; i++) e.update(0.05); return { idle0, deaf, woke, after: e.state };
   })()`);
@@ -144,7 +144,7 @@ test("подземелье: шум зовёт только подземнико�
   fresh();
   const o = run(`(() => {
     const b = W.bunkers[0]; const zm = new Mutant("listener", P.x, P.y, null); zm.state = "wander"; Mutants.list = [zm];
-    Dungeon.enter(b); Dungeon.enemies = []; const e = new DEnemy(P.x + 60, P.y, CFG.dungeon.enemy, 1); Dungeon.enemies.push(e);
+    Dungeon.enter(b); Dungeon.enemies = []; const e = new DEnemy(P.x + 60, P.y, CFG.dungeon.enemies.crawler, 1); Dungeon.enemies.push(e);
     zm.x = P.x + 10; zm.y = P.y; Mutants.hear(P.x, P.y, 500); const st = { zone: zm.state, dun: e.state };
     invAdd("bolt", 5); P.sel = 1; P.cd = 0; useSel(); const bolts = invCount("bolt"); invAdd("lure", 1); P.sel = 5; useSel(); const lures = invCount("lure");
     return { st, bolts, lures, blocked: G.scene };
@@ -214,7 +214,7 @@ test("главный цикл: update() в подземелье двигает �
     const b = W.bunkers[0]; VW = 800; VH = 600; Dungeon.enter(b); Dungeon.enemies = []; const L = Dungeon.lvl, T = 48;
     const zoneAnoms = JSON.stringify(W.anoms.slice(0, 5).map(a => [a.x, a.y, a.state])), mob = Mutants.list.length;
     keys.KeyA = true; for (let i = 0; i < 60; i++) update(0.05); keys.KeyA = false;
-    const e = new DEnemy(P.x + 90, P.y, CFG.dungeon.enemy, 1); const open = Dungeon.los(P.x, P.y, e.x, e.y);
+    const e = new DEnemy(P.x + 90, P.y, CFG.dungeon.enemies.crawler, 1); const open = Dungeon.los(P.x, P.y, e.x, e.y);
     return { scene: G.scene, inWall: Dungeon.wall(Math.floor(P.x / T), Math.floor(P.y / T)), x: P.x, open, zone: zoneAnoms === JSON.stringify(W.anoms.slice(0, 5).map(a => [a.x, a.y, a.state])), mob: Mutants.list.length === mob };
   })()`);
   assert.equal(o.scene, "dungeon"); assert.equal(o.inWall, false); assert.ok(o.zone && o.mob, "зона заморожена, пока игрок под землёй");

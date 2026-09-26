@@ -3,7 +3,7 @@
 // подземники, очаги радиации и тьма. Отдельная сцена G.scene === 'dungeon' со своими координатами (тайлы CFG.dungeon.tile),
 // поэтому зональные списки (Mutants, Stalkers, W.og) здесь не участвуют. Загружается после rooms.js и вешается на Camp/Meta/Mutants.
 const Dungeon = {
-  cur: null, lvl: null, enemies: [], lights: [], og: new Grid(200), levels: {}, fieldT: 0, field: null, calm: 0,
+  cur: null, lvl: null, enemies: [], shots: [], slowT: 0, lights: [], og: new Grid(200), levels: {}, fieldT: 0, field: null, calm: 0,
   get T() { return CFG.dungeon.tile; },
 
   // ---------- генерация (чистая, детерминированная по seed) ----------
@@ -46,7 +46,12 @@ const Dungeon = {
       for (const [dx, dy] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) if (!t[at(c.tx + dx, c.ty + dy)]) rad.add(at(c.tx + dx, c.ty + dy));
     }
     const pool = cells.filter(c => c.d >= 7 && !rad.has(at(c.tx, c.ty)) && at(c.tx, c.ty) !== at(vault.tx, vault.ty)), spawns = [], n = cfg.base + danger;
-    for (let i = 0; i < n && pool.length; i++) { const c = pool[Math.floor(R() * pool.length)]; spawns.push({ tx: c.tx, ty: c.ty }); }
+    const kinds = Object.keys(cfg.enemies), wts = kinds.map(k => cfg.enemies[k].w[Math.min(3, danger - 1)]);
+    for (let i = 0; i < n && pool.length; i++) { const c = pool[Math.floor(R() * pool.length)]; spawns.push({ tx: c.tx, ty: c.ty, type: U.wpick(kinds, wts, R) }); }
+    if (danger >= 3) {                                                    // с сектора 3 сейф охраняет Панцирник: он стоит на подходе к нему
+      const near = cells.filter(c => Math.abs(c.tx - vault.tx) + Math.abs(c.ty - vault.ty) === 2 && !t[at((c.tx + vault.tx) / 2, (c.ty + vault.ty) / 2)] && c.d < vault.d).sort((a, b) => a.d - b.d)[0];
+      if (near) spawns.push({ tx: near.tx, ty: near.ty, type: 'carapace', guard: true });
+    }
     return { w, h, t, start, vault: { tx: vault.tx, ty: vault.ty }, lockers, rad, spawns, dist, seed };
   },
   level(b) {
@@ -86,13 +91,13 @@ const Dungeon = {
   },
 
   // ---------- вход и выход ----------
-  reset() { this.cur = null; this.lvl = null; this.enemies = []; this.lights = []; this.field = null; },
+  reset() { this.cur = null; this.lvl = null; this.enemies = []; this.shots = []; this.slowT = 0; this.lights = []; this.field = null; },
   nearZone(c) { for (const b of W.bunkers) c(b, Math.hypot(b.x - P.x, b.y - P.y), 50, 'Спуститься в бункер', () => this.enter(b)); },
   enter(b) {
     this.cur = b; this.lvl = this.level(b); const L = this.lvl, s = this.center(L.start.tx, L.start.ty);
     G.scene = 'dungeon'; P.x = s.x + 8; P.y = s.y; P.inAnom = null; P.slow = 1; closePanel(); P.burn = 0;
-    const d = W.danger(b.x, b.y), c = CFG.dungeon.enemy;
-    this.enemies = b.cleared ? [] : L.spawns.map(sp => { const p = this.center(sp.tx, sp.ty); return new DEnemy(p.x, p.y, c, 1 + 0.15 * (d - 1)); });
+    const d = W.danger(b.x, b.y); this.shots = []; this.slowT = 0;
+    this.enemies = b.cleared ? [] : L.spawns.map(sp => { const p = this.center(sp.tx, sp.ty); return new DEnemy(p.x, p.y, CFG.dungeon.enemies[sp.type], 1 + 0.15 * (d - 1), sp.type); });
     this.lights = [{ x: s.x, y: s.y, r: 190, a: 0.85 }];   // светло только у входа: остальное лабиринт скрывает, пока не подойдёшь
     this.fieldT = 0; this.computeField(); this.calm = 0; Snd.tick();
     log('Ты спустился в бункер. Здесь темно и тихо. Выход — там, где ты вошёл.', '#a8c890');
@@ -161,6 +166,12 @@ const Dungeon = {
     this.fieldT -= dt; if (this.fieldT <= 0) { this.fieldT = 0.3; this.computeField(); }
     for (const e of this.enemies) e.update(dt);
     this.enemies = this.enemies.filter(e => !e.dead);
+    for (let i = this.shots.length - 1; i >= 0; i--) {                    // сгустки кислоты
+      const q = this.shots[i]; q.x += q.vx * dt; q.y += q.vy * dt; q.t -= dt;
+      if (q.t <= 0 || this.wall(Math.floor(q.x / this.T), Math.floor(q.y / this.T))) { this.shots.splice(i, 1); continue; }
+      if (!G.dead && Math.hypot(q.x - P.x, q.y - P.y) < P.r + 5) { this.shots.splice(i, 1); P.hurt(q.dmg, 'acid'); if (this.slowT <= 0) log('Кислота липнет к ногам — идёшь медленнее.', '#9ad060'); this.slowT = 2; Snd.hit(); }
+    }
+    this.slowT = Math.max(0, this.slowT - dt); P.slow = this.slowT > 0 ? 0.6 : 1;
     if (!this.enemies.length && !b.cleared && L.spawns.length) { b.cleared = true; log('Бункер зачищен. До выброса сюда никто не вернётся.', '#a8c890'); }
     G.near = G.ui ? null : (() => { let best = null, bd = 9999; this.near((o, d, lim, label, fn) => { if (d < lim && d < bd) { bd = d; best = { label, fn, o }; } }); return best; })();
     G.beat -= dt; if (G.beat <= 0 && (P.hp < 35 || P.stress > 75)) { G.beat = 0.9; Snd.beat(); }
@@ -173,6 +184,9 @@ const Dungeon = {
   // ---------- отрисовка ----------
   initSprites() {
     if (this.sprReady) return; this.sprReady = true;
+    Spr.make('spitter', ['..gggg..', '.gGGGGg.', 'gGGyyGGg', 'gGGyyGGg', '.gGGGGg.', '..g..g..', '..g..g..'], { g: '#5a7a3a', G: '#7aa050', y: '#c8e060' });
+    Spr.make('shade', ['...kk...', '..kKKk..', '.kKeeKk.', 'kKKKKKKk', '.kKKKKk.', '..k..k..', '.k....k.'], { k: '#0e1014', K: '#20242c', e: '#a0d0ff' });
+    Spr.make('carapace', ['..kkkkkk..', '.kBBBBBBk.', 'kBbBBBBbBk', 'kBBbBBbBBk', 'kBBBBBBBBk', '.kBBBBBBk.', '.kk.kk.kk.', '.kk.kk.kk.'], { k: '#1a1a1e', B: '#6a707a', b: '#8a909a' });
     Spr.make('dweller', ['....pp....', '..ppPPpp..', '.pppPPppp.', 'ppeppppepp', '.pppppppp.', 'p.p.pp.p.p', 'p..p..p..p'], { p: '#7a807a', P: '#b0b6b0', e: '#d03030' });
   },
   draw() {
@@ -203,64 +217,127 @@ const Dungeon = {
     if (!G.dead) dl.push({ y: P.y + 8, p: true });
     dl.sort((a, c) => a.y - c.y);
     for (const o of dl) {
-      if (o.e) { const e = o.e; shadow(e.x, e.y + 6, e.r); Spr.draw(ctx, 'dweller', e.x, e.y - 2, e.face < 0); if (e.burn > 0) px(e.x, e.y - 12 - (G.t * 30) % 6, '#ff8a30', 4);
-        if (e.state === 'hunt') { ctx.font = 'bold 13px Consolas'; ctx.fillStyle = '#e05050'; ctx.fillText('!', e.x, e.y - 16); }
-        if (e.hp < e.max) { ctx.fillStyle = '#000'; ctx.fillRect(e.x - 10, e.y - 22, 20, 3); ctx.fillStyle = '#a33'; ctx.fillRect(e.x - 10, e.y - 22, 20 * e.hp / e.max, 3); } }
+      if (o.e) { const e = o.e, al = e.alpha(); if (al > 0.02) { shadow(e.x, e.y + 6, e.r); Spr.draw(ctx, e.c.spr, e.x, e.y - 2, e.face < 0, al, e.c.kind === 'charge' ? 1.3 : 1); }
+        if (e.burn > 0) px(e.x, e.y - 12 - (G.t * 30) % 6, '#ff8a30', 4);
+        if (e.mode === 'wind') { const a = e.axis(); ctx.globalAlpha = 0.25 + 0.2 * Math.sin(G.t * 20); ctx.fillStyle = '#e03030'; ctx.fillRect(Math.min(e.x, e.x + Math.cos(a) * 300), Math.min(e.y, e.y + Math.sin(a) * 300) - 8 * Math.abs(Math.cos(a)), Math.abs(Math.cos(a)) * 300 + 16 * Math.abs(Math.sin(a)), Math.abs(Math.sin(a)) * 300 + 16 * Math.abs(Math.cos(a))); ctx.globalAlpha = 1; }
+        if (e.wind > 0) { ctx.fillStyle = '#b8f060'; ctx.beginPath(); ctx.arc(e.x, e.y - 14, 2 + 4 * (1 - e.wind / e.c.wind), 0, 6.28); ctx.fill(); }
+        ctx.font = 'bold 13px Consolas'; ctx.textAlign = 'center';
+        if (e.mode === 'stun') { ctx.fillStyle = '#f0d060'; ctx.fillText('✦', e.x, e.y - 18); }
+        else if (e.state === 'hunt' && al > 0.3) { ctx.fillStyle = '#e05050'; ctx.fillText('!', e.x, e.y - 16); }
+        if (e.hp < e.max && al > 0.3) { ctx.fillStyle = '#000'; ctx.fillRect(e.x - 10, e.y - 22, 20, 3); ctx.fillStyle = '#a33'; ctx.fillRect(e.x - 10, e.y - 22, 20 * e.hp / e.max, 3); } }
       else { const mv = keys.mx || keys.my, bob = mv ? (Math.floor(G.t * 10) % 2 ? -1 : 0) : 0; shadow(P.x, P.y + 10, 8); Spr.draw(ctx, P.sneak ? 'player_s' : 'player', P.x, P.y + bob - 2, Math.cos(P.ang) < 0); if (P.sel === 0) Gun.draw(ctx, P.x, P.y + 2, P.ang, P.weapon, P.recoil || 0); }
     }
+    for (const q of this.shots) { ctx.fillStyle = '#9ad040'; ctx.beginPath(); ctx.arc(q.x, q.y, 4, 0, 6.28); ctx.fill(); ctx.fillStyle = '#d8f890'; ctx.fillRect(q.x - 1, q.y - 1, 2, 2); }
     for (const t of tracers) { ctx.strokeStyle = 'rgba(255,230,150,.8)'; ctx.lineWidth = 1.5; ctx.beginPath(); ctx.moveTo(t.x1, t.y1); ctx.lineTo(t.x2, t.y2); ctx.stroke(); }
     for (const p of parts) { ctx.globalAlpha = Math.max(0, p.life * 2); px(p.x, p.y, p.col); } ctx.globalAlpha = 1;
     ctx.restore(); drawOverlays();
   },
 };
 
-// Подземник: бродит по клеткам, замечает игрока в прямой видимости или по шуму, преследует по кратчайшему пути (поле расстояний).
+// Враги подземелья. Общий каркас: восприятие → погоня по полю расстояний → поведение вида (c.kind):
+//  crawl  — кусает вплотную;  spit — держит дистанцию и плюёт;  shade — слепая, идёт на шум, видна вблизи;
+//  charge — замах, разбег по прямой, оглушение о стену.
 class DEnemy {
-  constructor(x, y, c, k) {
+  constructor(x, y, c, k, type) {
     const hp = Math.round(c.hp * k);
-    Object.assign(this, { x, y, c, r: c.r, hp, max: hp, state: 'idle', cd: 1, lost: 0, dead: false, face: 1, burn: 0, burner: null, goal: null, prev: null, slow: 1 });
+    Object.assign(this, { x, y, c, type: type || 'crawler', r: c.r, hp, max: hp, state: 'idle', cd: 1, lost: 0, dead: false, face: 1, burn: 0, burner: null, goal: null, prev: null, slow: 1,
+      mode: 'chase', mt: 0, hit: false, stun: 0, wind: 0, flash: 0, snd: 0, dir: 0 });
   }
-  alert() { if (this.state !== 'hunt') { this.state = 'hunt'; this.lost = 0; Snd.at('yelp', this.x, this.y); } }
+  alert() {
+    if (this.state === 'hunt') return;
+    this.state = 'hunt'; this.lost = 0; Snd.at(this.c.kind === 'shade' ? 'whisper' : this.c.kind === 'charge' ? 'clank' : 'yelp', this.x, this.y);
+  }
+  // Видимость для отрисовки: тень различима только вблизи, горящая или только что раненая — всегда
+  alpha() {
+    if (this.c.kind !== 'shade' || this.burn > 0 || this.flash > 0) return 1;
+    return U.clamp(1 - (Math.hypot(P.x - this.x, P.y - this.y) - 70) / 60, 0, 1);
+  }
   hurt(d, src, pierce) {
     if (this.dead) return;
-    this.hp -= d * (pierce ? 1 : 1 - (this.c.armor || 0));
+    this.hp -= d * (pierce ? 1 : 1 - (this.c.armor || 0)) * (this.mode === 'stun' ? 1.5 : 1); this.flash = 0.6;
     if (this.hp <= 0) return this.die(src);
     if (src === P) this.alert();
   }
   die(src) {
     this.dead = true; Snd.at('die', this.x, this.y);
-    if (src === P) { addXp(this.c.xp); P.kills++; Meta.onKill('dweller'); }
+    if (src !== P) return;
+    addXp(this.c.xp); P.kills++; Meta.onKill('dweller');
+    const dr = this.c.drop; if (dr && Math.random() < dr.p) { invAdd(dr.id, 1); log('Трофей: ' + CFG.items[dr.id].name, '#c8c090'); }
   }
   step(tx, ty, speed, dt) {
     const dx = tx - this.x, dy = ty - this.y, d = Math.hypot(dx, dy); if (d < 0.5) return true;
     const s = Math.min(speed * dt, d); this.x += dx / d * s; this.y += dy / d * s; this.face = dx < 0 ? -1 : 1; return d - s < 1;
   }
+  // Направление разбега: по оси коридора в сторону игрока
+  axis() { const dx = P.x - this.x, dy = P.y - this.y; return Math.abs(dx) >= Math.abs(dy) ? (dx > 0 ? 0 : Math.PI) : (dy > 0 ? Math.PI / 2 : -Math.PI / 2); }
   update(dt) {
-    const D = Dungeon, c = this.c, T = D.T;
+    const D = Dungeon, c = this.c, kind = c.kind;
     if (this.burn > 0) { this.burn -= dt; this.hp -= 6 * dt; if (this.hp <= 0) return this.die(this.burner); }
-    this.cd -= dt;
-    const pd = Math.hypot(P.x - this.x, P.y - this.y), los = pd < c.sight && D.los(this.x, this.y, P.x, P.y);
-    if (!G.dead && los && pd < c.sight * (P.sneak ? 0.5 : 1)) this.alert();
-    if (this.state === 'hunt') { if (los) this.lost = 0; else if ((this.lost += dt) > 7) { this.state = 'idle'; this.goal = null; } }
-    const tx = Math.floor(this.x / T), ty = Math.floor(this.y / T), L = D.lvl;
-    if (this.state === 'hunt' && !G.dead) {
-      let goal;
-      if (los && pd < T * 1.6) goal = { x: P.x, y: P.y };
-      else {
-        const f = D.field; let best = null, bd = f[ty * L.w + tx];
-        for (const [dx, dy] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) { const v = f[(ty + dy) * L.w + tx + dx]; if (v < bd) { bd = v; best = [dx, dy]; } }
-        goal = best ? D.center(tx + best[0], ty + best[1]) : { x: this.x, y: this.y };
-      }
-      if (pd < this.r + P.r + 4) {
-        if (this.cd <= 0) { this.cd = c.cd; P.hurt(c.dmg, this); if (c.bleed && Math.random() < c.bleed) P.bleed = 8; Snd.hit(); }
-      } else this.step(goal.x, goal.y, c.run, dt);
-    } else {
-      if (!this.goal || this.step(this.goal.x, this.goal.y, c.walk, dt)) {
-        const opts = [[1, 0], [-1, 0], [0, 1], [0, -1]].filter(([dx, dy]) => !D.wall(tx + dx, ty + dy) && !(this.prev && this.prev[0] === tx + dx && this.prev[1] === ty + dy));
-        const all = opts.length ? opts : [[1, 0], [-1, 0], [0, 1], [0, -1]].filter(([dx, dy]) => !D.wall(tx + dx, ty + dy));
-        const n = all.length ? all[Math.floor(Math.random() * all.length)] : [0, 0]; this.prev = [tx, ty]; this.goal = D.center(tx + n[0], ty + n[1]);
-      }
+    this.cd -= dt; this.flash = Math.max(0, this.flash - dt);
+    const pd = Math.hypot(P.x - this.x, P.y - this.y), los = pd < 420 && D.los(this.x, this.y, P.x, P.y);
+    if (!G.dead) {
+      if (kind === 'shade') { const mv = keys.mx || keys.my, r = P.running ? c.hear.run : mv ? (P.sneak ? c.hear.sneak : c.hear.walk) : c.hear.idle; if (pd < r) this.alert(); }
+      else if (los && pd < c.sight * (P.sneak ? 0.5 : 1)) this.alert();
     }
+    if (this.state === 'hunt') { if (kind === 'shade' ? pd < 220 : los) this.lost = 0; else if ((this.lost += dt) > (kind === 'shade' ? 5 : 7)) { this.state = 'idle'; this.goal = null; this.mode = 'chase'; this.wind = 0; } }
+    if (this.state !== 'hunt' || G.dead) return this.wander(dt);
+    if (kind === 'shade') { this.snd -= dt; if (this.snd <= 0 && pd < 420) { this.snd = 2.5; Snd.at('whisper', this.x, this.y); } }
+    if (kind === 'spit') return this.spit(dt, pd, los);
+    if (kind === 'charge') return this.charge(dt, pd, los);
+    this.chase(dt, pd, los, c.run);
+  }
+  wander(dt) {
+    const D = Dungeon, T = D.T, c = this.c, tx = Math.floor(this.x / T), ty = Math.floor(this.y / T);
+    if (this.mode === 'stun') { if ((this.stun -= dt) <= 0) this.mode = 'chase'; return; }
+    if (!this.goal || this.step(this.goal.x, this.goal.y, c.walk, dt)) {
+      const opts = [[1, 0], [-1, 0], [0, 1], [0, -1]].filter(([dx, dy]) => !D.wall(tx + dx, ty + dy) && !(this.prev && this.prev[0] === tx + dx && this.prev[1] === ty + dy));
+      const all = opts.length ? opts : [[1, 0], [-1, 0], [0, 1], [0, -1]].filter(([dx, dy]) => !D.wall(tx + dx, ty + dy));
+      const n = all.length ? all[Math.floor(Math.random() * all.length)] : [0, 0]; this.prev = [tx, ty]; this.goal = D.center(tx + n[0], ty + n[1]);
+    }
+  }
+  // Ближайший шаг к игроку по полю расстояний (или прямо, если он рядом и виден)
+  chase(dt, pd, los, speed) {
+    const D = Dungeon, T = D.T, L = D.lvl, c = this.c, tx = Math.floor(this.x / T), ty = Math.floor(this.y / T); let goal;
+    if (los && pd < T * 1.6) goal = { x: P.x, y: P.y };
+    else {
+      const f = D.field; let best = null, bd = f[ty * L.w + tx];
+      for (const [dx, dy] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) { const v = f[(ty + dy) * L.w + tx + dx]; if (v < bd) { bd = v; best = [dx, dy]; } }
+      goal = best ? D.center(tx + best[0], ty + best[1]) : { x: this.x, y: this.y };
+    }
+    if (pd < this.r + P.r + 4) {
+      if (this.cd <= 0) { this.cd = c.cd; P.hurt(c.dmg, this); if (c.bleed && Math.random() < c.bleed) P.bleed = 8; Snd.hit(); }
+    } else this.step(goal.x, goal.y, speed, dt);
+  }
+  // Кислотник: в зоне видимости стоит и плюёт (замах виден по зелёной точке); слишком близко — отступает; вне видимости — подходит
+  spit(dt, pd, los) {
+    const D = Dungeon, T = D.T, L = D.lvl, c = this.c;
+    if (!(los && pd < c.range)) { this.wind = 0; return this.chase(dt, pd, los, c.run); }
+    this.face = P.x < this.x ? -1 : 1;
+    if (pd < c.keep) {
+      const tx = Math.floor(this.x / T), ty = Math.floor(this.y / T), f = D.field; let best = null, bd = f[ty * L.w + tx];
+      for (const [dx, dy] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) { const v = f[(ty + dy) * L.w + tx + dx]; if (v !== 65535 && v > bd) { bd = v; best = [dx, dy]; } }
+      if (best) { const g = D.center(tx + best[0], ty + best[1]); this.step(g.x, g.y, c.walk * 1.4, dt); }
+    }
+    if (this.wind > 0) {
+      if ((this.wind -= dt) <= 0) { const a = Math.atan2(P.y - this.y, P.x - this.x); D.shots.push({ x: this.x, y: this.y, vx: Math.cos(a) * c.shot, vy: Math.sin(a) * c.shot, t: 2.5, dmg: c.dmg }); this.cd = c.cd; Snd.at('crunch', this.x, this.y); }
+    } else if (this.cd <= 0) this.wind = c.wind;
+  }
+  // Панцирник: ползёт к игроку; увидев его в прямом коридоре — замах, разбег, при ударе о стену — оглушение
+  charge(dt, pd, los) {
+    const D = Dungeon, T = D.T, c = this.c;
+    if (this.mode === 'stun') { if ((this.stun -= dt) <= 0) this.mode = 'chase'; return; }
+    if (this.mode === 'wind') { this.face = P.x < this.x ? -1 : 1; if ((this.mt -= dt) <= 0) { this.mode = 'dash'; this.mt = c.dashT; this.hit = false; this.dir = this.axis(); Snd.at('clank', this.x, this.y); } return; }
+    if (this.mode === 'dash') {
+      const s = c.dash * dt, nx = Math.cos(this.dir), ny = Math.sin(this.dir);
+      if (D.wall(Math.floor((this.x + nx * (this.r + s + 2)) / T), Math.floor((this.y + ny * (this.r + s + 2)) / T))) { this.mode = 'stun'; this.stun = c.stun; this.cd = c.chargeCd; Snd.hit(); G.shake = Math.max(G.shake, 0.15); return; }
+      this.x += nx * s; this.y += ny * s; this.face = nx < 0 ? -1 : 1;
+      if (!this.hit && pd < this.r + P.r + 3) { this.hit = true; P.hurt(c.dashDmg, this); Snd.hit(); }
+      if ((this.mt -= dt) <= 0) { this.mode = 'chase'; this.cd = c.chargeCd; }
+      return;
+    }
+    const dx = P.x - this.x, dy = P.y - this.y;
+    if (los && this.cd <= 0 && pd > 70 && pd < c.reach && (Math.abs(dx) < T * 0.5 || Math.abs(dy) < T * 0.5)) { this.mode = 'wind'; this.mt = c.wind; return; }
+    this.chase(dt, pd, los, c.run);
   }
 }
 

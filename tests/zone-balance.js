@@ -55,8 +55,14 @@ function recipeInfo(r) {
   return { cost, out };
 }
 
+// Подземные враги: секунд до смерти игрока под одним врагом и выстрелов пистолета на убийство (броня и оглушение не учитываются)
+function dungeonEnemy(e) {
+  const dps = e.dmg / (e.kind === 'spit' ? e.cd : e.cd), pistol = CFG.weapons.pistol;
+  return { dps, timeToDie: 100 / dps, shots: Math.ceil(e.hp / (pistol.dmg * (1 - (e.armor || 0)))), ammo: Math.ceil(e.hp / (pistol.dmg * (1 - (e.armor || 0)))) * AMMO_COST, drop: e.drop ? CFG.items[e.drop.id].val * e.drop.p : 0 };
+}
+
 // Опыт
 const xpForLevel = n => 60 * Math.pow(n, 1.4);
 function totalXp(level) { let t = 0; for (let n = 1; n < level; n++) t += xpForLevel(n); return t; }
 
-module.exports = { z, CFG, AMMO_COST, shotCost, shotDmg, shotsToKill, timeToKill, lootValue, timeToDie, anomRisk, artAvg, recipeInfo, matValue, xpForLevel, totalXp };
+module.exports = { z, CFG, AMMO_COST, shotCost, shotDmg, shotsToKill, timeToKill, lootValue, timeToDie, anomRisk, artAvg, recipeInfo, matValue, dungeonEnemy, xpForLevel, totalXp };

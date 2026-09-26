@@ -37,6 +37,9 @@ for (const [k, a] of Object.entries(CFG.anoms)) {
   console.log(pad(a.name, 18), "риск", pad(f(risk, 0), 5), "арт", pad(f(avg, 0), 5), "награда/риск", f(avg / Math.max(1, risk), 2), "сектора", a.w.join("/"));
 }
 
+line("Подземелье: враги (секунд до смерти под одним; выстрелов пистолета; цена патронов; ожидаемый трофей; опыт; вес по секторам)");
+for (const [k, e] of Object.entries(CFG.dungeon.enemies)) { const i = b.dungeonEnemy(e); console.log(pad(e.name, 10), "жив", pad(f(i.timeToDie), 5), "выстрелов", pad(i.shots, 3), "патроны", pad(f(i.ammo, 0), 4), "трофей", pad(f(i.drop, 0), 4), "опыт", pad(e.xp, 3), "опыт/HP", pad(f(e.xp / e.hp, 2), 5), "вес", e.w.join("/")); }
+
 line("Артефакты: цена, вес, фон");
 for (const [k, a] of Object.entries(CFG.arts)) console.log(pad(a.name, 18), pad(a.val, 5), "вес", pad(a.w, 4), "фон", pad(a.rad, 5), Object.entries(a.fx).map(([e, v]) => e + " " + v).join(", "));
 
