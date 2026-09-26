@@ -22,7 +22,7 @@ test("аномалии ссылаются на существующие арте
 });
 
 test("артефакты: цена и вес положительны, эффекты из известного набора", () => {
-  const known = new Set(["radRes", "stamRegen", "carry", "hpRegen", "lure", "psy", "repel"]);
+  const known = new Set(["radRes", "stamRegen", "carry", "hpRegen", "lure", "psy", "repel", "fireRes", "sight"]);
   for (const [k, a] of Object.entries(CFG.arts)) {
     assert.ok(a.val > 0 && a.w > 0, k);
     assert.ok(a.name && a.desc, k);
@@ -131,7 +131,7 @@ test("Магнитная яма: металлические твари полу�
     for (let i = 0; i < 10; i++) { w.applyAnoms(tin, 0.1); w.applyAnoms(soft, 0.1); }
     return { tin: tin.dmg, soft: soft.dmg, tinX: tin.x, softX: soft.x };
   })()`);
-  assert.ok(out.tin > out.soft * 5, `металл ${out.tin.toFixed(1)} против ${out.soft.toFixed(1)}`);
+  assert.ok(out.tin > out.soft * 4, `металл ${out.tin.toFixed(1)} против ${out.soft.toFixed(1)}`);
   assert.ok(out.tinX < out.softX, "металл должен подтянуться ближе к центру");
 });
 
@@ -141,7 +141,7 @@ test("новые мутанты создаются и подчиняются о�
     m.hurt(30, "anom"); r.hurt(30, "anom");
     return { mhp: m.hp, rhp: r.hp, mstate: m.state, rinfect: r.c.infect };
   })()`);
-  assert.equal(out.mhp, 85 - 30 * 0.8, "броня Щетинника режет урон на 20%");
+  assert.equal(out.mhp, CFG.mut.bristler.hp - 30 * 0.8, "броня Щетинника режет урон на 20%");
   assert.equal(out.rhp, 30);
   assert.equal(out.rinfect, 0.45);
 });

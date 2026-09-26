@@ -33,6 +33,10 @@ Spr.init2 = function () {
   M('tower', ['kkkkkkkkkk', 'kbbbbbbbbk', 'kbbbbbbbbk', 'kkkkkkkkkk', '.k......k.', '.kk....kk.', '..k....k..', '..kk..kk..', '...k..k...', '...kkkk...', '...k..k...', '..kk..kk..', '..k....k..', '.kk....kk.', '.k......k.'], { k: '#4a4030', b: '#2a2418' });
   M('rail', ['tttttttttttttttt', 'rrrrrrrrrrrrrrrr', '.t..t..t..t..t..'], { t: '#3a2a1a', r: '#6a6a66' });
   M('crater', ['....dddddd....', '..dddDDDDddd..', '.ddDDDDDDDdd.', '..dddDDDDddd..', '....dddddd....'], { d: '#24201a', D: '#14120e' });
+  M('burntree', ['..b..b....', '.b.bb..b..', '..bbbb.b..', '.b.bcb.b..', '...bb.....', '...bb.....', '...bb.....', '..bbbb....'], { b: '#3a3430', c: '#c8501e' });
+  M('char', ['.k..k.', 'kkkkkk', '.kkck.', 'kkkkkk'], { k: '#3c3630', c: '#c8501e' });
+  M('ashpile', ['..aaaa..', '.aAAAAa.', 'aAAaaAAa', 'aaaaaaaa'], { a: '#77706a', A: '#a09890' });
+  M('car_burnt', carRows, { r: '#2c2724', R: '#4a403a', k: '#0e0d0c' });
   M('fire_l', ['..y..', '.yyy.', 'yyoyy', 'ooooo', '.kkk.'], { y: '#ffd870', o: '#e08a30', k: '#3a2010' });
   const human = ['..gggg..', '.gggggg.', '.gffffg.', '..ffff..', '.bbbbbb.', 'bbbbbbbb', 'bb.bb.bb', '.bbbbbb.', '.dd..dd.', '.dd..dd.', '.kk..kk.', '.kk..kk.'];
   M('st_loner', human, { g: '#6a7a4a', f: '#d0a878', b: '#4a5a3a', d: '#3a3a30', k: '#22201a' });

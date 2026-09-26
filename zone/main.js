@@ -8,7 +8,7 @@ const G = { t: 0, clock: 0, hour: 7, night: 0, fog: 0.3, dead: false, deadT: 0, 
 let W = null;
 const P = { x: 0, y: 0, ang: 0, r: CFG.player.r, hp: 100, stam: 100, rad: 0, food: 80, stress: 0, bleed: 0, xp: 0, lvl: 1, sp: 0,
   sk: {}, money: 0, inv: [], equip: [null, null], notes: [], known: {}, sel: 0, cd: 0, slow: 1, sneak: false, running: false,
-  dead: false, goal: false, wasOut: false, noiseT: 0, geigerRate: 0,
+  dead: false, goal: false, wasOut: false, noiseT: 0, geigerRate: 0, burn: 0, fuel: 0,
   rep: 0, karma: { greed: 0, cruelty: 0, mercy: 0, study: 0 }, quests: [], offers: [], lore: 0, weapons: ['pistol'], weapon: 'pistol',
   cond: Object.fromEntries(Object.keys(CFG.weapons).map(k => [k, 100])), suitCond: 100, insured: false, pass: false, fracture: false, infect: 0, earned: 0, researched: {}, kills: 0, mapSold: 0,
   hurt(d, src) {
@@ -76,7 +76,7 @@ function reveal(x, y, r) {
 }
 function resetPlayer() {
   Object.assign(P, { hp: 100, stam: 100, rad: 0, food: 80, stress: 0, bleed: 0, xp: 0, lvl: 1, sp: 0, money: 50, inv: [], equip: [null, null],
-    notes: [], known: {}, sel: 0, cd: 0, dead: false, goal: false, wasOut: false,
+    notes: [], known: {}, sel: 0, cd: 0, dead: false, goal: false, wasOut: false, burn: 0, fuel: 0,
     rep: 0, karma: { greed: 0, cruelty: 0, mercy: 0, study: 0 }, quests: [], offers: [], lore: 0, weapons: ['pistol'], weapon: 'pistol',
     cond: Object.fromEntries(Object.keys(CFG.weapons).map(k => [k, 100])), suitCond: 100, insured: false, pass: false, fracture: false, infect: 0, earned: 0, researched: {}, kills: 0, mapSold: 0 });
   for (const k in CFG.skills) P.sk[k] = 0;
@@ -123,7 +123,7 @@ function die() {
 }
 function respawn() {
   G.dead = false; P.dead = false; $('death').style.display = 'none';
-  Camp.enter(true); P.hp = CFG.death.hpOnRespawn; P.fracture = false; P.infect = 0; P.rad = Math.min(P.rad, 30); P.bleed = 0; P.stress = 0; P.wasOut = false;
+  Camp.enter(true); P.hp = CFG.death.hpOnRespawn; P.fracture = false; P.infect = 0; P.rad = Math.min(P.rad, 30); P.bleed = 0; P.burn = 0; P.stress = 0; P.wasOut = false;
   Mutants.refill(); save();
 }
 
@@ -318,10 +318,11 @@ function update(dt) {
   G.beat -= dt; if (G.beat <= 0 && (P.hp < 35 || P.stress > 75)) { G.beat = 0.9; Snd.beat(); }
   // мир
   W.update(dt, [P, ...Mutants.list, ...Stalkers.list]);
-  if (W.inWater(P.x, P.y)) P.slow = Math.min(P.slow, 0.55);
+  if (W.inWater(P.x, P.y)) { P.slow = Math.min(P.slow, 0.55); if (P.burn > 0) { P.burn = 0; log('Ты потушил себя в воде.', '#9ab8d8'); } }
   Mutants.update(dt); Stalkers.update(dt); updateBolts(dt); updateEmission(dt); Meta.update(dt);
   reveal(P.x, P.y, 130 * (1 + 0.25 * P.sk.mapping));
   for (const b of W.bunkers) if (!b.known && Math.hypot(b.x - P.x, b.y - P.y) < 150) { b.known = true; log('Найден бункер — укрытие от выброса.', '#a8c890'); }
+  for (const r of W.roads) if (!r.known && Math.hypot(r.x - P.x, r.y - P.y) < 260) { r.known = true; addXp(15); log('Пепельный тракт: выгоревшие остовы в ряд. В них ещё что-то осталось, но днём в золе кто-то спит.', '#d0a070'); }
   for (const l of W.labs) if (!l.known && Math.hypot(l.x - P.x, l.y - P.y) < 260) { l.known = true; addXp(20); log('Заброшенная лаборатория. Ограда, фон и «пружины» на подходах. Шкафы внутри не тронуты.', '#9ab8d8'); }
   // автоподбор болтов
   for (let i = W.loot.length - 1; i >= 0; i--) { const l = W.loot[i]; if (l.id === 'bolt' && Math.hypot(l.x - P.x, l.y - P.y) < 16) { invAdd('bolt', 1); W.loot.splice(i, 1); Snd.clink(); } }
@@ -332,7 +333,7 @@ function update(dt) {
   G.near = G.ui ? null : findNear();
   // звук
   let hd = 999, ha = null; for (const a of W.anoms) { const d = Math.hypot(a.x - P.x, a.y - P.y); if (d < hd) { hd = d; ha = a; } }
-  if (ha && hd < 240) { const f = { funnel: 55, electra: 110 + (ha.state ? 120 * ha.t / CFG.anoms.electra.charge : 0), fluff: 190, slime: 80, plesh: 45, grinder: 140, spring: 95 + (ha.state ? 90 * ha.t / CFG.anoms.spring.charge : 0), magnet: 70 }[ha.type]; Snd.setHum(f, 0.05 * (1 - hd / 240)); } else Snd.setHum(60, 0);
+  if (ha && hd < 240) { const f = { funnel: 55, electra: 110 + (ha.state ? 120 * ha.t / CFG.anoms.electra.charge : 0), fluff: 190, slime: 80, plesh: 45, grinder: 140, spring: 95 + (ha.state ? 90 * ha.t / CFG.anoms.spring.charge : 0), magnet: 70, smolder: 65 + (ha.state ? 60 * ha.t / CFG.anoms.smolder.charge : 0) }[ha.type]; Snd.setHum(f, 0.05 * (1 - hd / 240)); } else Snd.setHum(60, 0);
   if (Math.random() < P.geigerRate * dt * 8) Snd.geiger();
   Snd.siren(G.emi.s === 'warn' || G.emi.s === 'blast' && false);
   for (let i = tracers.length - 1; i >= 0; i--) if ((tracers[i].t -= dt) <= 0) tracers.splice(i, 1);
@@ -439,6 +440,7 @@ function draw() {
     if (!c.opened && Math.hypot(c.x - P.x, c.y - P.y) < 150) Spr.draw(ctx, 'star', c.x, c.y - 16, false, 0.4 + 0.5 * Math.abs(Math.sin(G.t * 4 + c.x)));
   }
   for (const c of Mutants.corpses) Spr.draw(ctx, c.meat > 0 ? 'meat' : 'corpse_l', c.x, c.y);
+  for (const e of Mutants.embers) if (e.x > x0 - 20 && e.x < x1 + 20 && e.y > y0 - 20 && e.y < y1 + 20) { ctx.globalAlpha = Math.min(1, e.t / 2) * (0.7 + 0.3 * Math.sin(G.t * 12 + e.x)); px(e.x, e.y, '#ff8a30', 4); px(e.x + 2, e.y - 2, '#ffd070', 2); ctx.globalAlpha = 1; }
   const dl = [];
   const decor = [];
   W.dg.query((x0 + x1) / 2, (y0 + y1) / 2, Math.max(VW, VH) / 2 + 120, o => { if (o.x > x0 - 90 && o.x < x1 + 90 && o.y > y0 - 90 && o.y < y1 + 90) { if (o.decor) decor.push(o); else dl.push({ y: o.ys, o }); } });
@@ -498,7 +500,7 @@ function drawLight() {
   const dark = G.scene === 'interior' ? 0.42 : Math.min(0.95, 0.2 + 0.65 * G.night + G.cloud * 0.16 + G.fog * 0.1);
   lc.fillStyle = `rgba(4,6,8,${dark})`; lc.fillRect(0, 0, VW, VH);
   lc.globalCompositeOperation = 'destination-out';
-  const vis = U.lerp(CFG.player.vision, CFG.player.visionNight, G.night) * (1 - G.fog * 0.28) * (1 - G.rain * 0.1) * (P.sneak ? 0.95 : 1) * (G.scene === 'zone' && W.biomeAt(P.x, P.y) === 'forest' ? 0.82 : 1);
+  const vis = (U.lerp(CFG.player.vision, CFG.player.visionNight, G.night) + fx('sight')) * (1 - G.fog * 0.28) * (1 - G.rain * 0.1) * (P.sneak ? 0.95 : 1) * (G.scene === 'zone' && W.biomeAt(P.x, P.y) === 'forest' ? 0.82 : 1);
   const hole = (x, y, r, a) => { const g = lc.createRadialGradient(x, y, r * 0.2, x, y, r); g.addColorStop(0, `rgba(0,0,0,${a})`); g.addColorStop(1, 'rgba(0,0,0,0)'); lc.fillStyle = g; lc.fillRect(x - r, y - r, r * 2, r * 2); };
   hole(P.x - cam.x, P.y - cam.y, vis, 1);
   if (G.scene !== 'zone') { const fl = 0.85 + 0.15 * Math.sin(G.t * 9); for (const l of Camp.curLights()) hole(l.x - cam.x, l.y - cam.y, l.r, Math.min(1, l.a * fl)); }
@@ -542,6 +544,15 @@ function drawAnom(a) {
     for (let i = 1; i <= 3; i++) { ctx.globalAlpha = ah * (0.7 - i * 0.15); ctx.beginPath(); ctx.arc(a.x, a.y, a.r * (i / 3.2) * (1 - k * 0.35), 0, 6.28); ctx.stroke(); }
     ctx.globalAlpha = ah; for (let i = 0; i < 6; i++) { const an = i * 1.05 + a.ph; px(a.x + Math.cos(an) * a.r * 0.75, a.y + Math.sin(an) * a.r * 0.75 - k * 6, '#e0c080', 3); }
   }
+  else if (a.type === 'smolder') {
+    const k = a.state ? a.t / c.charge : 0;
+    ctx.globalAlpha = ah * 0.55; circle(a.x, a.y, a.r * 0.8, '#1c100c'); ctx.globalAlpha = ah;
+    for (let i = 0; i < 10; i++) { const an = i * 2.3 + a.ph, rr = a.r * (0.15 + ((i * 0.19 + t * 0.1) % 1) * 0.75); px(a.x + Math.cos(an) * rr, a.y + Math.sin(an) * rr - ((t * 14 + i * 5) % 12), i % 3 ? '#e0602a' : '#ffb050', 3); }
+    circle(a.x, a.y, a.r * (0.22 + 0.04 * Math.sin(t * 5 + a.ph)), '#c8461e');
+    if (a.state) {
+      ctx.globalAlpha = Math.min(0.55, 0.12 + k * 0.5); ctx.fillStyle = '#ff7a30'; ctx.beginPath(); ctx.moveTo(a.x, a.y); ctx.arc(a.x, a.y, a.r * c.reach, a.dir - c.arc / 2, a.dir + c.arc / 2); ctx.closePath(); ctx.fill(); ctx.globalAlpha = ah;
+    }
+  }
   else if (a.type === 'magnet') {
     ctx.globalAlpha = ah * 0.45; circle(a.x, a.y, a.r * 0.35, '#1c2028'); ctx.globalAlpha = ah;
     for (let i = 0; i < 12; i++) { const an = i * 2.4 + a.ph, rr = a.r * (0.35 + ((i * 0.17 + t * 0.05) % 1) * 0.65); px(a.x + Math.cos(an) * rr, a.y + Math.sin(an) * rr, i % 3 ? '#7a4a30' : '#9aa0a8', 3); }
@@ -549,13 +560,16 @@ function drawAnom(a) {
   }
   else { ctx.globalAlpha = ah * 0.4; ctx.beginPath(); ctx.ellipse(a.x, a.y, a.r * 0.8, a.r * 0.6, 0.3, 0, 6.28); ctx.fillStyle = '#4a7a55'; ctx.fill(); ctx.globalAlpha = ah; px(a.x - a.r * 0.25 + Math.sin(t) * 3, a.y - a.r * 0.2, '#cfe8d0', 4); }
   if (a.flash > 0) { ctx.globalAlpha = a.flash; circle(a.x, a.y, a.r * (1.1 - a.flash * 0.3), a.type === 'electra' ? '#cfe6ff' : c.col); }
+  if (a.type === 'smolder' && a.flash > 0) { ctx.globalAlpha = a.flash * 0.5; ctx.fillStyle = '#ffb050'; ctx.beginPath(); ctx.moveTo(a.x, a.y); ctx.arc(a.x, a.y, a.r * c.reach, a.dir - c.arc / 2, a.dir + c.arc / 2); ctx.closePath(); ctx.fill(); }
   if (vis) { ctx.globalAlpha = vis; ctx.strokeStyle = c.col; ctx.lineWidth = 1.5; ctx.setLineDash([6, 5]); ctx.beginPath(); ctx.arc(a.x, a.y, a.r, 0, 6.28); ctx.stroke(); ctx.setLineDash([]); ctx.font = 'bold 11px Consolas'; ctx.textAlign = 'center'; ctx.fillStyle = c.col; ctx.fillText(c.name, a.x, a.y - a.r - 6); }
   ctx.globalAlpha = 1;
 }
 function drawMutant(m) {
   const asleep = m.state === 'sleep', pd = Math.hypot(m.x - P.x, m.y - P.y); let al = asleep ? 0.75 : 1;
   if (m.sp === 'fogger') { if (asleep) return; al = U.clamp(0.22 + (m.watched ? 0.5 : 0) + (pd < 90 ? 0.3 : 0), 0, 1) * (pd > 300 ? 0 : 1); if (al <= 0.02) return; }
+  if (m.sp === 'cinder' && asleep) { if (pd < 220) { ctx.globalAlpha = 0.3 * (1 - pd / 220) + 0.1; Spr.draw(ctx, 'ashpile', m.x, m.y, false, null, 1.1); ctx.globalAlpha = 1; } return; }
   shadow(m.x, m.y + m.r * 0.7, m.r); Spr.draw(ctx, m.sp, m.x, m.y - 2, m.face < 0, al);
+  if (m.burn > 0) { px(m.x - 3 + Math.sin(G.t * 20) * 2, m.y - 12 - (G.t * 30) % 6, '#ff8a30', 4); px(m.x + 3, m.y - 8 - (G.t * 24) % 6, '#ffd070', 3); }
   const sym = { sleep: 'z', investigate: '?', hunt: '!', flee: '«', eat: '♨' }[m.state];
   if (sym && pd < 300 && al > 0.3) { ctx.font = 'bold 13px Consolas'; ctx.textAlign = 'center'; ctx.fillStyle = m.state === 'hunt' ? '#e05050' : '#d8c070'; ctx.fillText(sym, m.x, m.y - 18); }
   if (m.hp < m.c.hp && al > 0.3) { ctx.fillStyle = '#000'; ctx.fillRect(m.x - 10, m.y - 24, 20, 3); ctx.fillStyle = '#a33'; ctx.fillRect(m.x - 10, m.y - 24, 20 * m.hp / m.c.hp, 3); }
@@ -573,7 +587,7 @@ function hud(dt) {
   const ez = e.s === 'warn' ? `<div class="warn">ВЫБРОС ЧЕРЕЗ ${Math.ceil(e.left)} с${isSheltered() ? ' · ты в укрытии' : ' · В УКРЫТИЕ!'}</div>` : e.s === 'blast' ? '<div class="warn">ВЫБРОС!</div>' : '';
   $('top').innerHTML = `<div class="stat">${WX[G.wx].name}</div>${String(hh).padStart(2, '0')}:${String(mm).padStart(2, '0')} ${G.night > 0.5 ? '☾' : '☀'} · <b style="color:#e8c060">${P.money} ₽</b>${ez}<div class="stat">${G.scene === 'interior' ? Camp.roomName() : G.scene === 'camp' ? 'Лагерь «Обочина»' : inCamp() ? 'Блокпост' : CFG.biomes[W.biomeAt(P.x, P.y)].name + ' · сектор ' + W.danger(P.x, P.y)}</div>`;
   $('prompt').textContent = G.near ? '[E] ' + G.near.label : '';
-  let q = ''; heldNames.forEach((h, i) => { const ic = h === 'weapon' ? Icons.html('w_' + P.weapon) : CFG.items[h].icon, n = h === 'weapon' ? invCount('ammo') : invCount(h); q += `<div class="qs ${P.sel === i ? 'on' : ''}" data-q="${i}"><u>${i + 1}</u>${ic}<b>${n}</b></div>`; });
+  let q = ''; heldNames.forEach((h, i) => { const ic = h === 'weapon' ? Icons.html('w_' + P.weapon) : CFG.items[h].icon, n = h === 'weapon' ? invCount(CFG.weapons[P.weapon].ammo || 'ammo') : invCount(h); q += `<div class="qs ${P.sel === i ? 'on' : ''}" data-q="${i}"><u>${i + 1}</u>${ic}<b>${n}</b></div>`; });
   if ($('quick').dataset.s !== q) { $('quick').innerHTML = q; $('quick').dataset.s = q; }
   // осмотр (ПКМ)
   const tip = $('tip');
@@ -695,6 +709,7 @@ function drawMap() {
   for (const a of W.anoms) if (a.known) { m.strokeStyle = CFG.anoms[a.type].col; m.beginPath(); m.arc(a.x * k, a.y * k, Math.max(3, a.r * k), 0, 6.28); m.stroke(); m.fillStyle = CFG.anoms[a.type].col; m.fillText(CFG.anoms[a.type].name[0], a.x * k, a.y * k + 4); }
   for (const b of W.bunkers) if (b.known) { m.fillStyle = '#8aa070'; m.fillRect(b.x * k - 4, b.y * k - 4, 8, 8); }
   for (const l of W.labs) if (l.known) { m.fillStyle = '#7fb8ff'; m.fillRect(l.x * k - 5, l.y * k - 5, 10, 10); m.fillStyle = '#0b0d0a'; m.fillText('Л', l.x * k, l.y * k + 4); }
+  for (const r of W.roads) if (r.known) { m.strokeStyle = '#d0a070'; m.lineWidth = 3; m.beginPath(); m.moveTo((r.x - Math.cos(r.ang) * r.len / 2) * k, (r.y - Math.sin(r.ang) * r.len / 2) * k); m.lineTo((r.x + Math.cos(r.ang) * r.len / 2) * k, (r.y + Math.sin(r.ang) * r.len / 2) * k); m.stroke(); m.lineWidth = 1; m.fillStyle = '#d0a070'; m.fillText('Тракт', r.x * k, r.y * k - 8); }
   for (const x of W.caches) { m.strokeStyle = '#e06060'; m.strokeRect(x.x * k - 4, x.y * k - 4, 8, 8); }
   m.fillStyle = '#e8c060'; m.fillText('БЛОКПОСТ', W.C.x * k, W.C.y * k - 12); m.beginPath(); m.arc(W.C.x * k, W.C.y * k, 5, 0, 6.28); m.fill();
   m.fillStyle = '#c9a93a'; m.fillText('?', CFG.world.goal.x * k, CFG.world.goal.y * k);

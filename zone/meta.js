@@ -8,8 +8,8 @@ const Meta = {
   DIRS: ['востоке', 'юго-востоке', 'юге', 'юго-западе', 'западе', 'северо-западе', 'севере', 'северо-востоке'],
 
   reset() { this._bountyCd = 0; this.sensors = []; this.lures = []; this.lureShots = []; this.genOffers(); this.pickEvents(); },
-  afterLoad() { for (const k in CFG.weapons) if (P.cond[k] == null) P.cond[k] = 100; this._bountyCd = 0; for (const q of P.quests || []) if (q.type === 'bounty' && q.prog < 1) this.spawnBounty(q); this.sensors = []; this.lures = []; this.lureShots = []; if (!P.offers || !P.offers.length) this.genOffers(); if (!G.events || !G.events.length) this.pickEvents(); },
-  saveFields() { const o = {}; for (const k of ['rep', 'karma', 'quests', 'offers', 'lore', 'weapons', 'weapon', 'cond', 'suitCond', 'insured', 'pass', 'earned', 'researched', 'kills', 'mapSold', 'stash', 'bld', 'chainDone']) o[k] = P[k]; return o; },
+  afterLoad() { P.burn = 0; if (!P.fuel) P.fuel = 0; for (const k in CFG.weapons) if (P.cond[k] == null) P.cond[k] = 100; this._bountyCd = 0; for (const q of P.quests || []) if (q.type === 'bounty' && q.prog < 1) this.spawnBounty(q); this.sensors = []; this.lures = []; this.lureShots = []; if (!P.offers || !P.offers.length) this.genOffers(); if (!G.events || !G.events.length) this.pickEvents(); },
+  saveFields() { const o = {}; for (const k of ['rep', 'karma', 'quests', 'offers', 'lore', 'weapons', 'weapon', 'cond', 'suitCond', 'insured', 'pass', 'earned', 'researched', 'kills', 'mapSold', 'stash', 'bld', 'chainDone', 'fuel']) o[k] = P[k]; return o; },
 
   // ---- костюм ----
   bestSuit() { return hasItem('suit2') ? 'suit2' : hasItem('suit') ? 'suit' : null; },
@@ -17,6 +17,27 @@ const Meta = {
   suitRad() { const s = this.bestSuit(); return s ? this.TIER[s].rad * this.suitEff() : 0; },
   suitAnom() { const s = this.bestSuit(); return s ? this.TIER[s].anom * this.suitEff() : 0; },
   wearSuit(d) { if (this.bestSuit()) P.suitCond = Math.max(0, P.suitCond - d * 0.12); },
+
+  // ---- огонь ----
+  fireRes() { return Math.min(0.85, (hasItem('firecoat') ? 0.6 : 0) + fx('fireRes')); },
+  // Поджечь существо: игрока — на sec секунд с поправкой на огнестойкость, мутанта — на 4 с (огнеупорные не горят)
+  ignite(e, sec) {
+    if (e === P) { const k = 1 - this.fireRes(); if (k <= 0.05 || G.dead) return; if (!(P.burn > 0)) log('Ты горишь! Вода или аптечка потушат.', '#ff9a40'); P.burn = Math.max(P.burn || 0, sec * k); }
+    else if (!(e.c && e.c.fireproof) && e.burn != null) e.burn = Math.max(e.burn, 4);
+  },
+  // Огнемёт: конус перед игроком, урон каждому в нём (сквозь броню), поджигает
+  flame(w) {
+    let seen = false;
+    for (const list of [Mutants.list, Stalkers.list]) for (const m of list) {
+      if (m.dead) continue; const dx = m.x - P.x, dy = m.y - P.y, d = Math.hypot(dx, dy);
+      if (d > w.range + m.r || U.angDiff(P.ang, Math.atan2(dy, dx)) > w.cone) continue;
+      if (m.c && m.c.fireproof) { seen = true; continue; }
+      m.hurt(w.dmg, P, w.pierce); if (!m.dead && m.burn != null) { m.burn = Math.max(m.burn, 4); m.burner = P; }
+    }
+    if (seen && !(G.t < (this._fpLog || 0))) { this._fpLog = G.t + 6; log('Огонь Углеглота не берёт — он из золы.', '#d0a070'); }
+    for (let i = 0; i < 6; i++) { const a = P.ang + (Math.random() - 0.5) * w.cone * 2, sp = 120 + Math.random() * 160; parts.push({ x: P.x + Math.cos(P.ang) * 10, y: P.y, vx: Math.cos(a) * sp, vy: Math.sin(a) * sp, life: 0.3 + Math.random() * 0.15, col: Math.random() < 0.5 ? '#ff8a30' : '#ffd070' }); }
+    Snd.crackle(); G.shake = Math.max(G.shake, 0.04); Mutants.hear(P.x, P.y, w.noise);
+  },
 
   // ---- оружие ----
   cycleWeapon() { const i = P.weapons.indexOf(P.weapon); P.weapon = P.weapons[(i + 1) % P.weapons.length]; log('Оружие: ' + CFG.weapons[P.weapon].name); },
@@ -50,7 +71,7 @@ const Meta = {
   rewardMul() { return 1 + 0.15 * (Camp.lvl('bar') - 1); },
   bmName(x, y) { return CFG.biomes[W.biomeAt(x, y)].name; },
   genOffers() {
-    const offers = [], pool = ['fetch', 'hunt', 'recon', 'bring', 'bring', 'discover', 'sensor', 'help', 'bounty', 'rescue', 'lab'].sort(() => Math.random() - 0.5), n = 4 + (Camp.lvl('bar') - 1);
+    const offers = [], pool = ['fetch', 'hunt', 'recon', 'bring', 'bring', 'discover', 'sensor', 'help', 'bounty', 'rescue', 'lab', 'ash'].sort(() => Math.random() - 0.5), n = 4 + (Camp.lvl('bar') - 1);
     for (const t of pool) { if (offers.length >= n) break; const o = this.makeOffer(t); if (o) offers.push(o); }
     if (!P.chainDone && !P.quests.some(q => q.type === 'chain') && P.lore >= 2 && Math.random() < 0.8) offers.unshift(this.makeOffer('chain'));
     const bl = this.rewardMul(); for (const o of offers) o.reward = Math.round(o.reward * bl);
@@ -63,12 +84,13 @@ const Meta = {
     if (t === 'recon') { const p = W.spot(1500, R); return { type: 'recon', x: p.x, y: p.y, reached: false, reward: 80 + W.danger(p.x, p.y) * 45, rep: 5, text: 'Разведка: дойти до отмеченной точки (' + this.bmName(p.x, p.y) + ') и вернуться' }; }
     if (t === 'rescue') { const p = W.spot(1800, R); return { type: 'rescue', x: p.x, y: p.y, reward: 170, rep: 9, text: 'Экспедиция не вернулась. Найти жетон группы.' }; }
     if (t === 'bring') {
-      const o = U.pick([['scrap', 8, 55], ['circuit', 4, 70], ['battery', 4, 60], ['earbone', 3, 80], ['glassgland', 3, 95], ['plate', 2, 80], ['mistvial', 1, 110], ['meat', 5, 45], ['quill', 3, 75], ['fang', 3, 85]]);
+      const o = U.pick([['scrap', 8, 55], ['circuit', 4, 70], ['battery', 4, 60], ['earbone', 3, 80], ['glassgland', 3, 95], ['plate', 2, 80], ['mistvial', 1, 110], ['meat', 5, 45], ['quill', 3, 75], ['fang', 3, 85], ['coalfang', 3, 90]]);
       return { type: 'bring', mat: o[0], n: o[1], reward: o[2] + Math.floor(R() * 20), rep: 2, text: 'Снабжение лагеря: принести «' + CFG.items[o[0]].name + '» ×' + o[1] };
     }
     if (t === 'discover') { const n = 3 + Math.floor(R() * 3); return { type: 'discover', n, prog: 0, reward: 50 + n * 22, rep: 3, text: 'Картограф: отметить болтами новые аномалии ×' + n }; }
     if (t === 'sensor') { const p = W.spot(1200, R); return { type: 'sensor', x: p.x, y: p.y, placed: false, reward: 120 + W.danger(p.x, p.y) * 30, rep: 4, text: 'Установить датчик движения в точке (' + this.bmName(p.x, p.y) + '). Датчик выдадим.' }; }
     if (t === 'lab') return W.labs.length ? { type: 'lab', prog: 0, n: 1, reward: 210, rep: 6, text: 'Лаборатория: найти заброшенную площадку с оградой (сектор 3–4, фонит, у подходов «пружины» и магнитные ямы) и вскрыть шкаф' } : null;
+    if (t === 'ash') return W.roads.length ? { type: 'ash', prog: 0, n: 3, reward: 380, rep: 8, text: 'Пожарный: убить углеглотов ×3 и принести «Угольный зуб» ×3. Логова — у Пепельного тракта (сектор 2–4) и в Гари' } : null;
     if (t === 'help') return { type: 'help', n: 1, prog: 0, reward: 70, rep: 6, text: 'Найти раненого сталкера и спасти его аптечкой' };
     if (t === 'bounty') { const p = W.spot(1500, R); return { type: 'bounty', x: p.x, y: p.y, prog: 0, name: U.pick(STALKER_NAMES), reward: 180 + W.danger(p.x, p.y) * 40, rep: 8, text: 'Награда за голову: главарь бандитов (' + this.bmName(p.x, p.y) + '). Опасен.' }; }
     if (t === 'chain') { const p = W.spot(1400, R), p2 = W.spot(1700, R); return { type: 'chain', stage: 0, x: p.x, y: p.y, bx: p2.x, by: p2.y, reward: 420, rep: 12, item: ['art', 'mirage'], text: 'Цепочка «Сумерки»: найти следы экспедиции Штейна (3 этапа)' }; }
@@ -77,6 +99,7 @@ const Meta = {
     const st = this.done(q) ? 'готово: сдай Сидору' : 'в работе';
     if (q.type === 'hunt' || q.type === 'discover' || q.type === 'help' || q.type === 'lab') return q.prog + '/' + q.n + ' · ' + st;
     if (q.type === 'bring') return invCount(q.mat) + '/' + q.n + ' · ' + st;
+    if (q.type === 'ash') return 'убито ' + q.prog + '/' + q.n + ' · зубов ' + invCount('coalfang') + '/' + q.n + ' · ' + st;
     if (q.type === 'chain') return ['этап 1: дойти до отмеченной точки', 'этап 2: найти дневник в отмеченном месте', 'этап 3: отнести дневник Сидору'][Math.min(q.stage, 2)];
     if (q.type === 'sensor') return q.placed ? 'датчик стоит · ' + st : 'поставь датчик в точке';
     return st;
@@ -99,6 +122,7 @@ const Meta = {
     if (q.type === 'recon') return q.reached;
     if (q.type === 'rescue') return invCount('dogtag') > 0;
     if (q.type === 'bring') return invCount(q.mat) >= q.n;
+    if (q.type === 'ash') return q.prog >= q.n && invCount('coalfang') >= q.n;
     if (q.type === 'sensor') return q.placed;
     if (q.type === 'bounty') return q.prog >= 1;
     if (q.type === 'chain') return q.stage >= 2 && invCount('diary') > 0;
@@ -108,6 +132,7 @@ const Meta = {
     if (q.type === 'fetch') { const j = P.inv.findIndex(s => s.art === q.art); P.inv.splice(j, 1); }
     if (q.type === 'rescue') invTake('dogtag', 1);
     if (q.type === 'bring') invTake(q.mat, q.n);
+    if (q.type === 'ash') invTake('coalfang', q.n);
     if (q.type === 'chain') { invTake('diary', 1); P.chainDone = true; this.gainLore(); this.gainLore(); }
     if (q.item) { invAdd('art', 1, q.item[1]); log('Награда: ' + CFG.arts[q.item[1]].name, '#e8c060'); }
     P.money += q.reward; P.earned += q.reward; P.rep += q.rep; addXp(30 + q.rep * 5); P.quests.splice(i, 1);
@@ -117,6 +142,7 @@ const Meta = {
   onKill(kind) {
     for (const q of P.quests) {
       if (q.type === 'hunt' && q.sp === kind && q.prog < q.n) { q.prog++; log('Задание: ' + q.prog + '/' + q.n, '#e8c060'); }
+      if (q.type === 'ash' && kind === 'cinder' && q.prog < q.n) { q.prog++; log('Задание: ' + q.prog + '/' + q.n, '#e8c060'); }
       if (q.type === 'bounty' && kind === 'bounty' && q.prog < 1) { q.prog = 1; log('Главарь убит. Возвращайся за наградой.', '#e8c060'); }
     }
   },
@@ -164,6 +190,7 @@ const Meta = {
 
   update(dt) {
     const psy = fx('psy'); if (psy) P.stress = Math.min(100, P.stress + psy * dt);
+    if (P.burn > 0) { P.burn -= dt; P.hurt(4 * dt, 'fire'); if (Math.random() < dt * 14) parts.push({ x: P.x + (Math.random() - 0.5) * 8, y: P.y - 4, vx: (Math.random() - 0.5) * 20, vy: -30, life: 0.4, col: Math.random() < 0.5 ? '#ff8a30' : '#ffd070' }); if (P.burn <= 0) log('Огонь погас.', '#9ab8d8'); }
     if (P.inAnom && P.inAnom.type === 'plesh' && Math.random() < dt * 0.6) this.breakLeg('Плешь вдавила ногу в землю. Перелом.');
     if (P.infect > 0) { P.infect += dt; P.hp -= 0.3 * dt; if (P.infect > 180) { P.infect = 0; log('Организм справился с заражением.', '#a8c890'); } }
     const pb = this.prevBleed; if (pb > 0 && pb <= dt * 1.5 && P.bleed <= 0 && P.infect <= 0 && Math.random() < 0.35) { P.infect = 0.01; log('Рана загноилась. Нужен антибиотик.', '#c0e060'); } this.prevBleed = P.bleed;
@@ -197,6 +224,7 @@ const Meta = {
   status() {
     let h = '';
     if (P.fracture) h += ' <b style="color:#e06060">ПЕРЕЛОМ</b>';
+    if (P.burn > 0) h += ' <b style="color:#ff8a30">ОЖОГ</b>';
     if (P.infect > 0) h += ' <b style="color:#c0e060">ИНФЕКЦИЯ</b>';
     if (G.scene === 'zone' && W.danger(P.x, P.y) >= 4 && !P.pass && P.rep < CFG.gate.rep) h += ' <b style="color:#e06060">ЗАКРЫТЫЙ СЕКТОР</b>';
     return h + ' · реп ' + (P.rep | 0);
@@ -258,7 +286,7 @@ const Meta = {
         if ((CFG.weapons[k].lvl || 1) > Camp.lvl('gun') && !P.weapons.includes(k)) continue;
         const w = CFG.weapons[k], dmg = w.dmg + (w.pellets > 1 ? '×' + w.pellets : '');
         if (P.weapons.includes(k)) { const c = this.repairCost(k); h += row(Icons.html('w_' + k), w.name + (P.weapon === k ? ' ★' : ''), 'Износ ' + Math.round(100 - P.cond[k]) + '% · урон ' + dmg, btn('wequip:' + k, 'В руки', P.weapon === k) + btn('wrepair:' + k, c ? 'Починить ' + c + ' ₽' : 'Исправно', !c || P.money < c)); }
-        else h += row(Icons.html('w_' + k), w.name, 'Урон ' + dmg + ', дальность ' + w.range, btn('wbuy:' + k, w.price + ' ₽', P.money < w.price));
+        else h += row(Icons.html('w_' + k), w.name, 'Урон ' + dmg + ', дальность ' + w.range + (w.note ? ' · ' + w.note : ''), btn('wbuy:' + k, w.price + ' ₽', P.money < w.price));
       }
       h += '</div>';
     } else if (vk === 'gear') {
@@ -288,7 +316,7 @@ const Meta = {
     const w = CFG.weapons[P.weapon];
     return `<div class="cols"><div><h3>Состояние</h3><div class="stat">Оружие: <b>${w.name}</b> (износ ${Math.round(100 - P.cond[P.weapon])}%) · сменить: клавиша 1 при выбранном слоте</div>
       <div class="stat">Костюм: <b>${this.bestSuit() ? CFG.items[this.bestSuit()].name + ' (износ ' + Math.round(100 - P.suitCond) + '%)' : 'нет'}</b></div>
-      <div class="stat">Травмы: <b>${(P.fracture ? 'перелом (шина) ' : '') + (P.infect > 0 ? 'заражение (антибиотик) ' : '') + (P.bleed > 0 ? 'кровотечение ' : '') || 'нет'}</b></div></div></div>`;
+      <div class="stat">Травмы: <b>${(P.fracture ? 'перелом (шина) ' : '') + (P.infect > 0 ? 'заражение (антибиотик) ' : '') + (P.burn > 0 ? 'ожог (вода или аптечка) ' : '') + (P.bleed > 0 ? 'кровотечение ' : '') || 'нет'}</b></div></div></div>`;
   },
 
   // ---- обработка кликов в панелях (true = обработано) ----
@@ -374,10 +402,12 @@ const Meta = {
 // ---- переопределения функций main.js ----
 function shoot() {
   const w = CFG.weapons[P.weapon]; if (P.cd > 0) return;
-  if (invCount('ammo') < 1) { Snd.tick(); P.cd = 0.3; log('Патронов нет.'); return; }
+  if (invCount(w.ammo || 'ammo') < 1 && !(w.perAmmo && P.fuel > 0)) { Snd.tick(); P.cd = 0.3; log(w.perAmmo ? 'Топлива нет.' : 'Патронов нет.'); return; }
   const cond = P.cond[P.weapon];
   if (cond < 25 && Math.random() < 0.15 + 0.3 * (1 - cond / 25)) { P.cd = 0.6; Snd.tick(); log('Осечка! Оружие изношено — почини у оружейника.', '#e0a060'); return; }
-  invTake('ammo', 1); P.cd = w.cd; P.recoil = 1; P.cond[P.weapon] = Math.max(0, cond - w.wear);
+  if (w.perAmmo) { if (P.fuel <= 0) { invTake(w.ammo, 1); P.fuel = w.perAmmo; } P.fuel--; } else invTake('ammo', 1);
+  P.cd = w.cd; P.recoil = 1; P.cond[P.weapon] = Math.max(0, cond - w.wear);
+  if (w.cone) return Meta.flame(w);
   const moving = Math.hypot(keys.mx || 0, keys.my || 0) > 0;
   for (let n = 0; n < w.pellets; n++) {
     const a = P.ang + (Math.random() - 0.5) * w.spread * (P.sneak ? 0.6 : 1) * (moving ? 1.6 : 1) * (cond < 50 ? 1.3 : 1);
@@ -408,7 +438,7 @@ function useItem(id) {
   if (u.repairSuit) { P.suitCond = Math.min(100, P.suitCond + u.repairSuit); log('Костюм залатан.'); }
   if (u.identify) { const s = P.inv.find(x => x.art && !P.known[x.art]); P.known[s.art] = true; P.karma.study += 0.5; addXp(15); log('Реагент показал: ' + CFG.arts[s.art].name + '. ' + CFG.arts[s.art].desc, '#e8c060'); }
   if (u.heal) P.hp = Math.min(100, P.hp + u.heal);
-  if (u.stopBleed) P.bleed = 0;
+  if (u.stopBleed) { P.bleed = 0; P.burn = 0; }
   if (u.food) P.food = Math.min(100, P.food + u.food);
   if (u.rad) P.rad = Math.max(0, Math.min(100, P.rad + u.rad));
   if (u.fixFracture) P.fracture = false;

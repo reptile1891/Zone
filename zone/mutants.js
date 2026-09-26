@@ -4,16 +4,17 @@
 //  Стеклоед  — пугливое стадо, добыча для остальных.
 //  Жестянка  — броня, территория, тянется к звону металла, ест брошенные болты.
 //  Туманник  — выходит в туман/дождь, замирает, пока на него смотришь.
+//  Углеглот  — днём спит в золе (не виден), ночью бросается из засады; огнеупорен, оставляет угли и поджигает.
 class Mutant {
   constructor(sp, x, y, pack) {
     const c = CFG.mut[sp];
     Object.assign(this, { sp, c, x, y, pack, hp: c.hp, ang: Math.random() * 6.28, hunger: Math.random() * 0.4, fear: 0,
-      state: sp === 'fogger' ? 'sleep' : 'wander', st: 0, tx: x, ty: y, hx: x, hy: y, cd: 0, chargeCd: 0, target: null,
+      state: sp === 'fogger' || sp === 'cinder' ? 'sleep' : 'wander', st: 0, burn: 0, burner: null, trailT: 0, tx: x, ty: y, hx: x, hy: y, cd: 0, chargeCd: 0, target: null,
       perc: Math.random() * 0.25, slow: 1, dead: false, reckless: 0, lost: 0, r: c.r, eatT: 0, idx: 0, sndT: Math.random() * 3, watched: false, face: 1 });
   }
-  hurt(d, src) {
+  hurt(d, src, pierce) {
     if (this.dead) return;
-    this.hp -= d * (1 - (this.c.armor || 0));
+    this.hp -= d * (pierce ? 1 : 1 - (this.c.armor || 0));
     if (this.hp <= 0) return this.die(src);
     if (src && src !== 'anom') {
       if (this.c.timid) this.flee(src.x, src.y, 5);
@@ -46,11 +47,13 @@ class Mutant {
     const c = this.c, pd = Math.hypot(P.x - this.x, P.y - this.y), act = this.isActive();
     if (this.state === 'sleep') {
       if (c.active === 'weather') { if (act) this.wake(); return; }
-      if (pd < 130 || (act && Math.random() < 0.06)) this.wake(); return;
+      const wr = c.wakeR || 130;
+      if (pd < wr || (act && Math.random() < 0.06)) { this.wake(); if (c.ambush && pd < wr && !inCamp() && !G.dead) this.startHunt(P); }
+      return;
     }
     if (!act) {
       if (c.active === 'weather') { this.state = 'sleep'; this.target = null; return; }
-      if (this.state === 'wander' && pd > 450 && Math.random() < 0.02) { this.state = 'sleep'; return; }
+      if (this.state === 'wander' && pd > (c.hideR || 450) && Math.random() < 0.02) { this.state = 'sleep'; return; }
     }
     const inC = inCamp();
     const sight = c.sight * (act ? 1 : 0.6) * (P.sneak ? 0.5 : 1) * (1 - G.fog * 0.3) * (1 - G.rain * 0.25) * (W.inGrass(P.x, P.y) ? 0.55 : 1);
@@ -94,6 +97,7 @@ class Mutant {
     this.cd -= dt; this.st -= dt; this.chargeCd -= dt; this.sndT -= dt; this.reckless = Math.max(0, this.reckless - dt);
     this.fear = Math.max(0, this.fear - dt * 0.08); this.hunger = Math.min(1, this.hunger + dt * 0.004);
     this.perc -= dt; if (this.perc <= 0) { this.perc = 0.2 + Math.random() * 0.1; this.perceive(); }
+    if (this.burn > 0) { this.burn -= dt; this.hp -= 6 * dt; if (this.hp <= 0) return this.die(this.burner); }
     if (this.state === 'sleep') return;
     if (this.sndT <= 0) {
       if (this.sp === 'listener') { this.sndT = 0.6 + Math.random() * 0.5; if (this.state === 'hunt' || this.state === 'investigate') Snd.at('click', this.x, this.y); else this.sndT = 4; }
@@ -159,6 +163,7 @@ class Mutant {
           if (this.cd <= 0 && !(c.stalker && this.watched && d > 20)) {
             this.cd = c.cd; t.hurt(c.dmg, this); if (c.pack && !c.timid) this.back = 0.7;
             if (t === P && c.bleed && Math.random() < c.bleed) P.bleed = 8;
+            if (t === P && c.burn && Math.random() < c.burn) Meta.ignite(P, 5);
             if (t === P && c.fracture && Math.random() < c.fracture) Meta.breakLeg('Удар сломал тебе ногу. Нужна шина.');
             if (t === P && c.infect && P.infect <= 0 && Math.random() < c.infect) { P.infect = 0.01; log('Укус загноился. Нужен антибиотик.', '#c0e060'); }
             Snd.hit();
@@ -168,6 +173,7 @@ class Mutant {
         break;
       }
     }
+    if (c.trail && this.state === 'hunt') { this.trailT -= dt; if (this.trailT <= 0) { this.trailT = 0.3; Mutants.embers.push({ x: this.x, y: this.y, t: 3.5 }); if (Mutants.embers.length > 80) Mutants.embers.shift(); } }
     this.move(dt, tx, ty, speed);
   }
   move(dt, tx, ty, speed) {
@@ -203,12 +209,14 @@ class Mutant {
 }
 
 const Mutants = {
-  list: [], corpses: [], packs: [], adapt: {},
+  list: [], corpses: [], packs: [], adapt: {}, embers: [],
   ad(sp) { return this.adapt[sp] || (this.adapt[sp] = { anom: 0, player: 0 }); },
   learn(sp, k) { const a = this.ad(sp); a[k] = Math.min(k === 'anom' ? 3 : 5, a[k] + 0.5); },
   spawn() {
-    this.list = []; this.corpses = []; this.packs = [];
+    this.list = []; this.corpses = []; this.packs = []; this.embers = [];
     for (const sp in CFG.mut) for (let i = 0; i < CFG.mut[sp].count; i++) this.spawnGroup(sp, false);
+    // хозяева Пепельного тракта: три углеглота спят вокруг каждой линии остовов
+    for (const r of W.roads || []) for (let i = 0; i < 3; i++) { const a = Math.random() * 6.28, d = 40 + Math.random() * 120, m = new Mutant('cinder', r.x + Math.cos(a) * d, r.y + Math.sin(a) * d, null); m.hx = r.x; m.hy = r.y; this.list.push(m); }
   },
   farSpot(minD, c) {
     for (let i = 0; i < 40; i++) {
@@ -265,6 +273,9 @@ const Mutants = {
     this.packs = this.packs.filter(p => p.members.length);
     for (const c of this.corpses) c.age += dt;
     this.corpses = this.corpses.filter(c => c.age < 600);
+    for (const e of this.embers) e.t -= dt;
+    this.embers = this.embers.filter(e => e.t > 0);
+    if (!G.dead && !inCamp()) for (const e of this.embers) if (Math.hypot(e.x - P.x, e.y - P.y) < 12 && Math.random() < dt * 3) Meta.ignite(P, 4);
   },
   migrate() {
     for (const p of this.packs) { const s = this.farSpot(900, CFG.mut[p.members[0].sp]); for (const m of p.members) { m.hx = s.x; m.hy = s.y; if (Math.hypot(m.x - P.x, m.y - P.y) > 1500) { m.x = s.x + (Math.random() - 0.5) * 50; m.y = s.y + (Math.random() - 0.5) * 50; } } }

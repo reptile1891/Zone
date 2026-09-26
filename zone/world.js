@@ -35,6 +35,9 @@ const PROPS = {
   tower:    { spr: 'tower', sc: [1, 1.2], col: [[0, 20, 8]] },
   rail:     { spr: 'rail', sc: [1, 1.3], decor: true },
   crater:   { spr: 'crater', sc: [1, 2.4], decor: true, noflip: true },
+  burntree: { spr: 'burntree', sc: [1, 1.35], col: [[0, 9, 4]] },
+  char:     { spr: 'char', sc: [1, 1.6], decor: true },
+  ashpile:  { spr: 'ashpile', sc: [1, 1.8], decor: true, noflip: true },
 };
 
 class World {
@@ -43,8 +46,8 @@ class World {
     this.S = CFG.world.size; this.C = CFG.world.camp; this.uid = 1; this.CELL = 160; this.N = Math.ceil(this.S / this.CELL);
     this.og = new Grid(200); this.dg = new Grid(200);
     this.anoms = []; this.arts = []; this.loot = []; this.corpses = []; this.bunkers = []; this.rad = []; this.caches = [];
-    this.conts = []; this.water = []; this.grass = []; this.rest = []; this.labs = [];
-    this.genBiomes(); this.genProps(); this.genAnoms(); this.genRad(); this.genBunkers(); this.genCorpses(); this.genStashes(); this.genRest(); this.genLabs();
+    this.conts = []; this.water = []; this.grass = []; this.rest = []; this.labs = []; this.roads = [];
+    this.genBiomes(); this.genProps(); this.genAnoms(); this.genRad(); this.genBunkers(); this.genCorpses(); this.genStashes(); this.genRest(); this.genLabs(); this.genRoads();
   }
   danger(x, y) {
     const d = Math.hypot(x - this.C.x, y - this.C.y) / (this.S * 1.1);
@@ -135,7 +138,7 @@ class World {
     }
     const c = CFG.anoms[type], r = c.r * (0.85 + R() * 0.3);
     if (this.anoms.some(a => Math.hypot(a.x - x, a.y - y) < a.r + r + 42)) return null;
-    const a = { id: this.uid++, type, x, y, r, t: R() * (c.period || c.cycle || 1), state: 0, known: false, flash: 0, revealed: 0, vx: 0, vy: 0, ph: R() * 6.28, act: false };
+    const a = { id: this.uid++, type, x, y, r, t: R() * (c.period || c.cycle || 1), state: 0, known: false, flash: 0, revealed: 0, vx: 0, vy: 0, ph: R() * 6.28, act: false, dir: 0 };
     if (type === 'fluff') { const ang = R() * 6.28; a.vx = Math.cos(ang) * c.drift; a.vy = Math.sin(ang) * c.drift; }
     this.anoms.push(a);
     return a;
@@ -213,6 +216,38 @@ class World {
       for (const [type, dist] of guard) for (let t = 0; t < 12; t++) { const a = R() * 6.28; if (this.tryPlace(p.x + Math.cos(a) * dist, p.y + Math.sin(a) * dist, R, type)) break; }
     }
   }
+  // ---- Пепельный тракт: линия выгоревших машин в секторах 2–4; в остовах — добыча получше, вокруг спят углеглоты (см. Mutants.spawn) ----
+  genRoads() {
+    const R = this.R;
+    for (let i = 0; i < (CFG.counts.roads || 0); i++) {
+      let p = null;
+      for (let t = 0; t < 60 && !p; t++) {
+        const q = this.spot(this.C.r + 700);
+        if (this.danger(q.x, q.y) >= 2 && !this.roads.some(r => Math.hypot(r.x - q.x, r.y - q.y) < 1400) && !this.labs.some(l => Math.hypot(l.x - q.x, l.y - q.y) < 500)) p = q;
+      }
+      if (!p) continue;
+      const ang = R() * 6.28, len = 340, dx = Math.cos(ang), dy = Math.sin(ang), road = { x: p.x, y: p.y, ang, len, known: false }; this.roads.push(road);
+      const n = 7;
+      for (let k = 0; k < n; k++) {
+        const t = (k / (n - 1) - 0.5) * len, jit = (R() - 0.5) * 34, x = p.x + dx * t - dy * jit, y = p.y + dy * t + dx * jit;
+        if (k % 2 === 0) {
+          const sc = 1 + R() * 0.15;
+          this.og.add({ x: x - 9 * sc, y: y + 3 * sc, r: 9 * sc }); this.og.add({ x: x + 9 * sc, y: y + 3 * sc, r: 9 * sc });
+          this.dg.add({ x, y, spr: 'car_burnt', sc, flip: R() < 0.5, ys: y + 10, decor: false });
+          this.conts.push({ x, y, kind: 'road', opened: false, loot: this.rollRoad(R) });
+        } else this.addProp(k % 4 === 1 ? 'barrel' : 'tires', x, y, R);
+      }
+      for (let k = 0; k < 6; k++) { const a = R() * 6.28, d = 60 + R() * 120; this.addProp(R() < 0.5 ? 'char' : 'ashpile', p.x + Math.cos(a) * d, p.y + Math.sin(a) * d, R); }
+      for (let k = 0; k < 2; k++) { const s2 = k ? 1 : -1; for (let t2 = 0; t2 < 12; t2++) { const a = ang + s2 * (1.2 + R() * 0.6), d = 150 + R() * 60; if (this.tryPlace(p.x + Math.cos(a) * d, p.y + Math.sin(a) * d, R, 'smolder')) break; } }
+    }
+  }
+  rollRoad(rnd) {
+    const R = rnd || this.R, L = [['scrap', 2 + Math.floor(R() * 3)], ['battery', 1 + Math.floor(R() * 2)]];
+    L.push(['ammo', 4 + Math.floor(R() * 8)]);
+    if (R() < 0.45) L.push(['canister', 1]); if (R() < 0.35) L.push(['medkit', 1]); if (R() < 0.3) L.push(['antirad', 1]); if (R() < 0.2) L.push(['circuit', 2]);
+    L.push(['money', 40 + Math.floor(R() * 60)]);
+    return L;
+  }
   rollLab(rnd) {
     const R = rnd || this.R, L = [['circuit', 3 + Math.floor(R() * 3)], ['battery', 2 + Math.floor(R() * 3)]];
     if (R() < 0.6) L.push(['reagent', 1]); if (R() < 0.5) L.push(['medkit', 1 + Math.floor(R() * 2)]); if (R() < 0.35) L.push(['antibiotic', 1]);
@@ -273,6 +308,10 @@ class World {
         a.t += dt;
         if (a.state === 0 && a.t >= c.period) { a.state = 1; a.t = 0; }
         else if (a.state === 1 && a.t >= c.charge) this.launch(a, ents);
+      } else if (a.type === 'smolder') {
+        a.t += dt;
+        if (a.state === 0 && a.t >= c.period) { a.state = 1; a.t = 0; a.dir = Math.random() * 6.28; }
+        else if (a.state === 1 && a.t >= c.charge) this.flare(a, ents);
       }
     }
     for (const e of ents) if (!e.dead) this.applyAnoms(e, dt);
@@ -290,6 +329,17 @@ class World {
       if (d >= a.r) continue;
       const k = c.push * (1 - d / a.r * 0.5) / (d || 1); e.x = U.clamp(e.x + dx * k, 20, this.S - 20); e.y = U.clamp(e.y + dy * k, 20, this.S - 20);
       e.hurt(c.dmg, 'anom');
+    }
+    if (Math.hypot(a.x - P.x, a.y - P.y) < 500) Snd.zap();
+  }
+  // Колодец: заряд (виден клин), затем вспышка конусом в сторону a.dir; ядро круга бьёт всегда. Поджигает всех, кроме огнеупорных.
+  flare(a, ents) {
+    const c = CFG.anoms.smolder; a.state = 0; a.t = 0; a.flash = 0.4;
+    for (const e of ents) {
+      if (e.dead || (e.c && e.c.fireproof)) continue;
+      const dx = e.x - a.x, dy = e.y - a.y, d = Math.hypot(dx, dy);
+      if (!(d < a.r * 0.4 || (d < a.r * c.reach && U.angDiff(a.dir, Math.atan2(dy, dx)) < c.arc / 2))) continue;
+      e.hurt(c.dmg * (e === P ? 1 - Meta.fireRes() : 1), 'anom'); Meta.ignite(e, c.burn);
     }
     if (Math.hypot(a.x - P.x, a.y - P.y) < 500) Snd.zap();
   }
@@ -311,6 +361,7 @@ class World {
       else if (a.type === 'grinder' && d < a.r) { cur = a; if (a.act) e.hurt(c.dps * dt, 'anom'); }
       else if (a.type === 'electra' && d < a.r) cur = a;
       else if (a.type === 'spring' && d < a.r) cur = a;
+      else if (a.type === 'smolder' && d < a.r) cur = a;
       else if (a.type === 'magnet') {
         const pr = a.r * 1.5, metal = !!(e.c && e.c.metal);
         if (d < pr) {
@@ -330,6 +381,7 @@ class World {
         else if (a.type === 'electra' && a.state === 1) a.t = c.charge;
         else if (a.type === 'grinder' && !a.act) a.t = c.cycle - c.act - 0.3;
         else if (a.type === 'spring' && a.state === 0) { a.state = 1; a.t = c.charge - 0.5; }
+        else if (a.type === 'smolder' && a.state === 0) { a.state = 1; a.t = c.charge - 0.5; a.dir = Math.random() * 6.28; }
         return { a, first };
       }
     }
@@ -357,7 +409,7 @@ class World {
     for (const a of this.anoms) {
       if (this.arts.length < 140 && !this.arts.some(r => r.anom === a.id) && Math.random() < 0.3) this.addArtifact(a, this.danger(a.x, a.y), Math.random);
     }
-    for (const c of this.conts) if (c.opened && Math.random() < 0.45) { c.opened = false; c.loot = c.kind === 'lab' ? this.rollLab(Math.random) : this.rollLoot(this.danger(c.x, c.y), c.kind !== 'wreck', Math.random); }
+    for (const c of this.conts) if (c.opened && Math.random() < 0.45) { c.opened = false; c.loot = c.kind === 'lab' ? this.rollLab(Math.random) : c.kind === 'road' ? this.rollRoad(Math.random) : this.rollLoot(this.danger(c.x, c.y), c.kind !== 'wreck', Math.random); }
     for (const z of this.rad) z.i = Math.max(0.4, z.i * (0.7 + Math.random() * 0.7));
   }
 }
