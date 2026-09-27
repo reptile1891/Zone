@@ -69,8 +69,8 @@ class Stalker {
     speed *= this.slow;
     let dx = tx - this.x, dy = ty - this.y; const d = Math.hypot(dx, dy) || 1; dx /= d; dy /= d;
     for (const a of W.anoms) {
-      const ax = this.x - a.x, ay = this.y - a.y, ad = Math.hypot(ax, ay), lim = a.r + 32;
-      if (ad < lim && ad > 0) { const k = (1 - ad / lim) * 2.5; dx += ax / ad * k; dy += ay / ad * k; }
+      const ax = this.x - a.x, ay = this.y - a.y, ad = Math.hypot(ax, ay), lim = AShape.R(a, ax, ay) + 32;
+      if (ad < lim && ad > 0 && W.knows(this, a)) { const k = (1 - ad / lim) * 2.5 * (this.state === 'combat' ? 0.5 : 1); dx += ax / ad * k; dy += ay / ad * k; }
     }
     W.og.query(this.x, this.y, 70, o => {
       const ox = this.x - o.x, oy = this.y - o.y, od = Math.hypot(ox, oy), lim = o.r + this.r + 26;

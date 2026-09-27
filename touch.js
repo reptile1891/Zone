@@ -123,7 +123,7 @@ const Touch = {
     tz.addEventListener('pointerdown', e => this.down(e)); tz.addEventListener('pointermove', e => this.move(e));
     tz.addEventListener('pointerup', e => this.up(e)); tz.addEventListener('pointercancel', e => this.up(e)); tz.addEventListener('contextmenu', e => e.preventDefault());
     const top = this.mk('div', null, 'trow', box);
-    this.btn(top, '', '🎒', 'Рюкзак', () => this.key('KeyI')); this.btn(top, '', '🗺', 'Карта', () => this.key('KeyM')); this.btn(top, '', '📖', 'Журнал', () => this.key('KeyJ')); this.btn(top, '', '📚', 'Справочник', () => this.key('KeyB')); this.btn(top, '', '☰', 'Меню', () => this.key('Escape'));
+    this.btn(top, '', '🎒', 'Рюкзак', () => this.key('KeyI')); this.btn(top, '', '🗺', 'Карта', () => this.key('KeyM')); this.btn(top, '', '📖', 'Журнал', () => this.key('KeyJ')); this.btn(top, '', '🏆', 'Достижения', () => this.key('KeyK')); this.btn(top, '', '📚', 'Справочник', () => this.key('KeyB')); this.btn(top, '', '☰', 'Меню', () => this.key('Escape'));
     this.btn(top, '', '⛶', 'Полный экран', () => { try { const d = document.documentElement; (d.requestFullscreen || d.webkitRequestFullscreen).call(d); if (screen.orientation && screen.orientation.lock) screen.orientation.lock('landscape').catch(() => {}); } catch (err) { /* не везде доступно */ } });
     const side = this.mk('div', null, 'tside', box);
     this.sneakB = this.btn(side, 'w', 'Красться', 'Красться (тихо)', b => { keys.ShiftLeft = false; this.runB.classList.remove('on'); this.toggle('KeyC', b); });

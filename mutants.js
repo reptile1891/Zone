@@ -205,9 +205,9 @@ class Mutant {
     speed *= this.slow;
     let dx = tx - this.x, dy = ty - this.y; const d = Math.hypot(dx, dy) || 1; dx /= d; dy /= d;
     if (this.reckless <= 0) {
-      for (const a of W.anoms) {
-        const ax = this.x - a.x, ay = this.y - a.y, ad = Math.hypot(ax, ay), lim = a.r + 38 + Mutants.ad(this.sp).anom * 25;
-        if (ad < lim && ad > 0) { const k = (1 - ad / lim) * 2.5; dx += ax / ad * k; dy += ay / ad * k; }
+      for (const a of W.anoms) {   // обходит только те, о которых знает; в погоне (охота) идёт напролом — так мутантов можно заманить в аномалию
+        const ax = this.x - a.x, ay = this.y - a.y, ad = Math.hypot(ax, ay), lim = AShape.R(a, ax, ay) + 38 + Mutants.ad(this.sp).anom * 25;
+        if (ad < lim && ad > 0 && W.knows(this, a)) { const k = (1 - ad / lim) * 2.5 * (this.state === 'hunt' ? 0.35 : 1); dx += ax / ad * k; dy += ay / ad * k; }
       }
     }
     W.og.query(this.x, this.y, 70, o => {

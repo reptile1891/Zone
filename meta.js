@@ -9,7 +9,7 @@ const Meta = {
 
   reset() { this._bountyCd = 0; this.sensors = []; this.lures = []; this.lureShots = []; this.genOffers(); this.pickEvents(); },
   afterLoad() { P.burn = 0; if (!P.fuel) P.fuel = 0; if (!P.talked) P.talked = {}; if (!P.hints) P.hints = {}; if (!P.wdefs) P.wdefs = {}; if (!P.wseq) P.wseq = 0; if ((!P.gunOffers || !P.gunOffers.length) && typeof Wpn !== 'undefined') Wpn.genShop(); for (const k in CFG.weapons) if (P.cond[k] == null) P.cond[k] = 100; this._bountyCd = 0; for (const q of P.quests || []) if (q.type === 'bounty' && q.prog < 1) this.spawnBounty(q); this.sensors = []; this.lures = []; this.lureShots = []; if (!P.offers || !P.offers.length) this.genOffers(); if (!G.events || !G.events.length) this.pickEvents(); },
-  saveFields() { const o = {}; for (const k of ['rep', 'karma', 'quests', 'offers', 'lore', 'weapons', 'weapon', 'cond', 'suitCond', 'insured', 'pass', 'earned', 'researched', 'kills', 'mapSold', 'stash', 'bld', 'chainDone', 'fuel', 'talked', 'deepDone', 'hints', 'hintsOff', 'wdefs', 'wseq', 'gunOffers', 'codex']) o[k] = P[k]; return o; },
+  saveFields() { const o = {}; for (const k of ['rep', 'karma', 'quests', 'offers', 'lore', 'weapons', 'weapon', 'cond', 'suitCond', 'insured', 'pass', 'earned', 'researched', 'kills', 'mapSold', 'stash', 'bld', 'chainDone', 'fuel', 'talked', 'deepDone', 'hints', 'hintsOff', 'wdefs', 'wseq', 'gunOffers', 'codex', 'st', 'ach', 'run', 'lastRun']) o[k] = P[k]; return o; },
 
   // ---- костюм ----
   // Носится лучший костюм из рюкзака (слот со своими характеристиками)
@@ -55,7 +55,7 @@ const Meta = {
     if (P.cd > 0) return;
     if (invCount('hook') < 1) { if (!(G.t < (this._hookLog || 0))) { this._hookLog = G.t + 4; log('Крюка нет: купи у Снабженца или сделай на верстаке.'); } return; }
     const d = Math.min(CFG.player.hookRange, Math.hypot(mouse.x + cam.x - P.x, mouse.y + cam.y - P.y));
-    invTake('hook', 1); P.cd = 0.5; this.hooks.push({ sx: P.x, sy: P.y, x: P.x, y: P.y, tx: P.x + Math.cos(P.ang) * d, ty: P.y + Math.sin(P.ang) * d, t: 0, dur: 0.25 + d / 800 }); Snd.tick();
+    invTake('hook', 1); P.cd = 0.5; this.hooks.push({ sx: P.x, sy: P.y, x: P.x, y: P.y, tx: P.x + Math.cos(P.ang) * d, ty: P.y + Math.sin(P.ang) * d, t: 0, dur: 0.25 + d / 800 }); Snd.whoosh();
   },
   // Шанс зацепить артефакт в аномалии: базовый по типу, «Чутьё» +4% за уровень; во время активной фазы или заряда — не цепляется
   snagChance(an) {
@@ -69,8 +69,8 @@ const Meta = {
     const chance = best ? this.snagChance(an) : 0, busy = !!(an && (an.act || an.state === 1)), hit = W.boltHit(best ? best.x : h.tx, best ? best.y : h.ty);   // как болт: раскрывает аномалию
     if (hit && hit.first) { addXp(6); Meta.onDiscover(); }
     if (best) {
-      if (Math.random() < chance) { best.reel = true; this.reeling.push(best); log('Крюк зацепился: артефакт идёт к тебе.', '#9ad0e8'); }
-      else log(busy ? 'Аномалия сработала в момент броска — крюк потерян.' : 'Крюк сорвался и пропал.', '#e0a060');
+      if (Math.random() < chance) { best.reel = true; this.reeling.push(best); Snd.hookCatch(); log('Крюк зацепился: артефакт идёт к тебе.', '#9ad0e8'); }
+      else { Snd.hookFail(); log(busy ? 'Аномалия сработала в момент броска — крюк потерян.' : 'Крюк сорвался и пропал.', '#e0a060'); }
       return;
     }
     if (hit) log(CFG.anoms[hit.a.type].react + ' Крюк потерян.', '#9ab8d8'); else W.loot.push({ x: h.tx, y: h.ty, id: 'hook', n: 1 });   // упал на землю — можно подобрать
@@ -80,7 +80,7 @@ const Meta = {
     for (let i = this.reeling.length - 1; i >= 0; i--) {
       const a = this.reeling[i]; if (G.scene !== 'zone' || !W.arts.includes(a)) { a.reel = false; this.reeling.splice(i, 1); continue; }
       const dx = P.x - a.x, dy = P.y - a.y, d = Math.hypot(dx, dy) || 1;
-      if (d < 22) { this.reeling.splice(i, 1); takeArt(a); invAdd('hook', 1); log('Крюк вернулся с добычей.', '#9ad0e8'); continue; }
+      if (d < 22) { this.reeling.splice(i, 1); takeArt(a); invAdd('hook', 1); Stats.on('hook'); log('Крюк вернулся с добычей.', '#9ad0e8'); continue; }
       const s = Math.min(d, 230 * dt); a.x += dx / d * s; a.y += dy / d * s;
     }
   },

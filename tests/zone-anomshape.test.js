@@ -46,6 +46,6 @@ test("артефакты лежат внутри формы своей аном�
 
 test("заметность: радиус примет зависит от чутья и детекторов, без них — вплотную", () => {
   fresh();
-  const o = run(`(() => { P.inv = []; P.sk.sense = 0; const base = signR(); P.sk.sense = 3; const sense = signR(); P.sk.sense = 0; invAdd("detector", 1); const d1 = signR(); invAdd("detector2", 1); const d2 = signR(); return { base, sense, d1, d2 }; })()`);
+  const o = run(`(() => { G.night = 0; G.fog = 0; G.rain = 0; P.inv = []; P.sk.sense = 0; const base = signR(); P.sk.sense = 3; const sense = signR(); P.sk.sense = 0; invAdd("detector", 1); const d1 = signR(); invAdd("detector2", 1); const d2 = signR(); return { base, sense, d1, d2 }; })()`);
   assert.equal(o.base, 60); assert.equal(o.sense, 165); assert.equal(o.d1, 150); assert.equal(o.d2, 230);
 });

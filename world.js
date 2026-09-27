@@ -312,6 +312,7 @@ class World {
 
   // ---- динамика ----
   update(dt, ents) {
+    const em = G.emi && G.emi.s === 'blast' ? 1.8 : 1;   // в выброс «заряжающиеся» аномалии срабатывают чаще
     for (const a of this.anoms) {
       const c = CFG.anoms[a.type];
       a.flash = Math.max(0, a.flash - dt); a.revealed = Math.max(0, a.revealed - dt);
@@ -321,7 +322,7 @@ class World {
         if (a.y < 100 || a.y > this.S - 100) a.vy *= -1;
         if (Math.random() < dt * 0.05) { const ang = Math.random() * 6.28; a.vx = Math.cos(ang) * c.drift; a.vy = Math.sin(ang) * c.drift; }
       } else if (a.type === 'electra') {
-        a.t += dt * (G.wx === 'storm' ? 1.6 : 1);
+        a.t += dt * (G.wx === 'storm' ? 1.6 : 1) * em;
         if (a.state === 0 && a.t >= c.period) { a.state = 1; a.t = 0; }
         else if (a.state === 1 && a.t >= c.charge) this.discharge(a, ents);
       } else if (a.type === 'grinder') {
@@ -329,11 +330,11 @@ class World {
         if (act && !a.act && Math.hypot(a.x - P.x, a.y - P.y) < 500) Snd.grind();
         a.act = act;
       } else if (a.type === 'spring') {
-        a.t += dt;
+        a.t += dt * em;
         if (a.state === 0 && a.t >= c.period) { a.state = 1; a.t = 0; }
         else if (a.state === 1 && a.t >= c.charge) this.launch(a, ents);
       } else if (a.type === 'smolder') {
-        a.t += dt;
+        a.t += dt * em;
         if (a.state === 0 && a.t >= c.period) { a.state = 1; a.t = 0; a.dir = Math.random() * 6.28; }
         else if (a.state === 1 && a.t >= c.charge) this.flare(a, ents);
       }
@@ -368,6 +369,12 @@ class World {
     }
     if (Math.hypot(a.x - P.x, a.y - P.y) < 500) Snd.zap();
   }
+  // Знает ли существо об аномалии (обходит её): опыт вида у мутантов, «чутьё» у сталкеров; решается один раз на пару. Попавшее в аномалию запоминает её.
+  knows(e, a) {
+    const k = e.ak || (e.ak = {}); if (k[a.id] !== undefined) return k[a.id];
+    const p = e.sp ? 0.4 + 0.15 * Mutants.ad(e.sp).anom : 0.55;
+    return (k[a.id] = Math.random() < p);
+  }
   applyAnoms(e, dt) {
     e.slow = 1; let cur = null;
     for (const a of this.anoms) {
@@ -393,7 +400,7 @@ class World {
         }
       }
     }
-    e.inAnom = cur;
+    e.inAnom = cur; if (cur && e !== P) (e.ak || (e.ak = {}))[cur.id] = true;
   }
   boltHit(x, y) {
     for (const a of this.anoms) {
