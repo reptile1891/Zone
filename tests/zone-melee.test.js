@@ -45,7 +45,7 @@ test("удар в спину: по спящему, бродящему и не з
 test("тишина: удар шумит куда меньше выстрела; хищники неподалёку не сбегаются", () => {
   fresh();
   const o = run(`(() => {
-    const heard = []; const _h = Mutants.hear; Mutants.hear = (x, y, r) => heard.push(r); useSel(); P.cd = 0; heldNames[1] = "weapon"; invAdd("ammo", 3); P.sel = 1; useSel(); Mutants.hear = _h;
+    const heard = []; const _h = Mutants.hear; Mutants.hear = (x, y, r) => heard.push(r); useSel(); P.cd = 0; invAdd("ammo", 3); P.sel = 1; useSel(); Mutants.hear = _h;
     return { melee: heard[0], gun: heard[1] };
   })()`);
   assert.ok(o.melee <= 140); assert.ok(o.gun >= 500);
@@ -78,11 +78,11 @@ test("оружие: свойства ножей — заточка быстре�
 test("огнестрел можно поставить на любую кнопку и стрелять; нож остаётся на первой; клавиша выбранной кнопки меняет нож", () => {
   fresh();
   const o = run(`(() => {
-    Quick.assign(5, "weapon"); const held = heldNames.slice(); invAdd("ammo", 4); const m = ${mk(3100, 3000, "hunt")}; Mutants.list = [m]; P.sel = 5; P.cd = 0; const a0 = invCount("ammo"); useSel(); const shot = invCount("ammo") === a0 - 1;
+    Quick.assign(5, "w:pistol"); const held = heldNames.slice(); invAdd("ammo", 4); const m = ${mk(3100, 3000, "hunt")}; Mutants.list = [m]; P.sel = 5; P.cd = 0; const a0 = invCount("ammo"); useSel(); const shot = invCount("ammo") === a0 - 1;
     P.knives = ["knife", "shiv"]; P.sel = 0; const before = P.knife; Melee.cycle(); const after = P.knife;
     return { held, shot, before, after };
   })()`);
-  assert.equal(o.held[0], "melee"); assert.equal(o.held[5], "weapon"); assert.equal(o.held[1], null); assert.equal(o.shot, true); assert.notEqual(o.before, o.after);
+  assert.equal(o.held[0], "melee"); assert.equal(o.held[5], "w:pistol"); assert.equal(o.held[1], null); assert.equal(o.shot, true); assert.notEqual(o.before, o.after);
 });
 
 test("ближний бой под землёй: бьёт подземного врага в секторе, не бьёт сквозь стену", () => {

@@ -10,8 +10,8 @@ const Melee = {
   fx: null,
   // не заметил игрока: спящий, бродит, насторожен (мутанты и подземные враги), сталкер не в бою
   unaware(m) { return m.kind ? m.state !== 'combat' && m.state !== 'wounded' : ['idle', 'wander', 'sleep', 'investigate'].includes(m.state); },
-  swing() {
-    if (P.cd > 0 || G.dead) return; const d = this.cur(), dun = G.scene === 'dungeon';
+  swing(id) {   // id — нож с отдельной кнопки быстрой панели; без него — нож в руках (кнопка 1)
+    if (P.cd > 0 || G.dead) return; const d = id && this.DEF[id] ? this.DEF[id] : this.cur(), dun = G.scene === 'dungeon';
     P.cd = d.cd; this.fx = { life: 0.18, t: 0.18, a: P.ang, r: d.reach, arc: d.arc }; Snd.whoosh();
     let hit = 0, back = false;
     for (const list of dun ? [Dungeon.enemies] : [Mutants.list, Stalkers.list]) for (const m of list) {
@@ -30,13 +30,13 @@ const Melee = {
   },
   tick(dt) { if (this.fx) { this.fx.t -= dt; if (this.fx.t <= 0) this.fx = null; } },
   draw() {
-    const held = heldNames[P.sel] === 'melee'; if (!held || G.dead || (G.scene !== 'zone' && G.scene !== 'dungeon')) return;
-    const d = this.cur(), f = this.fx, a = f ? P.ang + (0.5 - f.t / f.life) * d.arc * 0.9 : P.ang + 0.6;
+    const h = heldNames[P.sel], kn = Quick.knife(h), held = h === 'melee' || kn; if (!held || G.dead || (G.scene !== 'zone' && G.scene !== 'dungeon')) return;
+    const d = kn ? this.DEF[kn] : this.cur(), f = this.fx, a = f ? P.ang + (0.5 - f.t / f.life) * d.arc * 0.9 : P.ang + 0.6;
     ctx.strokeStyle = '#c8ccd0'; ctx.lineWidth = 2; ctx.beginPath(); ctx.moveTo(P.x + Math.cos(a) * 6, P.y + 2 + Math.sin(a) * 6); ctx.lineTo(P.x + Math.cos(a) * (10 + d.reach * 0.35), P.y + 2 + Math.sin(a) * (10 + d.reach * 0.35)); ctx.stroke();
     if (f) { ctx.globalAlpha = 0.55 * f.t / f.life; ctx.lineWidth = 3; ctx.strokeStyle = '#e8ecf0'; ctx.beginPath(); ctx.arc(P.x, P.y, d.reach * 0.85, f.a - d.arc / 2, f.a + d.arc / 2); ctx.stroke(); ctx.globalAlpha = 1; }
   },
   // подсказка для ячейки быстрой панели
-  tip() { const d = this.cur(); return Tip.head(d.name, 'ближний бой') + '<div class="ti-d">' + d.note + '</div>' + Tip.row('▸', this.stats(d)) + ((P.knives || []).length > 1 ? Tip.row('Сменить:', 'нажми 1 ещё раз') : ''); },
+  tip(id) { const d = id ? this.DEF[id] : this.cur(); return Tip.head(d.name, 'ближний бой') + '<div class="ti-d">' + d.note + '</div>' + Tip.row('▸', this.stats(d)) + (!id && (P.knives || []).length > 1 ? Tip.row('Сменить:', 'нажми 1 ещё раз') : ''); },
   // ---- продажа (вкладка «Оружие» Торгового дома) ----
   shopHTML() {
     let h = '<h3>Холодное оружие</h3>';

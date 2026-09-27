@@ -492,7 +492,7 @@ function draw() {
     else {
       const mv = keys.mx || keys.my, bob = mv ? (Math.floor(G.t * 10) % 2 ? -1 : 0) : 0;
       shadow(P.x, P.y + 10, 8); Spr.draw(ctx, P.sneak ? 'player_s' : 'player', P.x, P.y + bob - 2, Math.cos(P.ang) < 0);
-      if (heldNames[P.sel] === 'weapon') Gun.draw(ctx, P.x, P.y + 2, P.ang, Wpn.base(P.weapon), P.recoil || 0);
+      if (Quick.gun(heldNames[P.sel])) Gun.draw(ctx, P.x, P.y + 2, P.ang, Wpn.base(P.weapon), P.recoil || 0);
     }
   }
   for (const b of bolts) px(b.x, b.y, '#d0d0d0', 3);
@@ -644,7 +644,7 @@ function hud(dt) {
   // подсказка действия — зелёная, прямо под игроком
   const pr = $('prompt'); pr.textContent = G.near ? '[E] ' + G.near.label : '';
   if (G.near) { const w = pr.offsetWidth || 0; pr.style.left = U.clamp(P.x - cam.x, w / 2 + 8, VW - w / 2 - 8) + 'px'; pr.style.top = U.clamp(P.y - cam.y + 36, 40, VH - 90) + 'px'; }
-  let q = ''; heldNames.forEach((h, i) => { const ic = h ? Quick.icon(h) : '', n = h === 'weapon' ? invCount(Wpn.of(P.weapon).ammo || 'ammo') : h && h !== 'melee' ? invCount(h) : ''; q += `<div class="qs ${P.sel === i ? 'on' : ''} ${h ? '' : 'e'}" data-q="${i}"><u>${i + 1}</u>${ic}<b>${n}</b></div>`; });
+  let q = ''; heldNames.forEach((h, i) => { const ic = h ? Quick.icon(h) : '', n = h ? Quick.count(h) : ''; q += `<div class="qs ${P.sel === i ? 'on' : ''} ${h ? '' : 'e'}" data-q="${i}"><u>${i + 1}</u>${ic}<b>${n}</b></div>`; });
   if ($('quick').dataset.s !== q) { $('quick').innerHTML = q; $('quick').dataset.s = q; }
   // осмотр (ПКМ)
   const tip = $('tip');
@@ -793,7 +793,7 @@ addEventListener('keydown', e => {
   else if (e.code === 'Escape' || e.code === 'F1') { e.preventDefault(); G.ui ? closePanel() : openMenu(); }
   else if (e.code === 'KeyE' || e.code === 'KeyF') { if (G.ui) closePanel(); else if (G.near && !G.dead) G.near.fn(); }
   else if (e.code === 'KeyQ') stepSel(1);
-  else if (/^Digit[1-9]$/.test(e.code)) { const n = +e.code[5] - 1; if (P.sel === n) { if (heldNames[n] === 'weapon') Meta.cycleWeapon(); else if (heldNames[n] === 'melee') Melee.cycle(); } P.sel = n; }
+  else if (/^Digit[1-9]$/.test(e.code)) { const n = +e.code[5] - 1; if (P.sel === n && heldNames[n] === 'melee') Melee.cycle(); P.sel = n; }
 });
 addEventListener('keyup', e => { keys[e.code] = false; });
 addEventListener('blur', () => { for (const k in keys) keys[k] = false; mouse.l = mouse.r = false; });

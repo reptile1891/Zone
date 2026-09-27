@@ -505,7 +505,7 @@ const Meta = {
   },
   invExtra() {
     const w = Wpn.of(P.weapon);
-    return `<div class="cols"><div><h3>Состояние</h3><div class="stat">Оружие: <b style="color:${Wpn.color(P.weapon)}">${w.name}</b> (износ ${Math.round(100 - P.cond[P.weapon])}%) · сменить: клавиша 1 при выбранном слоте</div>
+    return `<div class="cols"><div><h3>Состояние</h3><div class="stat">Оружие: <b style="color:${Wpn.color(P.weapon)}">${w.name}</b> (износ ${Math.round(100 - P.cond[P.weapon])}%) · все стволы и ножи — вкладка «Оружие»</div>
       <div class="stat">Костюм: <b>${this.bestSuit() ? Gear.name(this.bestSuit()) + ' (износ ' + Math.round(100 - P.suitCond) + '%)' : 'нет'}</b></div>
       <div class="stat">Травмы: <b>${(P.fracture ? 'перелом (шина) ' : '') + (P.infect > 0 ? 'заражение (антибиотик) ' : '') + (P.burn > 0 ? 'ожог (вода или аптечка) ' : '') + (P.bleed > 0 ? 'кровотечение ' : '') || 'нет'}</b></div></div></div>`;
   },
@@ -633,7 +633,7 @@ function shoot() {
 function useSel() {
   const h = heldNames[P.sel];
   if (G.scene === 'dungeon' && (h === 'bolt' || h === 'lure' || h === 'shock' || h === 'hook')) { if (!(G.t < (Meta._dunLog || 0))) { Meta._dunLog = G.t + 3; log('Под землёй это ни к чему.'); } return; }
-  if (h === 'melee') Melee.swing(); else if (h === 'weapon') shoot(); else if (h === 'bolt') throwBolt(); else if (h === 'lure') Meta.throwLure(); else if (h === 'shock') Meta.throwShock(); else if (h === 'hook') Meta.throwHook(); else if (invCount(h) > 0) useItem(h);
+  if (h === 'melee') Melee.swing(); else if (Quick.gun(h)) { if (P.weapon !== Quick.gun(h) && P.weapons.includes(Quick.gun(h))) P.weapon = Quick.gun(h); shoot(); } else if (Quick.knife(h)) Melee.swing(Quick.knife(h)); else if (h === 'bolt') throwBolt(); else if (h === 'lure') Meta.throwLure(); else if (h === 'shock') Meta.throwShock(); else if (h === 'hook') Meta.throwHook(); else if (invCount(h) > 0) useItem(h);
 }
 function useItem(id) {
   const u = CFG.items[id].use; if (!u || invCount(id) < 1) return;

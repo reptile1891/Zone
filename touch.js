@@ -23,7 +23,7 @@ const Touch = {
   },
   // Цель для автоприцела: ближайший к направлению прицела враг в конусе (слабый ≈ 15°, сильный ≈ 29°) и в пределах дальности оружия. Только когда в руках оружие
   assist(ux, uy) {
-    const lvl = this.set.aim; if (!lvl || heldNames[P.sel] !== 'weapon') return null;
+    const lvl = this.set.aim; if (!lvl || !Quick.gun(heldNames[P.sel])) return null;
     const w = Wpn.of(P.weapon), rng = (w.range || 400) * 1.02, cone = lvl === 2 ? 0.5 : 0.26, a0 = Math.atan2(uy, ux); let best = null, bs = 1e9;
     const test = o => {
       const dx = o.x - P.x, dy = o.y - P.y, d = Math.hypot(dx, dy); if (d < 10 || d > rng) return;
@@ -132,7 +132,7 @@ const Touch = {
     this.actB.style.display = 'none';
     this.rot = this.mk('div', 'trot'); this.rot.innerHTML = '<div>↻<br>Поверните телефон горизонтально</div>';
     const qk = document.getElementById('quick');   // второе касание слота 1 меняет оружие (на клавиатуре — повторное нажатие 1)
-    if (qk) qk.addEventListener('click', e => { const q = e.target.closest('[data-q]'); if (q && !G.ui && +q.dataset.q === P.sel) { if (heldNames[P.sel] === 'weapon') Meta.cycleWeapon(); else if (heldNames[P.sel] === 'melee') Melee.cycle(); } }, true);
+    if (qk) qk.addEventListener('click', e => { const q = e.target.closest('[data-q]'); if (q && !G.ui && +q.dataset.q === P.sel) { if (heldNames[P.sel] === 'melee') Melee.cycle(); } }, true);
     const keysEl = document.querySelector('#splash .keys');
     if (keysEl) keysEl.innerHTML = '<div>Левый палец — движение</div><div>Правый палец — целиться и стрелять (тянуть)</div><div>Короткий тап справа — один выстрел</div><div>Долгое касание справа — осмотреться</div><div>Кнопка с зелёной подписью — действие (E)</div><div>Красться / Бег — переключатели</div><div>Слоты внизу — выбор предмета</div><div>🎒 🗺 📖 ☰ — рюкзак, карта, журнал, меню</div>';
     const loop = () => { this.tick(); requestAnimationFrame(loop); }; requestAnimationFrame(loop);
