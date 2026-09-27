@@ -268,6 +268,8 @@ const CFG = {
   tune: { repair: { scrap: 8, circuit: 35 }, cost: [{ scrap: 6, circuit: 3 }, { scrap: 10, circuit: 5, plate: 2 }, { scrap: 14, circuit: 7, plate: 3, battery: 2 }] },
   // Разборка на верстаке: что даёт вещь (костюмы — ×(1 + 0.3 за ступень редкости)); оружие считается по цене
   salvage: { helmet: { scrap: 3 }, helmet2: { scrap: 4, circuit: 1 }, boots: { scrap: 3 }, pack: { scrap: 2 }, pack2: { scrap: 4, plate: 1 }, suit: { scrap: 4 }, suit2: { scrap: 6, plate: 2 }, firecoat: { scrap: 5, circuit: 1, battery: 1 }, detector: { circuit: 3, battery: 1, scrap: 1 }, detector2: { circuit: 5, battery: 2 }, headlamp: { circuit: 1, battery: 1 }, sensor: { circuit: 1, battery: 1 }, repairkit: { scrap: 2 } },
+  // Награда растёт с глубиной пропорционально риску: множитель к деньгам и количеству добычи по сектору 1–4 (контейнеры, тела, сталкеры, бункеры)
+  reward: { mul: [1, 1.7, 2.6, 3.6] },
   gearStock: { suit: 2, detector: 2, sensor: 2, suit2: 3, detector2: 3, firecoat: 3, headlamp: 2, helmet: 1, pack: 1, boots: 2, helmet2: 3, pack2: 3 },
   recipes: [
     { id: 'bolts',    st: 'gun', name: 'Болты ×10',           lvl: 1, mat: { scrap: 2 }, out: ['bolt', 10] },

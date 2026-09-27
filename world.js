@@ -255,13 +255,15 @@ class World {
     L.push(['ammo', 6 + Math.floor(R() * 8)]); L.push(['money', 90 + Math.floor(R() * 90)]);
     return L;
   }
+  // Множитель награды сектора d (CFG.reward)
+  rw(d) { return CFG.reward.mul[Math.min(3, Math.max(0, Math.round(d) - 1))]; }
   rollLoot(d, rich, rnd) {
     const R = rnd || this.R, L = [], m = rich ? 2 : 1, junk = ['scrap', 'circuit', 'battery'];
-    for (let i = 0, n = 1 + Math.floor(R() * 2 * m); i < n; i++) L.push([junk[Math.floor(R() * junk.length)], 1 + Math.floor(R() * 2 * m)]);
-    if (R() < 0.35) L.push(['ammo', 2 + Math.floor(R() * 5)]);
+    for (let i = 0, n = 1 + Math.floor(R() * 2 * m); i < n; i++) L.push([junk[Math.floor(R() * junk.length)], Math.max(1, Math.round((1 + Math.floor(R() * 2 * m)) * this.rw(d)))]);
+    if (R() < 0.35) L.push(['ammo', Math.round((2 + Math.floor(R() * 5)) * this.rw(d))]);
     if (R() < 0.12 * m) L.push(['medkit', 1]);
     if (R() < 0.08) L.push(['antirad', 1]);
-    if (R() < 0.3 * m) L.push(['money', Math.round((8 + R() * 22) * (0.7 + d * 0.3) * m)]);
+    if (R() < 0.3 * m) L.push(['money', Math.round((8 + R() * 22) * this.rw(d) * m)]);
     if (d >= 2 && R() < 0.035 * m) L.push(['gun', Wpn.loot(R, d)]);
     return L;
   }
@@ -272,10 +274,10 @@ class World {
     for (let i = 0; i < CFG.counts.corpses; i++) {
       const p = this.spot(this.C.r + 200), d = this.danger(p.x, p.y);
       const items = [];
-      if (this.R() < 0.7) items.push(['ammo', 2 + Math.floor(this.R() * 5)]);
+      if (this.R() < 0.7) items.push(['ammo', Math.round((2 + Math.floor(this.R() * 5)) * this.rw(d))]);
       if (this.R() < 0.4) items.push(['medkit', 1]);
       if (this.R() < 0.3) items.push(['food', 1]);
-      if (this.R() < 0.55) items.push(['money', 8 + Math.floor(this.R() * 35)]);
+      if (this.R() < 0.55) items.push(['money', Math.round((8 + Math.floor(this.R() * 35)) * this.rw(d))]);
       if (this.R() < 0.6) items.push(['bolt', 3 + Math.floor(this.R() * 6)]);
       const c = { x: p.x, y: p.y, items, looted: false, art: null, note: null };
       if (this.R() < 0.18 + d * 0.06) c.art = U.pick(['medusa', 'soul', 'thorn', 'stoneflower', 'dud'], this.R);

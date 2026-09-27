@@ -113,16 +113,16 @@ const Dungeon = {
   rng(b, i) { return U.rng(((Math.imul(this.lvl.seed | 0, 31) ^ Math.imul(i + 1, 104729) ^ Math.imul((b.gen || 0) + 1, 7919)) >>> 0)); },
   lockerLoot(b, i) {
     const R = this.rng(b, i), d = W.danger(b.x, b.y), L = [];
-    L.push([['scrap', 'circuit', 'battery'][Math.floor(R() * 3)], 2 + Math.floor(R() * 3)]);
+    L.push([['scrap', 'circuit', 'battery'][Math.floor(R() * 3)], Math.round((2 + Math.floor(R() * 3)) * W.rw(d))]);
     L.push(['ammo', 3 + Math.floor(R() * 6)]);
     if (R() < 0.45) L.push(['medkit', 1]); if (R() < 0.3) L.push(['antirad', 1]); if (R() < 0.2) L.push(['antibiotic', 1]); if (R() < 0.35) L.push(['canister', 1]);
-    L.push(['money', Math.round((20 + R() * 40) * (0.8 + d * 0.2))]);
+    L.push(['money', Math.round((20 + R() * 40) * W.rw(d))]);
     if (R() < 0.06 + 0.02 * d) L.push(['gun', Wpn.loot(R, d)]);
     return L;
   },
   vaultLoot(b) {
     const R = this.rng(b, 99), d = W.danger(b.x, b.y), arts = Meta.wildArts();
-    const L = [['money', Math.round((150 + R() * 150) * (0.8 + d * 0.2))], ['medkit', 1 + Math.floor(R() * 2)], ['ammo', 8 + Math.floor(R() * 8)], ['circuit', 2 + Math.floor(R() * 3)], ['art', arts[Math.floor(R() * arts.length)]]];
+    const L = [['money', Math.round((150 + R() * 150) * W.rw(d))], ['medkit', 1 + Math.floor(R() * 2)], ['ammo', 8 + Math.floor(R() * 8)], ['circuit', Math.round((2 + Math.floor(R() * 3)) * W.rw(d))], ['art', arts[Math.floor(R() * arts.length)]]];
     if (R() < 0.6) L.push(['reagent', 1]);
     if (R() < 0.2 + 0.06 * d) L.push(['gear', Gear.loot(R, d)]);   // костюм в сейфе — не хуже Хорошего
     if (R() < 0.45 + 0.1 * d) L.push(['gun', Wpn.loot(R, d, { min: 1 })]);   // сейф чаще всего даёт оружие не хуже Хорошего
