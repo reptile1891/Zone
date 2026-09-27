@@ -695,6 +695,10 @@ function renderPanelBase() {
         if (v.ident && unk) { any = true; h += row(itemIcon(s), itemName(s), 'Опознание: ' + Camp.identCost() + ' ₽', btn('ident:' + i, 'Опознать', P.money < Camp.identCost())); }
         else if (p) { any = true; const dm = !s.art ? (G.demand[s.id] || 1) : (G.demand[s.art] || 1); h += row(itemIcon(s), itemName(s) + (s.n > 1 ? ' ×' + s.n : ''), unk ? 'Ценность неясна — берут по низу' : 'Спрос ' + (dm > 1.05 ? '↑' : dm < 0.95 ? '↓' : '→'), btn('sell:' + i, p + ' ₽') + (s.n > 1 ? btn('sellall:' + i, 'Все') : '')); }
       });
+      if (u.v === 'market') {   // оружие тоже продаётся здесь (в том числе последний ствол — останется нож)
+        for (const id of P.weapons) { any = true; h += row(Icons.html('w_' + Wpn.base(id)), '<span style="color:' + Wpn.color(id) + '">' + Wpn.name(id) + '</span>', 'Огнестрел · износ ' + Math.round(100 - P.cond[id]) + '%', btn('wsell:' + id, Wpn.sellPrice(id) + ' ₽')); }
+        for (const k of P.knives || []) if (k !== 'knife') { any = true; h += row(Melee.DEF[k].icon, Melee.DEF[k].name, 'Нож', btn('msell:' + k, Math.floor(Melee.DEF[k].price / 2) + ' ₽')); }
+      }
       if (!any) h += '<div class="stat">Нечего предложить.</div>'; h += '</div>';
     }
     if (u.v === 'bar') {

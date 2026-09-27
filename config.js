@@ -201,7 +201,7 @@ const CFG = {
 
 
   weapons: {
-    pistol:  { name: 'Пистолет', dmg: 30, cd: 0.32, spread: 0.15, pellets: 1, range: 320, noise: 750, price: 0,   wear: 0.175, repair: 0.6 },
+    pistol:  { name: 'Пистолет', dmg: 30, cd: 0.32, spread: 0.15, pellets: 1, range: 320, noise: 750, price: 200,   wear: 0.175, repair: 0.6 },
     sawnoff: { name: 'Обрез',    dmg: 13, cd: 1.0,  spread: 0.32, pellets: 6, range: 220, noise: 900, price: 260, wear: 0.25,  repair: 0.7 },
     revolver: { lvl: 2, name: 'Револьвер', dmg: 44, cd: 0.5, spread: 0.09, pellets: 1, range: 420, noise: 850, price: 380, wear: 0.175, repair: 0.8 },
     rifle:   { lvl: 2, name: 'Винтовка', dmg: 64, cd: 0.85, spread: 0.05, pellets: 1, range: 680, noise: 950, price: 520, wear: 0.2,  repair: 1.0 },

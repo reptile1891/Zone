@@ -55,7 +55,9 @@ canvas#cv{position:fixed;inset:0;display:block;cursor:crosshair}
 .btn:hover{background:#3a2f16;border-color:var(--acc)}.btn.dis{opacity:.35;pointer-events:none}
 .slot{display:inline-flex;width:64px;height:64px;border:1px dashed #5a5030;align-items:center;justify-content:center;font-size:30px;margin-right:8px;cursor:pointer;vertical-align:middle}
 /* инвентарь-сетка (inv.js) */
-.ggrid{display:grid;grid-template-columns:repeat(6,54px);gap:4px;margin:4px 0}.ggrid.q{grid-template-columns:repeat(9,minmax(0,1fr))}
+.ggrid{display:grid;grid-template-columns:repeat(6,54px);gap:4px;margin:4px 0}.ggrid.big{grid-template-columns:repeat(10,54px)}.ggrid.doll{grid-template-columns:repeat(5,54px)}#panel.inv{width:min(980px,98vw)}
+body.touch .ggrid.big{grid-template-columns:repeat(10,minmax(30px,1fr))}body.touch .ggrid.doll{grid-template-columns:repeat(5,minmax(40px,1fr))}
+.ggrid.q{grid-template-columns:repeat(9,minmax(0,1fr))}
 .slot.gc{position:relative;width:54px;height:54px;box-sizing:border-box;margin:0;border:1px solid #4a4030;background:#0e0f0b;font-size:24px;overflow:hidden}
 .ggrid.q .slot.gc{width:auto;height:44px;font-size:20px}
 .slot.gc.e{border:1px dashed #2c2a1c}.slot.gc.hint{border-color:#6a5a34;background:#14130d}.slot.gc.z{opacity:.45}

@@ -12,7 +12,7 @@ const fresh = () => z.run(`(() => {
   P.hp = 100; P.inv = []; P.equip = [null, null]; P.gunOffers = []; P.weapon = "pistol"; P.cond.pistol = 100; P.bld = Camp.DEFAULT_BLD(); Mutants.list = []; Stalkers.list = []; localStorage.removeItem("zone_save_v2");
 })()`);
 
-test("разборка оружия: последнее не разобрать, редкость даёт детали, состояние уменьшает выход, оружие исчезает", () => {
+test("разборка оружия: последнее тоже можно разобрать, редкость даёт детали, состояние уменьшает выход, оружие исчезает", () => {
   fresh();
   const o = run(`(() => {
     const only = Meta.salvage("w", "pistol"), kept = P.weapons.length;
@@ -21,8 +21,8 @@ test("разборка оружия: последнее не разобрать,
     P.weapon = rare; const got = Meta.salvage("w", rare); const after = { has: P.weapons.includes(rare), weapon: P.weapon, def: !!P.wdefs[rare], scrap: invCount("scrap"), plate: invCount("plate") };
     return { only, kept, mu, mr, mc, worn, got, after };
   })()`);
-  assert.equal(o.only, null); assert.equal(o.kept, 1); assert.ok(o.mu.plate === 2 && o.mu.battery === 1 && o.mr.plate === 1 && !o.mr.battery && !o.mc.plate);
-  assert.ok(o.worn.scrap < o.mc.scrap); assert.deepEqual(o.got, o.mr); assert.equal(o.after.has, false); assert.notEqual(o.after.weapon, undefined); assert.ok(!o.after.def); assert.equal(o.after.scrap, o.mr.scrap); assert.equal(o.after.plate, 1);
+  assert.ok(o.only && o.only.scrap >= 0, "последний ствол разбирается"); assert.equal(o.kept, 0); assert.ok(o.mu.plate === 2 && o.mu.battery === 1 && o.mr.plate === 1 && !o.mr.battery && !o.mc.plate);
+  assert.ok(o.worn.scrap < o.mc.scrap); assert.deepEqual(o.got, o.mr); assert.equal(o.after.has, false); assert.notEqual(o.after.weapon, undefined); assert.ok(!o.after.def); assert.equal(o.after.scrap, o.mr.scrap + (o.only.scrap || 0)); assert.equal(o.after.plate, 1);
 });
 
 test("разборка снаряжения: костюмы по редкости, приборы, стопки по одной; лишнее не разбирается", () => {

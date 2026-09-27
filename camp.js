@@ -73,14 +73,15 @@ const Camp = {
   confirmChecks() {
     const c = [], w = weight(), cap = carryCap(), ok = (t) => c.push(['✔', t, '#8fbf7f']), bad = (t) => c.push(['⚠', t, '#e0a060']);
     w > cap ? bad('Перегруз: ' + w.toFixed(1) + '/' + cap + ' кг — будешь медленным и шумным') : ok('Вес в норме: ' + w.toFixed(1) + '/' + cap + ' кг');
+    if (!P.weapons.length) bad('Нет огнестрела — только нож');
     const ai = Wpn.of(P.weapon).ammo || 'ammo', an = ai === 'ammo' ? 'патронов' : ai === 'bolt' ? 'болтов' : 'топлива';
-    invCount(ai) < (ai === 'ammo' ? 6 : 2) ? bad('Мало ' + an + ': ' + invCount(ai)) : ok((ai === 'ammo' ? 'Патроны' : ai === 'bolt' ? 'Болты' : 'Топливо') + ': ' + invCount(ai));
+    if (P.weapons.length) invCount(ai) < (ai === 'ammo' ? 6 : 2) ? bad('Мало ' + an + ': ' + invCount(ai)) : ok((ai === 'ammo' ? 'Патроны' : ai === 'bolt' ? 'Болты' : 'Топливо') + ': ' + invCount(ai));
     invCount('bolt') < 10 ? bad('Мало болтов: ' + invCount('bolt') + ' — в полях аномалий это гибель') : ok('Болты: ' + invCount('bolt'));
     invCount('medkit') < 1 ? bad('Нет аптечек') : ok('Аптечек: ' + invCount('medkit'));
     invCount('splint') < 1 ? bad('Нет шины — перелом на дороге хуже пули') : ok('Шина есть');
     invCount('food') < 1 && P.food < 50 ? bad('Нет еды') : ok('Еда есть');
     Meta.bestSuit() ? ok('Защитный костюм есть') : bad('Нет защитного костюма');
-    P.cond[P.weapon] < 60 ? bad('Оружие изношено на ' + Math.round(100 - P.cond[P.weapon]) + '%') : ok('Оружие исправно');
+    if (P.weapons.length) P.cond[P.weapon] < 60 ? bad('Оружие изношено на ' + Math.round(100 - P.cond[P.weapon]) + '%') : ok('Оружие исправно');
     P.hp < 70 ? bad('Ты ранен: ' + Math.round(P.hp) + ' HP') : ok('Здоровье в порядке');
     G.night > 0.5 ? bad('Сейчас ночь: слухачи и туман опаснее') : ok('Время: ' + String(Math.floor(G.hour)).padStart(2, '0') + ':' + String(Math.floor((G.hour % 1) * 60)).padStart(2, '0'));
     return c;

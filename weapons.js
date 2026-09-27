@@ -106,8 +106,8 @@ const Wpn = {
     P.wdefs[id] = def; P.weapons.push(id); P.cond[id] = cond; return id;
   },
   remove(id) {
-    P.weapons = P.weapons.filter(k => k !== id); if (P.wdefs) delete P.wdefs[id]; if (P.cond) delete P.cond[id];
-    if (!P.weapons.includes(P.weapon)) P.weapon = P.weapons[0];
+    P.weapons = P.weapons.filter(k => k !== id); if (P.wdefs) delete P.wdefs[id]; if (P.cond && String(id).includes('#')) delete P.cond[id];   // у базовых стволов износ остаётся (вдруг купят снова)
+    if (!P.weapons.includes(P.weapon)) P.weapon = P.weapons[0] || 'pistol';   // без огнестрела «текущий» — просто запасной пистолет, не в собственности: выстрелить им нельзя
   },
   sellPrice(id) { return Math.max(1, Math.round(this.value(this.defOf(id)) * 0.45 * (0.5 + 0.5 * P.cond[id] / 100))); },
   // Что выпадает: тип по уровню (не выше 1 + сектор), качество растёт с сектором

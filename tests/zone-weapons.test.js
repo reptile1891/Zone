@@ -79,7 +79,7 @@ test("итоговые характеристики: базовое × множ�
   for (const k of Object.keys(o.exp)) assert.equal(o.w[k], o.exp[k], k); assert.equal(o.w.crit, 0.15); assert.equal(o.w.ammoSave, 0.2); assert.equal(o.baseSame, CFG.weapons.revolver.dmg, "конфиг не тронут");
 });
 
-test("экземпляры: id уникальны, сохраняются износ и описание; смена оружия и продажа; последнее не продаётся", () => {
+test("экземпляры: id уникальны, сохраняются износ и описание; смена оружия и продажа; последний ствол тоже продаётся", () => {
   fresh();
   const o = run(`(() => {
     const d1 = Wpn.roll("rifle", U.rng(1), { rar: 1 }), d2 = Wpn.roll("rifle", U.rng(2), { rar: 1 }); const a = Wpn.add(d1), b = Wpn.add(d2, 60);
@@ -90,7 +90,7 @@ test("экземпляры: id уникальны, сохраняются изн
   })()`);
   assert.deepEqual(o.ids, ["rifle#1", "rifle#2"]); assert.deepEqual(o.cond, { a: 100, b: 60 }); assert.equal(o.cyc.length, 4); assert.ok(new Set(o.cyc).size >= 3, "перебор проходит по всем");
   assert.equal(o.after.has, false); assert.ok(o.after.weapon && o.after.weapon !== "rifle#2"); assert.equal(o.after.money, o.after.price); assert.equal(o.after.def, false); assert.equal(o.after.cond, undefined);
-  assert.equal(o.after.price, Math.max(1, Math.round(o.value * 0.45 * (0.5 + 0.5 * 0.6)))); assert.equal(o.last.weapons.length, 1, "последнее оружие не продаётся");
+  assert.equal(o.after.price, Math.max(1, Math.round(o.value * 0.45 * (0.5 + 0.5 * 0.6)))); assert.deepEqual(o.last.weapons, [], "последний ствол тоже продаётся");
 });
 
 test("стрельба: берутся итоговые урон, темп и шум экземпляра; износ по его wear", () => {

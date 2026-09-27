@@ -133,14 +133,14 @@ const Meta = {
   // kind: 'w' — оружие (ref — id), 'g' — предмет из рюкзака (ref — индекс). Возвращает выданные материалы или null
   salvage(kind, ref) {
     let mats, what;
-    if (kind === 'w') { if (!P.weapons.includes(ref) || P.weapons.length <= 1) return null; mats = this.salvageWeapon(ref); what = Wpn.name(ref); Wpn.remove(ref); }
+    if (kind === 'w') { if (!P.weapons.includes(ref)) return null; mats = this.salvageWeapon(ref); what = Wpn.name(ref); Wpn.remove(ref); }
     else { const s = P.inv[+ref], m = this.salvageSlot(s); if (!m) return null; mats = m; what = Meta.itemName(s); if (s.n > 1) s.n--; else P.inv.splice(+ref, 1); }
     for (const k in mats) invAdd(k, mats[k]);
     addXp(4); Snd.pick(); log('Разобрано: ' + what + ' → ' + Object.keys(mats).map(k => CFG.items[k].name + ' ×' + mats[k]).join(', '), '#a8c890'); return mats;
   },
 
   // ---- оружие ----
-  cycleWeapon() { const i = P.weapons.indexOf(P.weapon); P.weapon = P.weapons[(i + 1) % P.weapons.length]; log('Оружие: ' + Wpn.name(P.weapon), Wpn.color(P.weapon)); },
+  cycleWeapon() { if (!P.weapons.length) return; const i = P.weapons.indexOf(P.weapon); P.weapon = P.weapons[(i + 1) % P.weapons.length]; log('Оружие: ' + Wpn.name(P.weapon), Wpn.color(P.weapon)); },
   repairCost(k) { return Math.ceil((100 - P.cond[k]) * Wpn.of(k).repair * (1 - 0.12 * P.sk.repair) * Camp.repairMul('gun')); },
   suitRepairCost() { return Math.ceil((100 - P.suitCond) * 0.8 * (1 - 0.12 * P.sk.repair) * Camp.repairMul('gear')); },
   slotPrice() { return [300, 700][P.equip.length - 2] || 0; },
@@ -153,7 +153,7 @@ const Meta = {
     for (const id of P.weapons) {
       const w = Wpn.of(id), c = this.repairCost(id), d = Wpn.defOf(id), df = Wpn.diff(d).map(x => '<span style="color:' + (x.good ? '#8fbf7f' : '#e0a060') + '">' + x.text + '</span>').join(', ');
       h += row(Icons.html('w_' + Wpn.base(id)), '<span style="color:' + col(w) + '">' + w.name + '</span>' + (P.weapon === id ? ' ★' : ''), 'Износ ' + Math.round(100 - P.cond[id]) + '% · ' + st(w) + (df ? '<br>' + df : ''),
-        '<div style="display:flex;flex-direction:column;gap:3px;min-width:104px">' + btn('wequip:' + id, 'В руки', P.weapon === id) + btn('wrepair:' + id, c ? 'Починить ' + c + ' ₽' : 'Исправно', !c || P.money < c) + btn('wsell:' + id, 'Продать ' + Wpn.sellPrice(id) + ' ₽', P.weapons.length <= 1) + btn('wwork:' + id, (G.ui && G.ui.wsel === id ? 'Закрыть' : 'Доработать') + (Wpn.tuneCount(id) ? ' (' + Wpn.tuneCount(id) + ')' : '')) + '</div>');
+        '<div style="display:flex;flex-direction:column;gap:3px;min-width:104px">' + btn('wequip:' + id, 'В руки', P.weapon === id) + btn('wrepair:' + id, c ? 'Починить ' + c + ' ₽' : 'Исправно', !c || P.money < c) + btn('wsell:' + id, 'Продать ' + Wpn.sellPrice(id) + ' ₽') + btn('wwork:' + id, (G.ui && G.ui.wsel === id ? 'Закрыть' : 'Доработать') + (Wpn.tuneCount(id) ? ' (' + Wpn.tuneCount(id) + ')' : '')) + '</div>');
       if (G.ui && G.ui.wsel === id) h += '<div class="note">' + this.weaponWorkHTML(id) + '</div>';
     }
     h += '</div><div><h3>Стандартный товар</h3>'; let any = false;
@@ -505,7 +505,7 @@ const Meta = {
   },
   invExtra() {
     const w = Wpn.of(P.weapon);
-    return `<div class="cols"><div><h3>Состояние</h3><div class="stat">Оружие: <b style="color:${Wpn.color(P.weapon)}">${w.name}</b> (износ ${Math.round(100 - P.cond[P.weapon])}%) · все стволы и ножи — вкладка «Оружие»</div>
+    return `<div class="cols"><div><h3>Состояние</h3><div class="stat">Оружие: ${P.weapons.length ? '<b style="color:' + Wpn.color(P.weapon) + '">' + w.name + '</b> (износ ' + Math.round(100 - P.cond[P.weapon]) + '%)' : '<b>только нож</b>'}</div>
       <div class="stat">Костюм: <b>${this.bestSuit() ? Gear.name(this.bestSuit()) + ' (износ ' + Math.round(100 - P.suitCond) + '%)' : 'нет'}</b></div>
       <div class="stat">Травмы: <b>${(P.fracture ? 'перелом (шина) ' : '') + (P.infect > 0 ? 'заражение (антибиотик) ' : '') + (P.burn > 0 ? 'ожог (вода или аптечка) ' : '') + (P.bleed > 0 ? 'кровотечение ' : '') || 'нет'}</b></div></div></div>`;
   },
@@ -534,10 +534,10 @@ const Meta = {
         if (P.money >= Camp.sleepCost()) { P.money -= Camp.sleepCost(); Camp.sleepBonus(); G.clock += (((7 - G.hour) + 24) % 24) * CFG.time.dayLen / 24; P.hp = 100; P.stam = maxStam(); P.rad = Math.max(0, P.rad - 20); P.stress = 0; P.food = Math.max(20, P.food - 15); this.genOffers(); save(); log('Ты выспался. Утро. Игра сохранена.'); closePanel(); }
         return true;
       }
-      case 'wbuy': { const w = CFG.weapons[arg]; if (P.money >= w.price && !P.weapons.includes(arg)) { P.money -= w.price; P.weapons.push(arg); P.weapon = arg; Snd.pick(); log('Куплено: ' + w.name); } return true; }
+      case 'wbuy': { const w = CFG.weapons[arg]; if (P.money >= w.price && !P.weapons.includes(arg)) { P.money -= w.price; P.weapons.push(arg); P.weapon = arg; P.cond[arg] = 100; Snd.pick(); log('Куплено: ' + w.name); } return true; }
       case 'wequip': P.weapon = arg; return true;
       case 'wbuyg': Wpn.buyOffer(i); return true;
-      case 'wsell': { if (P.weapons.length > 1 && P.weapons.includes(arg)) { const p = Wpn.sellPrice(arg), nm = Wpn.name(arg); Wpn.remove(arg); P.money += p; P.earned += p; Snd.pick(); log('Продано: ' + nm + ' за ' + p + ' ₽'); } return true; }
+      case 'wsell': { if (P.weapons.includes(arg)) { const p = Wpn.sellPrice(arg), nm = Wpn.name(arg); Wpn.remove(arg); P.money += p; P.earned += p; Snd.pick(); log('Продано: ' + nm + ' за ' + p + ' ₽'); } return true; }
       case 'wwork': u.wsel = u.wsel === arg ? null : arg; return true;
       case 'wrepairm': { if (!P.weapons.includes(arg)) return true; const c = this.repairMats(100 - P.cond[arg], 'gun'); if (Object.keys(c).length && this.canPay(c)) { this.pay(c); P.cond[arg] = 100; Snd.pick(); log('Оружие починено из хлама.', '#a8c890'); } return true; }
       case 'wtune': {
@@ -609,6 +609,7 @@ const Meta = {
 // ---- переопределения функций main.js ----
 function shoot() {
   const w = Wpn.of(P.weapon); if (P.cd > 0) return;
+  if (!P.weapons.length) return;   // огнестрела нет (всё продано): остаётся нож
   if (invCount(w.ammo || 'ammo') < 1 && !(w.perAmmo && P.fuel > 0)) { Snd.tick(); P.cd = 0.3; log(w.perAmmo ? 'Топлива нет.' : 'Патронов нет.'); return; }
   const cond = P.cond[P.weapon];
   if (cond < 25 && Math.random() < 0.15 + 0.3 * (1 - cond / 25)) { P.cd = 0.6; Snd.tick(); log('Осечка! Оружие изношено — почини у оружейника.', '#e0a060'); return; }

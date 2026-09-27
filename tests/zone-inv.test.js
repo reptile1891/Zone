@@ -40,19 +40,19 @@ test("артефакт: в контейнер по клику на слот (н�
   assert.equal(o.unk, true); assert.equal(o.e0, "medusa"); assert.equal(o.q0, 1.2); assert.equal(o.left, 1); assert.deepEqual(o.swapped, [null, "medusa"]); assert.equal(o.back, true); assert.equal(o.empty, true);
 });
 
-test("быстрая панель: стопка кладётся на пустую кнопку внизу и остаётся в рюкзаке; неподходящее не ставится; кнопки меняются местами; убрать — только явной кнопкой", () => {
+test("быстрая панель: стопка кладётся на пустую кнопку внизу и остаётся в рюкзаке; неподходящее не ставится; кнопки меняются местами; вернуть в инвентарь — кликом по сетке", () => {
   fresh();
   const o = run(`(() => {
     invAdd("antibiotic", 2); invAdd("scrap", 2); const u = G.ui; const ai = P.inv.findIndex(s => s.id === "antibiotic"), si = P.inv.findIndex(s => s.id === "scrap");
     Meta.click("cell", "inv", String(ai), u); Meta.click("cell", "quick", "8", u); const a = heldNames[8], stay = invCount("antibiotic");
     Meta.click("cell", "inv", String(si), u); Meta.click("cell", "quick", "3", u); const junk = heldNames[3];
     Meta.click("cell", "quick", "8", u); const handQ = u.hand.z + u.hand.i; Meta.click("cell", "quick", "1", u); const swap = [heldNames[1], heldNames[8]];
-    Meta.click("cell", "quick", "1", u); Meta.click("cell", "inv", "0", u); const kept = heldNames[1], handGone = u.hand;
+    Meta.click("cell", "quick", "1", u); Meta.click("cell", "inv", "0", u); const kept = heldNames[1], handGone = u.hand;   // вернуть с кнопки в инвентарь
     Meta.click("cell", "quick", "1", u); const bar = Inv.handBar(u); Meta.click("hact", "unslot", undefined, u); const cleared = heldNames[1];
     return { a, stay, junk, handQ, swap, kept, handGone, unslotBtn: /hact:unslot/.test(bar), cleared };
   })()`);
   assert.equal(o.a, "antibiotic"); assert.equal(o.stay, 2); assert.equal(o.junk, null, "лом на панель не ставится"); assert.equal(o.handQ, "quick8"); assert.deepEqual(o.swap, ["antibiotic", "w:pistol"]);
-  assert.equal(o.kept, "antibiotic", "случайный клик по рюкзаку кнопку не очищает"); assert.equal(o.handGone, null); assert.equal(o.unslotBtn, true); assert.equal(o.cleared, null, "«Убрать с кнопки» освобождает её");
+  assert.equal(o.kept, null, "клик по сетке инвентаря возвращает вещь с кнопки"); assert.equal(o.handGone, null); assert.equal(o.unslotBtn, false, "кнопка на пустой руке не нужна"); assert.equal(o.cleared, null);
 });
 
 test("кнопка с расходником помнит вещь без запаса: серая с нулём, растёт с подбором и покупкой, оживает сама", () => {
@@ -69,21 +69,35 @@ test("кнопка с расходником помнит вещь без зап
   assert.equal(o.picked, 3); assert.equal(o.bought, 4, "покупка сама попадает на кнопку"); assert.equal(o.again, true); assert.deepEqual(o.layout, ["medkit", "splint"]);
 });
 
-test("оружие: пистолет не пропадает — с кнопки он остаётся во вкладке «Оружие»; «Убрать с кнопки» освобождает кнопку; всё оружие и ножи ставятся на кнопки", () => {
+test("оружие: пистолет убирается с кнопки в инвентарь (и остаётся в сетке), все стволы и ножи ставятся на кнопки", () => {
   fresh();
   const o = run(`(() => {
-    P.weapons.push("revolver", "smg"); P.cond.revolver = P.cond.smg = 100; P.knives = ["knife", "machete"]; const u = G.ui; u.tab = "weapons";
-    const html0 = Inv.html(u);
-    Meta.click("cell", "quick", "1", u); const picked = u.hand && u.hand.z + u.hand.i; Meta.click("cell", "gun", "0", u); const kept = heldNames[1];
-    Meta.click("cell", "quick", "1", u); Meta.click("hact", "unslot", undefined, u); const cleared = heldNames[1], owned = P.weapons.includes("pistol"), listed = /cell:gun:0/.test(Inv.html(u)) && /Пистолет/.test(Inv.html(u));
+    P.weapons.push("revolver", "smg"); P.cond.revolver = P.cond.smg = 100; P.knives = ["knife", "machete"]; const u = G.ui;
+    const g0 = Inv.html(u);
+    Meta.click("cell", "quick", "1", u); const picked = u.hand && u.hand.z + u.hand.i; Meta.click("cell", "inv", "40", u); const cleared = heldNames[1], owned = P.weapons.includes("pistol"), listed = /cell:gun:0/.test(Inv.html(u));
     Meta.click("cell", "gun", "0", u); Meta.click("cell", "quick", "5", u); Meta.click("cell", "gun", "1", u); Meta.click("cell", "quick", "6", u); Meta.click("cell", "gun", "2", u); Meta.click("cell", "quick", "7", u);
     Meta.click("cell", "melee", "1", u); Meta.click("cell", "quick", "8", u);
     const all = heldNames.slice(); Meta.click("cell", "gun", "0", u); Meta.click("cell", "quick", "5", u); const stay = heldNames[5];
-    return { picked, kept, cleared, owned, listed, all, stay, tipGun: !!Tip.fromAttr("cell:gun:1"), tipKnife: /Мачете/.test(Tip.fromAttr("cell:melee:1")), cells: (html0.match(/data-a="cell:gun:/g) || []).length, knives: (html0.match(/data-a="cell:melee:/g) || []).length };
+    Meta.click("cell", "quick", "6", u); Meta.click("cell", "gun", "1", u); const backFromGun = heldNames[6];
+    return { picked, cleared, owned, listed, all, stay, backFromGun, tipGun: !!Tip.fromAttr("cell:gun:1"), tipKnife: /Мачете/.test(Tip.fromAttr("cell:melee:1")), guns: (g0.match(/data-a="cell:gun:/g) || []).length, knives: (g0.match(/data-a="cell:melee:/g) || []).length };
   })()`);
-  assert.equal(o.picked, "quick1"); assert.equal(o.kept, "w:pistol", "клик по ячейке оружия кнопку не очищает"); assert.equal(o.cleared, null); assert.equal(o.owned, true); assert.equal(o.listed, true);
-  assert.deepEqual(o.all, ["melee", null, null, null, null, "w:pistol", "w:revolver", "w:smg", "k:machete"], "весь арсенал на кнопках"); assert.equal(o.stay, "w:pistol");
-  assert.equal(o.tipGun, true); assert.equal(o.tipKnife, true); assert.ok(o.cells >= 6 && o.knives === 6);
+  assert.equal(o.picked, "quick1"); assert.equal(o.cleared, null, "пистолет ушёл с кнопки в инвентарь"); assert.equal(o.owned, true); assert.equal(o.listed, true, "и лежит в общей сетке");
+  assert.deepEqual(o.all, ["melee", null, null, null, null, "w:pistol", "w:revolver", "w:smg", "k:machete"], "весь арсенал на кнопках"); assert.equal(o.stay, "w:pistol"); assert.equal(o.backFromGun, null);
+  assert.equal(o.tipGun, true); assert.equal(o.tipKnife, true); assert.equal(o.guns, 3); assert.equal(o.knives, 2);
+});
+
+test("продажа оружия: все стволы, в том числе последний, продаются в Торговом доме; кнопка освобождается; без огнестрела остаётся нож", () => {
+  fresh();
+  const o = run(`(() => {
+    P.bld = Camp.DEFAULT_BLD(); P.money = 0; const before = { weapons: P.weapons.slice(), held: heldNames.slice(1, 2) };
+    const price = Wpn.sellPrice("pistol"); Meta.click("wsell", "pistol", undefined, { k: "trade", v: "market" }); const after = { weapons: P.weapons.slice(), weapon: P.weapon, money: P.money, held: heldNames[1] };
+    Quick._t = 1; update(0.1); const freed = heldNames[1]; const html = Inv.html(G.ui); const grid = /cell:gun:/.test(html);
+    invAdd("ammo", 5); P.sel = 1; P.cd = 0; const a0 = invCount("ammo"); shoot(); const noShot = invCount("ammo") === a0; const checks = Camp.confirmChecks().map(c => c[1]).join("|"); const cyc = (Meta.cycleWeapon(), P.weapons.length);
+    const buy = CFG.weapons.pistol.price; P.money = buy; Meta.click("wbuy", "pistol", undefined, { k: "trade", v: "market" }); const rebought = P.weapons.includes("pistol") && P.money === 0;
+    return { before, price, after, freed, grid, noShot, noGun: /Нет огнестрела/.test(checks), cyc, buy, rebought };
+  })()`);
+  assert.deepEqual(o.before.weapons, ["pistol"]); assert.deepEqual(o.after.weapons, [], "последний ствол продан"); assert.equal(o.after.money, o.price); assert.ok(o.price > 0); assert.equal(o.after.weapon, "pistol", "запасной указатель, оружием не считается");
+  assert.equal(o.freed, null, "кнопка освободилась"); assert.equal(o.grid, false); assert.equal(o.noShot, true, "стрелять нечем"); assert.equal(o.noGun, true); assert.equal(o.cyc, 0); assert.ok(o.buy > o.price, "купить дороже, чем продал"); assert.equal(o.rebought, true);
 });
 
 test("нижняя панель: пока инвентарь открыт, клик по кнопке внизу кладёт вещь из руки (или берёт с кнопки)", () => {
@@ -93,24 +107,24 @@ test("нижняя панель: пока инвентарь открыт, кл�
     const click = i => { Meta.click("cell", "quick", String(i), G.ui); };
     click(6); const put = heldNames[6], handAfter = u.hand; click(6); const picked = u.hand && u.hand.z + u.hand.i; click(2); const moved = [heldNames[6], heldNames[2]];
     Camp.render({ k: "inv" }); const html = Inv.html(u);
-    return { put, handAfter, picked, moved, noQuickGrid: !/cell:quick:/.test(html), tabs: /itab:items/.test(html) && /itab:gear/.test(html) && /itab:weapons/.test(html), noGunBlock: !/cell:gun:/.test(html) };
+    return { put, handAfter, picked, moved, noQuickGrid: !/cell:quick:/.test(html), noTabs: !/itab:/.test(html), guns: /cell:gun:0/.test(html) };
   })()`);
   assert.equal(o.put, "medkit"); assert.equal(o.handAfter, null); assert.equal(o.picked, "quick6"); assert.deepEqual(o.moved, [null, "medkit"]); assert.equal(o.noQuickGrid, true, "в окне инвентаря панели больше нет");
-  assert.equal(o.tabs, true); assert.equal(o.noGunBlock, true, "блока «Оружие» на вкладке предметов нет");
+  assert.equal(o.noTabs, true, "вкладок нет — один большой инвентарь"); assert.equal(o.guns, true, "оружие лежит в той же сетке");
 });
 
-test("вкладки: «Предметы» — расходники и материалы, «Снаряжение» — костюмы и артефакты с контейнерами, «Оружие» — стволы и ножи; клики по вкладке идут в настоящие ячейки", () => {
+test("один большой инвентарь: стволы, ножи, снаряжение, артефакты и предметы — в одной сетке 10×N; справа контейнеры и «Надето»; надетое не берётся", () => {
   fresh();
   const o = run(`(() => {
-    invAdd("medkit", 2); invAdd("scrap", 3); invAdd("suit", 1); invAdd("helmet", 1); invAdd("art", 1, "soul", 1.1); const u = G.ui;
-    const cnt = (h, z) => (h.match(new RegExp('data-a="cell:' + z + ':', 'g')) || []).length; const filled = h => (h.match(/class="slot gc(?: sel)?"/g) || []).length;
-    u.tab = "items"; const items = Inv.html(u); u.tab = "gear"; const gear = Inv.html(u); u.tab = "weapons"; const weap = Inv.html(u);
-    const gi = P.inv.findIndex(s => s.id === "helmet"); u.tab = "gear"; Meta.click("cell", "inv", String(gi), u); const handId = P.inv[u.hand.i].id; Meta.click("cell", "inv", "40", u); const moved = P.inv[P.inv.length - 1].id;
-    Meta.click("itab", "items", undefined, u); const tab = u.tab, handCleared = u.hand;
-    return { items: { fill: filled(items), skills: /Навыки/.test(items), equip: cnt(items, "equip") }, gear: { fill: filled(gear), equip: cnt(gear, "equip"), worn: /Надето/.test(gear) }, weap: { gun: cnt(weap, "gun"), melee: cnt(weap, "melee"), skills: /Навыки/.test(weap) }, handId, moved, tab, handCleared };
+    invAdd("medkit", 2); invAdd("scrap", 3); invAdd("suit", 1); invAdd("helmet", 1); invAdd("art", 1, "soul", 1.1); P.knives = ["knife", "shiv"]; const u = G.ui; const html = Inv.html(u);
+    const cnt = z => (html.match(new RegExp('data-a="cell:' + z + ':', 'g')) || []).length; const big = html.indexOf('ggrid big'), doll = html.indexOf('ggrid doll');
+    const worn = P.inv.findIndex(s => s.id === "suit"); Meta.click("cell", "worn", "0", u); const noHand = u.hand;
+    Meta.click("cell", "gun", "0", u); const handG = u.hand && u.hand.z; Meta.click("cell", "inv", "50", u); const released = u.hand;
+    const gi = P.inv.findIndex(s => s.id === "helmet"); Meta.click("cell", "inv", String(gi), u); Meta.click("cell", "inv", "55", u); const moved = P.inv[P.inv.length - 1].id;
+    return { cells: cnt("gun") + cnt("melee") + cnt("inv"), gun: cnt("gun"), melee: cnt("melee"), equip: cnt("equip"), worn: cnt("worn"), oneGrid: big >= 0 && doll > big && !/itab:/.test(html), skills: /Навыки/.test(html), noHand, handG, released, moved, tipWorn: !!Tip.fromAttr("cell:worn:0") };
   })()`);
-  assert.equal(o.items.fill, 2, "предметы: медикамент и лом"); assert.equal(o.items.skills, true); assert.equal(o.items.equip, 0); assert.ok(o.gear.fill >= 3); assert.equal(o.gear.equip, 2); assert.equal(o.gear.worn, true);
-  assert.ok(o.weap.gun >= 6 && o.weap.melee === 6); assert.equal(o.weap.skills, false); assert.equal(o.handId, "helmet"); assert.equal(o.moved, "helmet", "перенос на свободную ячейку вкладки — в конец рюкзака"); assert.equal(o.tab, "items"); assert.equal(o.handCleared, null);
+  assert.equal(o.cells, 60, "общая сетка 60 ячеек"); assert.equal(o.gun, 1); assert.equal(o.melee, 2); assert.equal(o.equip, 2); assert.equal(o.worn, 5); assert.equal(o.oneGrid, true); assert.equal(o.skills, true);
+  assert.ok(!o.noHand); assert.equal(o.handG, "gun"); assert.equal(o.released, null, "ствол не «кладётся» в сетку — просто отпускается"); assert.equal(o.moved, "helmet", "вещь на свободную ячейку — в конец"); assert.equal(o.tipWorn, true);
 });
 
 test("ящик хранения: клик переносит всю стопку, Shift — одну; отдельные вещи целиком; лимит ячеек соблюдается", () => {
@@ -148,5 +162,5 @@ test("разметка: сетка рюкзака, контейнеры и «в 
     G.ui = { k: "storage" }; const st = Inv.html(G.ui);
     return { cells: (html.match(/data-a="cell:inv:/g) || []).length, quick: (html.match(/data-a="cell:quick:/g) || []).length, hand: /В руке/.test(html) && /×1 из 3/.test(html), stackBtns: /hact:more/.test(html) && /hact:all/.test(html), sel: /gc sel/.test(html), skills: /Навыки/.test(html) && /Записки/.test(html), tip: !!tip, tipQ: !!tipQ, none, stash: /cell:stash:/.test(st) && /Ящик хранения/.test(st) };
   })()`);
-  assert.ok(o.cells >= 24 && o.cells % 6 === 0); assert.equal(o.quick, 0); assert.equal(o.hand, true); assert.equal(o.stackBtns, true); assert.equal(o.sel, true); assert.equal(o.skills, true); assert.equal(o.tip, true); assert.equal(o.tipQ, true); assert.equal(o.none, null); assert.equal(o.stash, true);
+  assert.ok(o.cells >= 55 && o.cells <= 60); assert.equal(o.quick, 0); assert.equal(o.hand, true); assert.equal(o.stackBtns, true); assert.equal(o.sel, true); assert.equal(o.skills, true); assert.equal(o.tip, true); assert.equal(o.tipQ, true); assert.equal(o.none, null); assert.equal(o.stash, true);
 });

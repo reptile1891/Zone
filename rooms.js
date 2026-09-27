@@ -71,7 +71,7 @@ Object.assign(Camp, {
   salvageHTML() {
     const u = G.ui || {}, ask = key => (u.sc === key ? 'Точно?' : 'Разобрать');
     let h = '<h3>Разборка</h3><div class="stat">Лишнее оружие и снаряжение — в металлолом и детали. Деньгами выгоднее продать, материалами — чинить и тюнинговать.</div>', any = false;
-    for (const id of P.weapons) { any = true; h += row(Icons.html('w_' + Wpn.base(id)), '<span style="color:' + Wpn.color(id) + '">' + Wpn.name(id) + '</span>', 'Даст: ' + Meta.matsPlain(Meta.salvageWeapon(id)) + (P.weapons.length <= 1 ? ' · последнее оружие не разобрать' : ''), btn('salv:w:' + id, ask('w' + id), P.weapons.length <= 1)); }
+    for (const id of P.weapons) { any = true; h += row(Icons.html('w_' + Wpn.base(id)), '<span style="color:' + Wpn.color(id) + '">' + Wpn.name(id) + '</span>', 'Даст: ' + Meta.matsPlain(Meta.salvageWeapon(id)), btn('salv:w:' + id, ask('w' + id))); }
     P.inv.forEach((s, i) => { const m = Meta.salvageSlot(s); if (!m) return; any = true; h += row(itemIcon(s), Meta.itemLabel(s) + (s.n > 1 ? ' ×' + s.n : ''), 'Даст: ' + Meta.matsPlain(m), btn('salv:g:' + i, ask('g' + i))); });
     return h + (any ? '' : '<div class="stat">Разбирать нечего.</div>');
   },
