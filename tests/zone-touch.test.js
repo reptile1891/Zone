@@ -42,3 +42,39 @@ test("стик прицела: точка перед игроком в нужн�
   assert.equal(o.up.x, 400); assert.equal(o.up.y, 300 - 400); assert.ok(o.short.x > 400 && o.short.x < 400 + 200 && o.short.y === 300);
   assert.equal(o.ang, o.want); assert.equal(o.shot, 1); assert.ok(Math.abs(o.last.x - 0.6) < 1e-9 && Math.abs(o.last.y - 0.8) < 1e-9);
 });
+
+test("автоприцел: цель в конусе и дальности, ближайшая к направлению; мимо конуса, далёкие, спящие в золе, чужие — нет; уровни и слот предмета", () => {
+  fresh();
+  const o = run(`(() => {
+    P.x = 3000; P.y = 3000; P.weapon = "pistol"; P.sel = 0; Touch.set.aim = 1; cam.x = P.x - VW / 2; cam.y = P.y - VH / 2;
+    const mk = (sp, dx, dy, st) => { const m = new Mutant(sp, P.x + dx, P.y + dy, null); m.state = st || "wander"; Mutants.list.push(m); return m; };
+    const near = mk("listener", 200, 20), far = mk("tin", 900, 0), off = mk("glass", 200, 200), sleeper = mk("cinder", 150, 0, "sleep"), dead = mk("bristler", 120, 5); dead.dead = true;
+    const r1 = Touch.assist(1, 0), r2 = Touch.assist(0, 1), r3 = Touch.assist(-1, 0);
+    Touch.set.aim = 2; const wide = Touch.assist(Math.cos(0.4), Math.sin(0.4)); Touch.set.aim = 1; const narrow = Touch.assist(Math.cos(0.4), Math.sin(0.4)); Touch.set.aim = 0; const offOff = Touch.assist(1, 0); Touch.set.aim = 1;
+    P.sel = 1; const bolt = Touch.assist(1, 0); P.sel = 0;
+    Stalkers.list = [{ x: P.x + 300, y: P.y - 15, dead: false, hostile: false }, { x: P.x + 250, y: P.y + 30, dead: false, hostile: true }]; Mutants.list = [];
+    const st = Touch.assist(1, 0);
+    Mutants.list = [near]; Stalkers.list = []; Touch.aim({ x: 1, y: 0, n: 0.5 }, true); const withAssist = { mx: mouse.x + cam.x - P.x, my: mouse.y + cam.y - P.y, target: !!Touch.target };
+    Touch.aim({ x: 1, y: 0, n: 0.5 }, false); const plain = { my: mouse.y + cam.y - P.y, target: Touch.target };
+    return { r1: r1 && Math.round(r1.x - P.x), r2, r3, wide: !!wide, narrow, offOff, bolt, st: st && Math.round(st.x - P.x), withAssist, plain };
+  })()`);
+  assert.equal(o.r1, 200); assert.equal(o.r2, null); assert.equal(o.r3, null); assert.equal(o.wide, true); assert.equal(o.narrow, null); assert.equal(o.offOff, null); assert.equal(o.bolt, null);
+  assert.equal(o.st, 250, "у сталкеров только враждебные"); assert.deepEqual(o.withAssist, { mx: 200, my: 20, target: true }); assert.equal(o.plain.my, 0); assert.equal(o.plain.target, null);
+});
+
+test("настройки касания: размеры и переключатели по кругу, сохранение и загрузка, строки меню, вибрация с ограничением частоты", () => {
+  fresh();
+  z.sandbox.navigator.vibrate = n => { (z.sandbox.__vib = z.sandbox.__vib || []).push(n); };
+  const o = run(`(() => {
+    Touch.set = { aim: 1, ss: 1, bs: 1, left: 0, vib: 1 }; const seq = { aim: [], ss: [], bs: [], left: Touch.cycle("left"), vib: Touch.cycle("vib"), bad: Touch.cycle("нет") };
+    for (let i = 0; i < 3; i++) seq.aim.push(Touch.cycle("aim")); for (let i = 0; i < 4; i++) { seq.ss.push(Touch.cycle("ss")); seq.bs.push(Touch.cycle("bs")); }
+    const R = Touch.R; const saved = JSON.parse(localStorage.getItem("zone_ui")); Touch.set = { aim: 9, ss: 9, bs: 9, left: 9, vib: 9 }; localStorage.setItem("zone_ui", JSON.stringify({ aim: 2, ss: 1.25, left: 1, junk: "x" })); Touch.load();
+    const loaded = { ...Touch.set }; const rows = Touch.menuRows();
+    Touch.set.vib = 1; Touch.buzzT = 0; Touch.buzz(12); Touch.buzz(12); const first = (globalThis.__vib || []).length; Touch.buzzT = 0; Touch.buzz(30); Touch.set.vib = 0; Touch.buzzT = 0; Touch.buzz(40);
+    return { seq, R, saved, loaded, rows, vib: (globalThis.__vib || []).slice(), first };
+  })()`);
+  assert.deepEqual(o.seq.aim, [2, 0, 1]); assert.deepEqual(o.seq.ss, [1.25, 1.5, 0.8, 1]); assert.deepEqual(o.seq.bs, [1.25, 1.5, 0.8, 1]); assert.equal(o.seq.left, 1); assert.equal(o.seq.vib, 0); assert.equal(o.seq.bad, null);
+  assert.equal(o.R, 56); assert.deepEqual(o.saved, { aim: 1, ss: 1, bs: 1, left: 1, vib: 0 });
+  assert.equal(o.loaded.aim, 2); assert.equal(o.loaded.ss, 1.25); assert.equal(o.loaded.left, 1); assert.equal(o.loaded.bs, 9, "чего нет в сохранённом — остаётся"); assert.ok(!("junk" in o.loaded));
+  assert.match(o.rows, /Автоприцел: <b>Сильный<\/b>/); assert.match(o.rows, /data-a="tset:aim"/); assert.match(o.rows, /Левша: <b>да<\/b>/); assert.match(o.rows, /tset:vib/); assert.deepEqual(o.vib, [12, 30]); assert.equal(o.first, 1, "частые вибрации схлопываются");
+});

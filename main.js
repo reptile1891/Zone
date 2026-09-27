@@ -733,7 +733,7 @@ function menuHTML(u) {
     <div class="row"><div class="nm">Подсказки по ходу игры: <b>${P.hintsOff ? 'выключены' : 'включены'}</b><div class="sub">советы по ситуации, каждый один раз</div></div>${btn('hintsToggle', P.hintsOff ? 'Включить' : 'Выключить')}${btn('hintsReset', 'Показать заново')}</div>
     <div class="row"><div class="nm">Сохранение<div class="sub">в лагере; в Зоне — автосейв каждые 30 с (при обрыве связи: −10% денег)</div></div>${btn('savenow', 'Сохранить', !inCamp())}</div>
     <div class="row"><div class="nm">Новая игра<div class="sub">${u.conf ? 'Нажми ещё раз: сохранение будет стёрто' : 'Начать заново'}</div></div>${btn('newgame', u.conf ? 'Точно?' : 'Новая')}</div>
-    ${typeof Saves !== 'undefined' ? Saves.menuRows() : ''}
+    ${typeof Touch !== 'undefined' && Touch.on ? Touch.menuRows() : ''}${typeof Saves !== 'undefined' ? Saves.menuRows() : ''}
     <div style="margin-top:12px">${btn('resume', '▶ Продолжить')}</div></div></div>`;
 }
 // ---------- карта ----------
