@@ -66,7 +66,7 @@ test("комнаты: у Торгового дома два торговца, п
   })()`);
   assert.deepEqual(o.vendors, ["gear", "buyer"]); assert.ok(o.mspots.some(l => /Торговый прилавок/.test(l))); assert.ok(o.mspots.some(l => /Снабжение/.test(l)) && o.mspots.some(l => /Скупка/.test(l)));
   assert.ok(o.gspots.some(l => /Верстак/.test(l)) && o.gspots.some(l => /Лабораторный стол/.test(l)) && o.gspots.some(l => /Лаборатория/.test(l)));
-  assert.ok(!o.gspots.some(l => /Говорить/.test(l)), "в мастерской больше не торгуют"); assert.match(o.name, /Торговый дом/);
+  assert.ok(o.gspots.some(l => /Говорить: Оружейник/.test(l) && /разобрать/.test(l)), "Ржавый улучшает и разбирает"); assert.match(o.name, /Торговый дом/);
 });
 
 test("оружие: дальность пистолета сильно короче прежней, разброс больше, у всех видов разброс растёт с расстоянием", () => {

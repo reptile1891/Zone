@@ -118,6 +118,7 @@ Object.assign(Camp, {
       add('rack', 220, 145, 2.2, { foot: 30 }); add('rack', 580, 145, 2.2, { foot: 30 }); add('counter', 300, 250, 2.2, { foot: 110, base: 10 }); add('benchw', 610, 250, 2.4, { foot: 80, base: 10 });
       add('anvil', 690, 340, 2.2, { foot: 24 }); add('dummy', 140, 380, 2.2, { foot: 14 }); add('rug', 400, 400, 2.6, { decor: true });
       upg(120, 250);
+      R.spots.push({ x: 300, y: 305, r: 70, label: () => 'Говорить: Оружейник «Ржавый» — улучшить, починить, разобрать', fn: () => { G.ui = { k: 'craft', st: 'gun' }; renderPanel(); } });
       R.spots.push({ x: 610, y: 305, r: 60, label: () => 'Верстак: ремонт, тюнинг, разборка, мастерить', fn: () => { G.ui = { k: 'craft', st: 'gun' }; renderPanel(); } });
       add('labbench', 430, 130, 2.2, { foot: 90, base: 10 }); upgFor('sci', 700, 400);
       R.spots.push({ x: 430, y: 190, r: 60, label: () => 'Лабораторный стол: синтез', fn: () => { G.ui = { k: 'craft', st: 'sci' }; renderPanel(); } });
