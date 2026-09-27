@@ -133,12 +133,6 @@ const Inv = {
     const b = Gear.KINDS[i] ? Gear.best(Gear.KINDS[i]) : null; if (!b) return '<div class="slot gc e" data-a="cell:worn:' + i + '" title="' + Gear.KINDNAME[Gear.KINDS[i]] + '"><span class="k">' + Gear.KINDNAME[Gear.KINDS[i]].slice(0, 3) + '</span></div>';
     return '<div class="slot gc" data-a="cell:worn:' + i + '" style="border-color:' + (b.g ? Gear.TIERS[b.g.rar || 0].col : '#4a4030') + '">' + itemIcon(b) + '<span class="w">★</span></div>';
   },
-  weaponRows() {
-    let h = '';
-    for (const id of P.weapons) { const w = Wpn.of(id); h += row(Icons.html('w_' + Wpn.base(id)), '<span style="color:' + Wpn.color(id) + '">' + w.name + '</span>' + (P.weapon === id ? ' ★' : ''), 'урон ' + w.dmg + (w.pellets > 1 ? '×' + w.pellets : '') + ' · ' + (1 / w.cd).toFixed(1) + ' выстр./с · дальн. ' + w.range + ' · износ ' + Math.round(100 - P.cond[id]) + '%'); }
-    for (const id of P.knives || []) h += row(Melee.DEF[id].icon, Melee.DEF[id].name + (P.knife === id ? ' ★' : ''), Melee.stats(Melee.DEF[id]), btn('mequip:' + id, P.knife === id ? 'В руках' : 'Взять на кнопку 1', P.knife === id));
-    return h;
-  },
   html(u) {
     if (u.k === 'storage') {
       const lim = Camp.stashLimit();
@@ -150,7 +144,6 @@ const Inv = {
     h += '<h3>Контейнеры для артефактов</h3><div class="ggrid">'; P.equip.forEach((e, i) => { h += this.cell('equip', i, e, u); }); h += '</div><div class="stat">' + P.equip.map(a => a ? Meta.itemLabel(Gear.asSlot(a)) : '—').join(' · ') + '</div>';
     h += '<h3>Надето</h3><div class="ggrid doll">'; for (let i = 0; i < Gear.KINDS.length; i++) h += this.wornCell(i); h += '</div>';
     for (const k of Gear.KINDS) { const b = Gear.best(k); h += '<div class="stat">' + Gear.KINDNAME[k] + ': <b>' + (b ? Meta.itemLabel(b) : '—') + '</b></div>'; }
-    h += '<h3>Оружие</h3>' + this.weaponRows() + '<div class="stat" style="margin-top:4px">Возьми ствол или нож в сетке и кликни по кнопке 2–9 внизу. Продать — в Торговом доме.</div>';
     return h + this.skillsHtml() + '</div></div>' + Meta.invExtra();
   },
   // значок вещи в руке ходит за курсором
