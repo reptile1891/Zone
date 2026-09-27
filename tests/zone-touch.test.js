@@ -9,7 +9,7 @@ const run = code => JSON.parse(JSON.stringify(z.run(code) ?? null));
 const fresh = () => z.run(`(() => {
   W = new World(1234); resetPlayer(); P.stash = []; P.bld = null; Mutants.spawn(); Stalkers.spawn(); Meta.reset(); Camp.enter(true);
   G.events = []; G.dead = false; G.started = true; G.ui = null; G.scene = "zone"; G.emi = { s: "calm", left: 0, next: 99999 }; G.t = 5; VW = 800; VH = 600;
-  P.x = 3000; P.y = 3000; P.hp = 100; P.stam = 100; Mutants.list = []; Stalkers.list = []; keys.KeyA = keys.KeyD = keys.KeyW = keys.KeyS = false; keys.stick = null; mouse.l = false; mouse.tap = false; mouse.x = 0; mouse.y = 0;
+  P.x = 3000; P.y = 3000; P.hp = 100; P.stam = 100; Mutants.list = []; Stalkers.list = []; keys.KeyA = keys.KeyD = keys.KeyW = keys.KeyS = false; keys.stick = null; mouse.l = false; mouse.tap = false; mouse.x = 0; mouse.y = 0; W.anoms = []; W.og = new Grid(200);
 })()`);
 
 test("на компьютере модуль не включается (нет касаний), но логика доступна", () => {

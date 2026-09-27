@@ -122,6 +122,25 @@ test("Пружина: заряжается, подбрасывает и рани
   assert.equal(out.last, CFG.anoms.spring.dmg);
 });
 
+test("Стрелка: заряжается и отбрасывает рывком вдоль путей (a.dir), а не от центра, как Пружина", () => {
+  const out = z.run(`(() => {
+    const R0 = Math.random; Math.random = () => 0;   // фиксирует a.dir = 0 (толчок строго по +x), как задаёт разрядка
+    const w = new World(79), a = { id: 9003, type: "switcher", x: 3000, y: 3000, r: 50, ph: 0, rot: 0, t: 0, state: 0, known: false, flash: 0, revealed: 0, vx: 0, vy: 0, act: false, dir: 0 };
+    w.anoms = [a]; let hits = 0, hitsFar = 0;
+    const mk = (x, y, far) => ({ x, y, dead: false, slow: 1, hurt(d) { if (far) hitsFar++; else { hits++; this.last = d; } } });
+    const inside = mk(3010, 3000, false), outside = mk(3300, 3000, true);
+    const x0 = inside.x, y0 = inside.y;
+    for (let i = 0; i < 90; i++) w.update(0.1, [inside, outside]);
+    Math.random = R0;
+    return { hits, hitsFar, dx: Math.round(inside.x - x0), dy: Math.round(inside.y - y0), last: inside.last };
+  })()`);
+  assert.ok(out.hits >= 1, "стрелка ни разу не сработала за 9 с");
+  assert.equal(out.hitsFar, 0);
+  assert.ok(out.dx > 100, `должно отбросить вдоль путей (dir=0 → по x), сдвиг ${out.dx}`);
+  assert.ok(Math.abs(out.dy) < 5, "поперёк путей толкать не должно");
+  assert.equal(out.last, CFG.anoms.switcher.dmg);
+});
+
 test("Магнитная яма: металлические твари получают гораздо больше урона и тянутся сильнее", () => {
   const out = z.run(`(() => {
     const w = new World(78), a = { id: 9002, type: "magnet", x: 3000, y: 3000, r: 58, t: 0, state: 0, known: false, flash: 0, revealed: 0, vx: 0, vy: 0, ph: 0, act: false };

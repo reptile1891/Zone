@@ -56,6 +56,10 @@ const CFG = {
     smolder: { snag: 0.85, shape: 'egg', sign: '#e0602a', name: 'Тлеющий колодец', r: 40, period: 5.5, charge: 1.1, dmg: 30, burn: 6, reach: 1.8, arc: 0.9, w: [0, 1, 2, 2],
       col: '#d06a3a', react: 'Болт вспыхнул и осыпался углями.', hint: 'Земля тлеет красным, тянет дымом. Вокруг ни травинки.',
       arts: ['glasstear', 'ashheart', 'ember', 'thorn'] },
+    // Стрелка: рельсовый механизм на Депо. Копит заряд, потом рывком отшвыривает всех в форме вдоль путей (a.dir) — не от центра, как Пружина.
+    switcher: { snag: 0.8, shape: 'ellipse', asp: 2.0, sign: '#c9a45c', name: 'Стрелка', r: 50, period: 7, charge: 1.3, dmg: 30, push: 260, w: [0, 0, 2, 3],
+      col: '#c9a45c', react: 'Болт мотнуло вбок и зашвырнуло далеко за насыпь.', hint: 'Рельсы блестят чище, чем должны. Гравий вокруг лежит полосой, будто его сдуло в одну сторону.',
+      arts: ['lodestone', 'medusa', 'switchtag'] },
   },
 
   arts: {
@@ -75,6 +79,7 @@ const CFG = {
     // Награда за цепочку «Нижний ярус»; в аномалиях не встречается
     echo:        { name: 'Эхо',           val: 280, w: 0.3, rad: 0.15, fx: { repel: 1, hpRegen: 1.0 }, desc: 'Зона шепчет тише. Мутанты хуже замечают тебя, раны затягиваются.' },
     dud:         { name: 'Пустышка',       val: 6,   w: 0.6, rad: 0,    fx: {},                desc: 'Красивая. Бесполезная.' },
+    switchtag:   { name: 'Стрелочный жетон', val: 165, w: 0.3, rad: 0.05, fx: { sight: 20 }, desc: 'Тёплый металл. В темноте видно чуть дальше — будто рядом горит сигнальный фонарь.' },
   },
 
   items: {
@@ -138,40 +143,44 @@ const CFG = {
   biomes: {
     meadow:     { name: 'Луг', patch: 'rgba(70,100,45,.30)', map: '#34492b', w: [4, 3, 1, 1],
       props: { tree: 0.3, bush: 0.6, tuft: 1.3, rock: 0.12, boulder: 0.04, deadtree: 0.05, hay: 0.05, well: 0.01 }, grass: 0.3,
-      am: { fluff: 1.2, slime: 0.5, funnel: 0.6, electra: 0.7, plesh: 0.5, grinder: 0.2, spring: 0.5, magnet: 0.1, smolder: 0.2 } },
+      am: { fluff: 1.2, slime: 0.5, funnel: 0.6, electra: 0.7, plesh: 0.5, grinder: 0.2, spring: 0.5, magnet: 0.1, smolder: 0.2, switcher: 0.03 } },
     forest:     { name: 'Лес', patch: 'rgba(30,70,40,.38)', map: '#1f3a24', w: [2, 3, 2, 1],
       props: { pine: 2.2, tree: 1.0, bush: 0.9, deadtree: 0.35, tuft: 0.9, rock: 0.1, bones: 0.04 }, grass: 0.2,
-      am: { fluff: 1, slime: 1, funnel: 0.8, electra: 0.5, plesh: 1, grinder: 0.3, spring: 0.4, magnet: 0.2, smolder: 0.5 } },
+      am: { fluff: 1, slime: 1, funnel: 0.8, electra: 0.5, plesh: 1, grinder: 0.3, spring: 0.4, magnet: 0.2, smolder: 0.5, switcher: 0.05 } },
     town:       { name: 'Хармонт (руины)', patch: 'rgba(110,105,95,.28)', map: '#4a4a44', w: [1, 3, 3, 1],
       props: { house: 0.7, ruin: 0.45, wall: 0.5, fence: 0.5, barrel: 0.15, bones: 0.06, tuft: 0.3, billboard: 0.03 },
       roadProps: { car: 0.55, car_b: 0.4, bus: 0.06, lamp: 0.5, bones: 0.05, tires: 0.1, tuft: 0.2 },
-      am: { electra: 1.5, grinder: 1.6, plesh: 1, funnel: 0.8, fluff: 0.4, slime: 0.5, spring: 0.8, magnet: 1.4, smolder: 0.6 } },
+      am: { electra: 1.5, grinder: 1.6, plesh: 1, funnel: 0.8, fluff: 0.4, slime: 0.5, spring: 0.8, magnet: 1.4, smolder: 0.6, switcher: 0.4 } },
     junkyard:   { name: 'Свалка техники', patch: 'rgba(120,70,40,.32)', map: '#5a3a28', w: [1, 3, 3, 2],
       props: { car: 1.0, car_b: 0.7, truck: 0.25, bus: 0.1, tires: 0.7, barrel: 0.6, container: 0.25, rock: 0.1, tuft: 0.2, pylon: 0.03 },
-      am: { slime: 1.3, electra: 1.4, grinder: 1.6, plesh: 1, funnel: 0.6, fluff: 0.5, spring: 0.6, magnet: 2.4, smolder: 0.5 } },
+      am: { slime: 1.3, electra: 1.4, grinder: 1.6, plesh: 1, funnel: 0.6, fluff: 0.5, spring: 0.6, magnet: 2.4, smolder: 0.5, switcher: 0.5 } },
     swamp:      { name: 'Болото', patch: 'rgba(50,90,90,.36)', map: '#254545', w: [1, 2, 2, 1], water: 0.4, grass: 0.35,
       props: { reed: 1.6, deadtree: 0.5, bush: 0.3, tuft: 0.4, bones: 0.05, tires: 0.05 },
-      am: { slime: 2.5, fluff: 0.6, funnel: 0.4, electra: 0.6, plesh: 1, grinder: 0.1, spring: 0.3, magnet: 0.1, smolder: 0.05 } },
+      am: { slime: 2.5, fluff: 0.6, funnel: 0.4, electra: 0.6, plesh: 1, grinder: 0.1, spring: 0.3, magnet: 0.1, smolder: 0.05, switcher: 0.02 } },
     industrial: { name: 'Заводская зона', patch: 'rgba(80,90,110,.34)', map: '#3c4452', w: [0, 1, 3, 4],
       props: { container: 0.5, tank: 0.35, pipe: 0.45, pylon: 0.35, wall: 0.4, house: 0.25, lamp: 0.2, barrel: 0.5, truck: 0.1, rail: 0.4, tower: 0.05 },
-      am: { electra: 2.2, funnel: 1, grinder: 1.5, plesh: 1.2, slime: 0.5, fluff: 0.2, spring: 0.9, magnet: 2, smolder: 0.8 } },
+      am: { electra: 2.2, funnel: 1, grinder: 1.5, plesh: 1.2, slime: 0.5, fluff: 0.2, spring: 0.9, magnet: 2, smolder: 0.8, switcher: 0.8 } },
     quarry:     { name: 'Карьер', patch: 'rgba(140,120,80,.34)', map: '#5e5238', w: [0, 2, 3, 3],
       props: { boulder: 1.1, rock: 1.6, crater: 0.6, deadtree: 0.06, tower: 0.05, tires: 0.05, dtuft: 0.15 },
-      am: { funnel: 2.2, grinder: 1.8, plesh: 1.4, electra: 0.6, fluff: 0.3, slime: 0.2, spring: 1.6, magnet: 1, smolder: 0.7 } },
+      am: { funnel: 2.2, grinder: 1.8, plesh: 1.4, electra: 0.6, fluff: 0.3, slime: 0.2, spring: 1.6, magnet: 1, smolder: 0.7, switcher: 0.3 } },
     deadfield:  { name: 'Мёртвое поле', patch: 'rgba(120,100,50,.34)', map: '#4a4228', w: [0, 1, 3, 4], grass: 0.3,
       props: { deadtree: 0.7, bones: 0.2, crater: 0.25, dtuft: 0.9, grave: 0.15, rock: 0.1, pylon: 0.06, tower: 0.02 },
-      am: { fluff: 2.2, plesh: 2, slime: 0.6, funnel: 1, electra: 1, grinder: 0.7, spring: 1.2, magnet: 0.6, smolder: 1.4 } },
+      am: { fluff: 2.2, plesh: 2, slime: 0.6, funnel: 1, electra: 1, grinder: 0.7, spring: 1.2, magnet: 0.6, smolder: 1.4, switcher: 0.3 } },
     saltflat:   { name: 'Солончак', patch: 'rgba(200,200,180,.26)', map: '#6a6a5c', w: [0, 1, 3, 3], grass: 0.1,
       props: { crater: 0.4, bones: 0.25, dtuft: 0.5, rock: 0.5, boulder: 0.3, deadtree: 0.08, rail: 0.25, pylon: 0.1, tower: 0.05 },
-      am: { spring: 2.2, magnet: 1.2, electra: 0.8, funnel: 1.2, plesh: 0.8, fluff: 0.5, slime: 0.1, grinder: 0.4, smolder: 0.3 } },
+      am: { spring: 2.2, magnet: 1.2, electra: 0.8, funnel: 1.2, plesh: 0.8, fluff: 0.5, slime: 0.1, grinder: 0.4, smolder: 0.3, switcher: 0.6 } },
     // Озёрный край — большие озёра с камышом: вода замедляет, а в воде живёт Топляк
     lake:       { name: 'Озёрный край', patch: 'rgba(40,86,116,.46)', map: '#1f3a4c', w: [1, 2, 2, 1], water: 0.95, waterSize: 1.6, grass: 0.2,
       props: { reed: 2.2, deadtree: 0.3, bush: 0.4, tuft: 0.5, bones: 0.08, tires: 0.05, rock: 0.1 },
-      am: { slime: 1.6, fluff: 0.6, funnel: 0.4, electra: 0.9, plesh: 0.5, grinder: 0.1, spring: 0.3, magnet: 0.2, smolder: 0.02 } },
+      am: { slime: 1.6, fluff: 0.6, funnel: 0.4, electra: 0.9, plesh: 0.5, grinder: 0.1, spring: 0.3, magnet: 0.2, smolder: 0.02, switcher: 0.05 } },
     // Гарь — выжженный лес: пепел, обугленные стволы, тлеющие колодцы. Ночью здесь охотится Углеглот.
     burnt:      { name: 'Гарь', patch: 'rgba(96,58,40,.62)', map: '#3c2b24', w: [0, 1, 3, 3],
       props: { burntree: 2.2, deadtree: 0.2, char: 1.6, ashpile: 1.1, rock: 0.1, bones: 0.12, crater: 0.15 },
-      am: { smolder: 3.2, plesh: 1.2, funnel: 0.6, electra: 0.6, fluff: 0.8, slime: 0.05, grinder: 0.5, spring: 0.4, magnet: 0.3 } },
+      am: { smolder: 3.2, plesh: 1.2, funnel: 0.6, electra: 0.6, fluff: 0.8, slime: 0.05, grinder: 0.5, spring: 0.4, magnet: 0.3, switcher: 0.1 } },
+    // Депо — заброшенная сортировочная станция: ряды путей и составов, дальний и опасный участок. Стрелка — здесь дома.
+    depot:      { name: 'Депо', patch: 'rgba(70,64,52,.4)', map: '#443c30', w: [0, 0, 2, 3],
+      props: { container: 0.9, rail: 1.6, tank: 0.3, pipe: 0.2, pylon: 0.3, wall: 0.3, tower: 0.1, barrel: 0.3, tires: 0.2, bones: 0.1 },
+      am: { switcher: 3, magnet: 1.6, electra: 1, funnel: 0.5, grinder: 0.6, plesh: 0.6, fluff: 0.2, slime: 0.1, spring: 0.4, smolder: 0.2 } },
   },
 
   mut: {

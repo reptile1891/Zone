@@ -9,7 +9,7 @@ const run = code => JSON.parse(JSON.stringify(z.run(code) ?? null));
 const fresh = () => z.run(`(() => {
   W = new World(1234); resetPlayer(); P.stash = []; P.bld = null; Mutants.spawn(); Stalkers.spawn(); Meta.reset(); Camp.enter(true); Quick.assign(8, "hook");
   G.events = []; G.dead = false; G.started = true; G.ui = null; G.scene = "zone"; G.emi = { s: "calm", left: 0, next: 99999 }; G.t = 5; VW = 800; VH = 600;
-  P.x = 3000; P.y = 3000; P.hp = 100; P.inv = []; P.sk.sense = 0; Mutants.list = []; Stalkers.list = []; W.anoms = []; W.arts = []; W.loot = []; P.cd = 0; Meta.hooks = []; Meta.reeling = []; cam.x = P.x - VW / 2; cam.y = P.y - VH / 2;
+  P.x = 3000; P.y = 3000; P.hp = 100; P.inv = []; P.sk.sense = 0; Mutants.list = []; Stalkers.list = []; W.anoms = []; W.arts = []; W.loot = []; W.og = new Grid(200); P.cd = 0; Meta.hooks = []; Meta.reeling = []; cam.x = P.x - VW / 2; cam.y = P.y - VH / 2;
 })()`);
 const setup = (type, extra) => `(() => { const a = { id: 1, type: "${type}", x: 3250, y: 3000, r: CFG.anoms.${type}.r, ph: 1, rot: 0, t: 0, state: 0, known: false, flash: 0, revealed: 0, vx: 0, vy: 0, act: false, dir: 0 }; Object.assign(a, ${extra || "{}"}); W.anoms = [a]; W.arts = [{ id: 5, type: "soul", x: 3252, y: 3004, anom: 1 }]; invAdd("hook", 1); P.sel = 8; mouse.x = 400 + 250; mouse.y = 300; P.ang = 0; return a; })()`;
 const fly = `for (let i = 0; i < 40; i++) update(0.05);`;

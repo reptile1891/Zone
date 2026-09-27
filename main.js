@@ -610,6 +610,10 @@ function drawAnom(a) {
       ctx.globalAlpha = ah * 0.4; anomPath(a, 0.35); ctx.fillStyle = '#1c2028'; ctx.fill(); ctx.globalAlpha = ah;
       for (let i = 0; i < 14; i++) { const p = at(i + 2, ((t * 0.05 + i * 0.17) % 1)); px(p.x, p.y, i % 3 ? '#7a4a30' : '#9aa0a8', 3); }
       ctx.strokeStyle = 'rgba(140,170,210,.5)'; ctx.lineWidth = 1; for (let i = 0; i < 4; i++) { const an = i * 1.57 + t * 0.4; ctx.beginPath(); ctx.ellipse(a.x, a.y, a.r * c.asp * 0.6, a.r / c.asp * 0.6, a.rot, an, an + 0.9); ctx.stroke(); }
+    } else if (a.type === 'switcher') {
+      ctx.strokeStyle = '#8a6a3a'; ctx.lineWidth = 2; for (const s of [-1, 1]) { const p0 = anomEdge(a, a.rot, 0.05), p1 = anomEdge(a, a.rot + s * 0.05, 1); ctx.beginPath(); ctx.moveTo(p0.x, p0.y); ctx.lineTo(p1.x, p1.y); ctx.stroke(); }
+      for (let i = 0; i < 8; i++) { const p = at(i + 1, ((t * 0.15 + i * 0.21) % 1)); px(p.x, p.y, i % 2 ? '#e8d090' : '#7a5a2a', 2); }
+      if (a.state === 1) { const k = a.t / c.charge, dx = Math.cos(a.dir), dy = Math.sin(a.dir); ctx.strokeStyle = '#ffe8a0'; ctx.lineWidth = 2; ctx.beginPath(); ctx.moveTo(a.x, a.y); ctx.lineTo(a.x + dx * a.r * (0.5 + k * 0.8), a.y + dy * a.r * (0.5 + k * 0.8)); ctx.stroke(); }
     } else { ctx.globalAlpha = ah * 0.4; anomPath(a, 0.85); ctx.fillStyle = '#4a7a55'; ctx.fill(); ctx.globalAlpha = ah; for (let i = 0; i < 3; i++) { const p = at(i + 4); px(p.x + Math.sin(t + i) * 2, p.y, '#cfe8cf', 3); } }
   } else if (sg > 0.02) {
     // не обнаружена: только редкие приметы, число и яркость растут с приближением; вблизи заметны и предупреждения о разряде

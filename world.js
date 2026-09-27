@@ -337,6 +337,10 @@ class World {
         a.t += dt * em;
         if (a.state === 0 && a.t >= c.period) { a.state = 1; a.t = 0; a.dir = Math.random() * 6.28; }
         else if (a.state === 1 && a.t >= c.charge) this.flare(a, ents);
+      } else if (a.type === 'switcher') {
+        a.t += dt * em;
+        if (a.state === 0 && a.t >= c.period) { a.state = 1; a.t = 0; a.dir = Math.random() * 6.28; }
+        else if (a.state === 1 && a.t >= c.charge) this.derail(a, ents);
       }
     }
     for (const e of ents) if (!e.dead) this.applyAnoms(e, dt);
@@ -369,6 +373,17 @@ class World {
     }
     if (Math.hypot(a.x - P.x, a.y - P.y) < 500) Snd.zap();
   }
+  // Стрелка: короткий заряд, затем всех в форме отшвыривает рывком вдоль путей (a.dir) — направление фиксировано на разрядку, не от центра
+  derail(a, ents) {
+    const c = CFG.anoms.switcher; a.state = 0; a.t = 0; a.flash = 0.4;
+    const ux = Math.cos(a.dir), uy = Math.sin(a.dir);
+    for (const e of ents) {
+      if (e.dead || !AShape.inside(a, e.x - a.x, e.y - a.y)) continue;
+      e.x = U.clamp(e.x + ux * c.push, 20, this.S - 20); e.y = U.clamp(e.y + uy * c.push, 20, this.S - 20);
+      e.hurt(c.dmg, 'anom');
+    }
+    if (Math.hypot(a.x - P.x, a.y - P.y) < 500) Snd.zap();
+  }
   // Знает ли существо об аномалии (обходит её): опыт вида у мутантов, «чутьё» у сталкеров; решается один раз на пару. Попавшее в аномалию запоминает её.
   knows(e, a) {
     const k = e.ak || (e.ak = {}); if (k[a.id] !== undefined) return k[a.id];
@@ -391,7 +406,7 @@ class World {
       else if (a.type === 'slime' && inn) { e.hurt(c.dps * dt, 'anom'); e.slow = Math.min(e.slow, c.slow); cur = a; }
       else if (a.type === 'plesh' && inn) { e.hurt(c.dps * dt, 'anom'); const pl = 45 * (1 - d / ar) * dt; e.x -= dx / d * pl; e.y -= dy / d * pl; e.slow = Math.min(e.slow, 0.55); cur = a; }
       else if (a.type === 'grinder' && inn) { cur = a; if (a.act) e.hurt(c.dps * dt, 'anom'); }
-      else if ((a.type === 'electra' || a.type === 'spring' || a.type === 'smolder') && inn) cur = a;
+      else if ((a.type === 'electra' || a.type === 'spring' || a.type === 'smolder' || a.type === 'switcher') && inn) cur = a;
       else if (a.type === 'magnet') {
         const pr = ar * 1.5, metal = !!(e.c && e.c.metal);
         if (d < pr) {
@@ -412,6 +427,7 @@ class World {
         else if (a.type === 'grinder' && !a.act) a.t = c.cycle - c.act - 0.3;
         else if (a.type === 'spring' && a.state === 0) { a.state = 1; a.t = c.charge - 0.5; }
         else if (a.type === 'smolder' && a.state === 0) { a.state = 1; a.t = c.charge - 0.5; a.dir = Math.random() * 6.28; }
+        else if (a.type === 'switcher' && a.state === 0) { a.state = 1; a.t = c.charge - 0.5; a.dir = Math.random() * 6.28; }
         return { a, first };
       }
     }
