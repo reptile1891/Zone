@@ -132,7 +132,7 @@ const Touch = {
     this.actB.style.display = 'none';
     this.rot = this.mk('div', 'trot'); this.rot.innerHTML = '<div>↻<br>Поверните телефон горизонтально</div>';
     const qk = document.getElementById('quick');   // второе касание слота 1 меняет оружие (на клавиатуре — повторное нажатие 1)
-    if (qk) qk.addEventListener('click', e => { const q = e.target.closest('[data-q]'); if (q && +q.dataset.q === P.sel) { if (heldNames[P.sel] === 'weapon') Meta.cycleWeapon(); else if (heldNames[P.sel] === 'melee') Melee.cycle(); } }, true);
+    if (qk) qk.addEventListener('click', e => { const q = e.target.closest('[data-q]'); if (q && !G.ui && +q.dataset.q === P.sel) { if (heldNames[P.sel] === 'weapon') Meta.cycleWeapon(); else if (heldNames[P.sel] === 'melee') Melee.cycle(); } }, true);
     const keysEl = document.querySelector('#splash .keys');
     if (keysEl) keysEl.innerHTML = '<div>Левый палец — движение</div><div>Правый палец — целиться и стрелять (тянуть)</div><div>Короткий тап справа — один выстрел</div><div>Долгое касание справа — осмотреться</div><div>Кнопка с зелёной подписью — действие (E)</div><div>Красться / Бег — переключатели</div><div>Слоты внизу — выбор предмета</div><div>🎒 🗺 📖 ☰ — рюкзак, карта, журнал, меню</div>';
     const loop = () => { this.tick(); requestAnimationFrame(loop); }; requestAnimationFrame(loop);

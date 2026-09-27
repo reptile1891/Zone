@@ -2,7 +2,9 @@
 // Инвентарь «point & click»: рюкзак и ящик хранения — сетки ячеек с иконками. Клик по вещи берёт её «в руку» (значок ходит за курсором),
 // второй клик кладёт: в другую ячейку рюкзака (порядок; одинаковые стопки сливаются), в контейнер для артефактов, на кнопку быстрой панели
 // (вещь остаётся в рюкзаке, кнопка запоминает её), в ящик и обратно. Правая кнопка мыши по вещи — использовать (артефакт — в контейнер).
-// Под сеткой строка «В руке» с кнопками: использовать, выбросить, в ящик. Зоны ячеек: inv, stash, equip (контейнеры), quick (кнопки 2–9).
+// Стопки переносятся ПО ОДНОЙ штуке (Shift+клик или кнопка «Все» — вся стопка; «+1» / «−1» — сколько нести).
+// Быстрый доступ раскладывается прямо на нижней панели: взял вещь в инвентаре — кликнул по кнопке внизу (окно инвентаря приподнято и не закрывает панель).
+// Под сеткой строка «В руке» с кнопками: использовать, выбросить, в ящик. Зоны ячеек: inv, stash, equip (контейнеры), gun, melee; quick — кнопки нижней панели.
 const Inv = {
   COLS: 6,
   zone(z) { return z === 'inv' ? P.inv : z === 'stash' ? P.stash : z === 'equip' ? P.equip : null; },
@@ -12,11 +14,22 @@ const Inv = {
   name(z, x) { return z === 'quick' || z === 'gun' ? Quick.name(x) : z === 'equip' ? CFG.arts[x.art].name : Meta.itemLabel(x); },
   // ---- перемещения ----
   stackable(s) { return s && !s.art && !s.g && !CFG.items[s.id].pack0; },
-  moveInv(from, to) {
-    const a = P.inv; if (from < 0 || from >= a.length) return; const s = a[from];
-    const t = a[to]; if (t && to !== from && this.stackable(s) && this.stackable(t) && s.id === t.id) { t.n += s.n; a.splice(from, 1); return; }   // одинаковые стопки сливаются
+  // Внутри рюкзака: n штук стопки — на ячейку to (та же вещь — сливаются, иначе отдельная стопка); вся стопка — меняет порядок
+  moveInv(from, to, n) {
+    const a = P.inv; if (from < 0 || from >= a.length) return; const s = a[from], st = this.stackable(s), t = a[to]; n = st ? Math.min(n || 1, s.n) : 1;
+    if (t && to !== from && st && this.stackable(t) && t.id === s.id) { t.n += n; if (s.n > n) s.n -= n; else a.splice(from, 1); return; }
+    if (st && n < s.n) { s.n -= n; a.splice(Math.min(to, a.length), 0, { id: s.id, n }); return; }
     a.splice(from, 1); a.splice(Math.min(to, a.length), 0, s);
   },
+  // n штук из fromList[i] в toList (рюкзак ↔ ящик): сливаются с такой же стопкой; limit — предел ячеек ящика (0 — без предела)
+  moveUnits(fromList, i, toList, n, limit) {
+    const s = fromList[i]; if (!s) return; const st = this.stackable(s); n = st ? Math.min(n || 1, s.n) : 1;
+    const t = st ? toList.find(x => this.stackable(x) && x.id === s.id) : null;
+    if (t) t.n += n; else { if (limit && toList.length >= limit) return log('Ящик полон. Улучши его.'); toList.push(st ? { id: s.id, n } : s); }
+    if (st && s.n > n) s.n -= n; else fromList.splice(i, 1);
+  },
+  limit() { const l = Camp.stashLimit(); return l > 999 ? 0 : l; },
+  pickN(z, i) { const s = this.at(z, i); return s && (z === 'inv' || z === 'stash') && this.stackable(s) && !this.shift ? 1 : (s && s.n) || 1; },
   equipTo(from, slot) {
     const s = P.inv[from]; if (!s || !s.art) return log('В контейнер кладут только артефакты.');
     if (!P.known[s.art]) return log('Неизвестный артефакт в контейнер не положишь — опознай его в Торговом доме.');
@@ -28,17 +41,17 @@ const Inv = {
     const h = u.hand;
     if (!h) {
       if ((z === 'quick' && i === 0) || z === 'melee') { Melee.cycle(); return; }
-      if (this.at(z, i)) u.hand = { z, i };
+      if (this.at(z, i)) u.hand = { z, i, n: this.pickN(z, i) };
       return;
     }
     if (h.z === z && h.i === i) { u.hand = null; return; }
     const it = this.at(h.z, h.i); u.hand = null; if (!it) return;
     if (h.z === 'inv') {
-      if (z === 'inv') this.moveInv(h.i, i);
+      if (z === 'inv') this.moveInv(h.i, i, h.n);
       else if (z === 'equip') this.equipTo(h.i, i);
       else if (z === 'quick') { if (Quick.can(it.id)) { if (Quick.assign(i, it.id)) log('На кнопку ' + (i + 1) + ' — ' + CFG.items[it.id].name + '.', '#a8c890'); } else log('На панель ставят расходники, болты, приманку, шок и крюк.'); }
-      else if (z === 'stash') Camp.click('stash', String(h.i));
-    } else if (h.z === 'stash') { if (z === 'inv' || z === 'stash') Camp.click('unstash', String(h.i)); }
+      else if (z === 'stash') this.moveUnits(P.inv, h.i, P.stash, h.n, this.limit());
+    } else if (h.z === 'stash') { if (z === 'inv') this.moveUnits(P.stash, h.i, P.inv, h.n, 0); }
     else if (h.z === 'equip') {
       if (z === 'equip') { const a = P.equip[h.i]; P.equip[h.i] = P.equip[i]; P.equip[i] = a; }
       else if (z === 'inv') this.unequip(h.i);
@@ -49,11 +62,17 @@ const Inv = {
   },
   // действия над вещью в руке
   act(u, what) {
-    const h = u.hand; if (!h || h.z !== 'inv') return; const s = P.inv[h.i]; if (!s) { u.hand = null; return; }
-    u.hand = null;
+    const h = u.hand; if (!h || (h.z !== 'inv' && h.z !== 'stash')) return; const list = h.z === 'inv' ? P.inv : P.stash, s = list[h.i]; if (!s) { u.hand = null; return; }
+    if (what === 'more') { h.n = Math.min(s.n || 1, h.n + 1); return; }
+    if (what === 'less') { h.n = Math.max(1, h.n - 1); return; }
+    if (what === 'all') { h.n = s.n || 1; return; }
+    u.hand = null; if (h.z === 'stash') { if (what === 'take') this.moveUnits(P.stash, h.i, P.inv, h.n, 0); return; }
     if (what === 'use') { if (s.art) { const slot = P.equip.indexOf(null); if (slot < 0) log('Контейнеры заняты.'); else this.equipTo(h.i, slot); } else if (CFG.items[s.id].use) useItem(s.id); }
-    else if (what === 'drop') panelClick('drop:' + h.i);
-    else if (what === 'stash') Camp.click('stash', String(h.i));
+    else if (what === 'drop') {
+      const st = this.stackable(s), n = st ? Math.min(h.n, s.n) : 1;
+      if (s.art) W.arts.push({ id: 0, type: s.art, q: s.q, x: P.x + 20, y: P.y, anom: 0 }); else W.loot.push({ x: P.x + 20, y: P.y, id: s.id, n, g: s.g });
+      if (st && s.n > n) s.n -= n; else P.inv.splice(h.i, 1);
+    } else if (what === 'stash') this.moveUnits(P.inv, h.i, P.stash, h.n, this.limit());
   },
   // ---- разметка ----
   cell(z, i, s, u) {
@@ -81,15 +100,17 @@ const Inv = {
     return h + '</div>';
   },
   handBar(u) {
-    const it = this.handItem(u); if (!it) return '<div class="stat" style="margin-top:6px">Кликни по вещи, чтобы взять её в руку, и ещё раз — куда положить. Правая кнопка — использовать.</div>';
+    const it = this.handItem(u); if (!it) return '<div class="stat" style="margin-top:6px">Клик по вещи — взять одну штуку в руку, ещё клик — положить (Shift или «Все» — всю стопку). Правая кнопка — использовать. Быстрый доступ: возьми вещь и кликни по кнопке на нижней панели.</div>';
     const z = u.hand.z, name = this.name(z, it);
-    let h = '<div class="note" style="margin-top:6px">В руке: <b>' + name + '</b>';
-    if (z === 'inv') {
-      const s = P.inv[u.hand.i]; h += ' <span style="display:inline-flex;gap:6px;flex-wrap:wrap">';
-      if (s.art || CFG.items[s.id].use) h += btn('hact:use', s.art ? 'В контейнер' : 'Использовать');
-      if (u.k === 'storage') h += btn('hact:stash', 'В ящик'); h += btn('hact:drop', 'Выбросить') + '</span>';
+    let h = '<div class="note" style="margin-top:6px">В руке: <b>' + name + '</b>' + (u.hand.n > 1 || ((it.n || 1) > 1 && (z === 'inv' || z === 'stash')) ? ' ×' + u.hand.n + (it.n > u.hand.n ? ' из ' + it.n : '') : '');
+    if (z === 'inv' || z === 'stash') {
+      const s = it; h += ' <span style="display:inline-flex;gap:6px;flex-wrap:wrap">';
+      if (this.stackable(s) && s.n > 1) h += btn('hact:less', '−1', u.hand.n <= 1) + btn('hact:more', '+1', u.hand.n >= s.n) + btn('hact:all', 'Все', u.hand.n >= s.n);
+      if (z === 'stash') h += btn('hact:take', 'В рюкзак');
+      else { if (s.art || CFG.items[s.id].use) h += btn('hact:use', s.art ? 'В контейнер' : 'Использовать'); if (u.k === 'storage') h += btn('hact:stash', 'В ящик'); h += btn('hact:drop', 'Выбросить'); }
+      h += '</span>';
     }
-    return h + ' <span class="stat">· клик по пустой или другой ячейке — положить, по этой же — отпустить</span></div>';
+    return h + ' <span class="stat">· клик по ячейке — положить, по этой же — отпустить</span></div>';
   },
   skillsHtml() {
     let h = '<h3>Навыки — очков: ' + P.sp + ' · опыт ' + Math.floor(P.xp) + '/' + Math.floor(60 * Math.pow(P.lvl, 1.4)) + '</h3>';
@@ -105,16 +126,18 @@ const Inv = {
     }
     let h = '<div class="x" data-a="close">✕ Esc</div><h2>Снаряжение</h2><div class="cols"><div><h3>Рюкзак — ' + weight().toFixed(1) + ' / ' + carryCap() + ' кг</h3>' + this.grid('inv', u, 24) + this.handBar(u) + '</div><div><h3>Контейнеры для артефактов</h3><div class="ggrid">';
     P.equip.forEach((e, i) => { h += this.cell('equip', i, e, u); }); h += '</div><div class="stat">' + P.equip.map(a => a ? Meta.itemLabel(Gear.asSlot(a)) : '—').join(' · ') + '</div>';
-    h += '<h3>Оружие</h3><div class="ggrid q">' + this.cell('gun', 0, null, u) + this.cell('melee', 0, null, u) + '</div><div class="stat">Огнестрел — возьми и положи на любую кнопку 2–9; нож (кнопка 1) — клик по нему меняет нож.</div>';
-    h += '<h3>Быстрая панель</h3><div class="ggrid q">'; for (let i = 0; i < heldNames.length; i++) h += this.cell('quick', i, null, u); h += '</div><div class="stat">Возьми вещь и кликни по кнопке 2–9, чтобы поставить; вещь с кнопки — на рюкзак или ✕, чтобы убрать.</div>';
+    h += '<h3>Оружие</h3><div class="ggrid q">' + this.cell('gun', 0, null, u) + this.cell('melee', 0, null, u) + '</div><div class="stat">Огнестрел — возьми и кликни по любой кнопке 2–9 внизу; нож (кнопка 1) — клик по нему меняет нож.</div>';
+    h += '<div class="stat">Быстрый доступ — нижняя панель: возьми вещь или оружие и кликни по кнопке внизу; вещь с кнопки — в рюкзак, чтобы убрать.</div>';
     h += '<h3>Надето</h3>'; for (const k of Gear.KINDS) { const b = Gear.best(k); h += '<div class="stat">' + Gear.KINDNAME[k] + ': <b>' + (b ? Meta.itemLabel(b) : '—') + '</b></div>'; }
     return h + this.skillsHtml() + '</div></div>' + Meta.invExtra();
   },
   // значок вещи в руке ходит за курсором
   syncHand(u) {
-    const el = this.el; if (!el) return; const it = u && u.hand ? this.handItem(u) : null;
+    const q = typeof document !== 'undefined' && document.getElementById ? document.getElementById('quick') : null, it0 = u && u.hand ? this.handItem(u) : null;
+    if (q && q.classList) q.classList.toggle('hold', !!it0);   // пока что-то в руке, нижняя панель подсвечена: клик по кнопке ставит вещь туда
+    const el = this.el; if (!el) return; const it = it0;
     if (!it) { el.style.display = 'none'; return; }
-    const z = u.hand.z; el.innerHTML = z === 'quick' || z === 'gun' ? Quick.icon(it) : z === 'equip' ? Codex.artHtml(it.art) : itemIcon(it); el.style.display = 'block';
+    const z = u.hand.z; el.innerHTML = (z === 'quick' || z === 'gun' ? Quick.icon(it) : z === 'equip' ? Codex.artHtml(it.art) : itemIcon(it)) + (u.hand.n > 1 ? '<span style="font-size:13px;color:#e8d8a0"> ×' + u.hand.n + '</span>' : ''); el.style.display = 'block';
   },
 };
 
@@ -123,6 +146,7 @@ const Inv = {
   if (Inv.el && Inv.el.style && document.body && document.body.appendChild) { Inv.el.id = 'hand'; try { document.body.appendChild(Inv.el); } catch (e) { Inv.el = null; } }
   if (typeof addEventListener === 'function') addEventListener('mousemove', e => { if (Inv.el && Inv.el.style && Inv.el.style.display === 'block') { Inv.el.style.left = (e.clientX + 6) + 'px'; Inv.el.style.top = (e.clientY + 6) + 'px'; } });
   const _render = Camp.render; Camp.render = function (u) {
+    if (panel.classList) { if (u.k === 'inv' || u.k === 'storage') panel.classList.add('inv'); else panel.classList.remove('inv'); }   // окно приподнято: нижняя панель остаётся видна
     if (u.k === 'inv' || u.k === 'storage') { panel.style.display = 'block'; const st = panel.scrollTop; panel.innerHTML = Inv.html(u); panel.scrollTop = st; Inv.syncHand(u); return true; }
     Inv.syncHand(null); return _render.call(this, u);
   };
@@ -143,5 +167,6 @@ const Inv = {
     e.preventDefault(); const i = +c.dataset.a.split(':')[2]; if (!P.inv[i]) return; G.ui.hand = { z: 'inv', i }; Inv.act(G.ui, 'use'); renderPanel();
   });
   // выход из инвентаря: рука пуста, значок скрыт
-  const _cp = closePanel; closePanel = function () { Inv.syncHand(null); return _cp(); };
+  const _cp = closePanel; closePanel = function () { Inv.syncHand(null); if (panel.classList) panel.classList.remove('inv'); return _cp(); };
+  if (typeof panel !== 'undefined' && panel && panel.addEventListener) panel.addEventListener('click', e => { Inv.shift = !!e.shiftKey; }, true);   // Shift+клик — вся стопка
 })();

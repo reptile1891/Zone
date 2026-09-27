@@ -803,7 +803,11 @@ cv.addEventListener('mousedown', e => { mouse.x = e.clientX; mouse.y = e.clientY
 addEventListener('mouseup', e => { if (e.button === 0) mouse.l = false; if (e.button === 2) mouse.r = false; });
 cv.addEventListener('contextmenu', e => e.preventDefault());
 addEventListener('wheel', e => { if (G.started && !G.ui) stepSel(e.deltaY > 0 ? 1 : -1); });
-$('quick').addEventListener('click', e => { const q = e.target.closest('[data-q]'); if (q) P.sel = +q.dataset.q; });
+$('quick').addEventListener('click', e => {
+  const q = e.target.closest('[data-q]'); if (!q) return;
+  if (G.ui && (G.ui.k === 'inv' || G.ui.k === 'storage')) { Inv.shift = !!e.shiftKey; Meta.click('cell', 'quick', q.dataset.q, G.ui); renderPanel(); return; }   // при открытом инвентаре кнопки панели — места для вещей
+  P.sel = +q.dataset.q;
+});
 $('mapwrap').addEventListener('click', closePanel);
 $('menubtn').onclick = () => { if (G.started) openMenu(); };
 
