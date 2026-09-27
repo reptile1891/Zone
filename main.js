@@ -97,7 +97,7 @@ function resetPlayer() {
 function newGame() {
   W = new World((Math.random() * 1e9) | 0); resetPlayer(); P.stash = []; P.bld = null; Mutants.spawn(); Stalkers.spawn(); Meta.reset(); Camp.enter(true);
   log('Ты в лагере «Обочина». Подготовься: купи, разложи, проверь. Выход в Зону — ворота справа.');
-  log('Обыскивай остовы и тайники (E), хлам продавай Скупщику. Esc — меню и управление.', '#e8c060');
+  log('Обыскивай остовы и тайники (E), хлам продавай в Торговом доме. Esc — меню и управление.', '#e8c060');
 }
 // force — сохранить и вне лагеря (автосейв в поле, закрытие вкладки, смерть). Такое сохранение помечается field:
 // при загрузке игрок окажется в лагере с тем, что нёс, но заплатит за «вытаскивание» (см. load).
@@ -224,7 +224,7 @@ function findNear() {
 const npcPos = k => Camp.vendorPos(k);
 function takeArt(a) {
   invAdd('art', 1, a.type, a.q); W.arts.splice(W.arts.indexOf(a), 1); Snd.pick();
-  log(P.known[a.type] ? 'Взят артефакт: ' + Meta.itemName(P.inv[P.inv.length - 1]) : 'Взят неопознанный артефакт. Учёный скажет, что это.', '#e8c060');
+  log(P.known[a.type] ? 'Взят артефакт: ' + Meta.itemName(P.inv[P.inv.length - 1]) : 'Взят неопознанный артефакт. В Торговом доме его опознают.', '#e8c060');
 }
 function lootCorpse(s) {
   s.looted = true; const got = [];
@@ -677,9 +677,10 @@ function renderPanelBase() {
     panel.innerHTML = h;
   } else if (u.k === 'trade') {
     const v = CFG.vendors[u.v];
-    let h = `<div class="x" data-a="close">✕ Esc</div><h2>${v.name}</h2><div class="stat">Деньги: <b style="color:#e8c060">${P.money} ₽</b> · Вес ${weight().toFixed(1)}/${carryCap()}</div><div class="cols">`;
-    if (Camp.stock(u.v).length) { h += '<div><h3>Купить</h3>'; for (const id of Camp.stock(u.v)) { const p = buyPrice(id), d = CFG.items[id]; h += row(d.icon, d.name + (d.pack ? ' ×' + d.pack : ''), (d.desc || '') + ' · ' + d.w + ' кг', btn('buy:' + id, p + ' ₽', P.money < p)); } h += '</div>'; }
-    if (Object.keys(v.buys).length || v.ident) {
+    let h = `<div class="x" data-a="close">✕ Esc</div><h2>${v.name}</h2><div class="stat">Деньги: <b style="color:#e8c060">${P.money} ₽</b> · Вес ${weight().toFixed(1)}/${carryCap()}</div>${u.v === 'market' ? Meta.marketTabs(u) : ''}<div class="cols">`;
+    const mt = u.v === 'market' && u.tab && u.tab !== 'trade';   // в Торговом доме вкладки: товары / оружие / услуги
+    if (!mt && Camp.stock(u.v).length) { h += '<div><h3>Купить</h3>'; for (const id of Camp.stock(u.v)) { const p = buyPrice(id), d = CFG.items[id]; h += row(d.icon, d.name + (d.pack ? ' ×' + d.pack : ''), (d.desc || '') + ' · ' + d.w + ' кг', btn('buy:' + id, p + ' ₽', P.money < p)); } h += '</div>'; }
+    if (!mt && (Object.keys(v.buys).length || v.ident)) {
       h += '<div><h3>' + (v.ident ? 'Опознать / продать' : 'Продать') + '</h3>'; let any = false;
       P.inv.forEach((s, i) => {
         const p = sellPrice(s, u.v), unk = s.art && !P.known[s.art];

@@ -4,11 +4,12 @@
 Object.assign(Camp, {
   room: null, roomKey: null, rooms: {}, doorBack: null,
   DEFAULT_BLD: () => ({ buyer: 1, gun: 1, gear: 1, sci: 1, bar: 1, barracks: 1, storage: 1 }),
-  lvl(k) { return (P.bld && P.bld[k]) || 1; },
-  bName(k) { return (CFG.buildings[k] || {}).name || k; },
+  lvl(k) { if (k === 'market') return Math.max(this.lvl('buyer'), this.lvl('gear'), this.lvl('sci')); return (P.bld && P.bld[k]) || 1; },
+  bName(k) { return k === 'market' ? 'Торговый дом' : (CFG.buildings[k] || {}).name || k; },
   roomName() { return this.room ? this.room.name : ''; },
   // ---- эффекты уровней ----
   stock(vk) {
+    if (vk === 'market') return [...new Set([...this.stock('gear'), ...CFG.vendors.gun.sells])];
     const base = CFG.vendors[vk].sells; if (vk !== 'gear') return base;
     return base.filter(id => (CFG.gearStock[id] || 1) <= this.lvl('gear'));
   },
@@ -94,23 +95,33 @@ Object.assign(Camp, {
     };
     const L = (x, y, r, a) => R.lights.push({ x, y, r, a });
     const talk = (x, y, label) => R.spots.push({ x, y, r: 70, label: () => label, fn: () => openTrade(k) });
-    const upg = (x, y) => { add('blueprint', x, y - 20, 2, { decor: true }); R.spots.push({ x, y, r: 60, label: () => 'Чертежи: улучшить «' + this.bName(k) + '» (ур. ' + this.lvl(k) + ')', fn: () => { G.ui = { k: 'upgrade', b: k }; renderPanel(); } }); };
+    const upgFor = (kk, x, y) => { add('blueprint', x, y - 20, 2, { decor: true }); R.spots.push({ x, y, r: 60, label: () => 'Чертежи: улучшить «' + this.bName(kk) + '» (ур. ' + this.lvl(kk) + ')', fn: () => { G.ui = { k: 'upgrade', b: kk }; renderPanel(); } }); };
+    const upg = (x, y) => upgFor(k, x, y);
     if (k === 'bar') {
       add('shelf', 300, 150, 2, { foot: 24 }); add('shelf', 400, 150, 2, { foot: 24 }); add('shelf', 500, 150, 2, { foot: 24 }); add('counter', 400, 240, 2.6, { foot: 150, base: 10 });
       add('keg', 130, 180, 2.2, { foot: 20 }); add('keg', 170, 200, 2.2, { foot: 20 }); add('stove', 660, 170, 2.2, { foot: 20 }); add('rug', 400, 390, 2.6, { decor: true });
       [[180, 350], [620, 360]].forEach(([x, y]) => { add('table', x, y, 2.2, { foot: 40 }); add('stool', x - 34, y + 22, 2, { foot: 8 }); add('stool', x + 34, y + 22, 2, { foot: 8 }); L(x, y - 30, 150, 0.6); });
       talk(400, 300, 'Говорить: Бармен «Сидор»'); upg(680, 300); L(660, 190, 120, 0.7);
       R.vendor = { x: 400, y: 200 }; R.greet = 'Внутри тепло, пахнет табаком и жареным. «Сидор» кивает тебе.'; R.fire = true;
+    } else if (k === 'market') {
+      add('shelf', 180, 150, 2, { foot: 24 }); add('shelf', 270, 150, 2, { foot: 24 }); add('rack', 400, 145, 2.2, { foot: 30 }); add('shelf', 530, 150, 2, { foot: 24 }); add('shelf', 620, 150, 2, { foot: 24 });
+      add('counter', 400, 250, 3, { foot: 170, base: 10 }); add('scales', 290, 226, 2.4, { decor: true }); add('rackc', 690, 190, 2.2, { foot: 30 }); add('safe', 110, 190, 2.2, { foot: 20 });
+      add('crates', 120, 390, 2.4, { foot: 30 }); add('crates', 690, 400, 2.4, { foot: 30 }); add('rug', 400, 400, 2.6, { decor: true });
+      talk(400, 315, 'Торговый прилавок: купить, продать, опознать'); upgFor('gear', 110, 300); upgFor('buyer', 690, 300);
+      R.vendors = [{ k: 'gear', x: 330, y: 208 }, { k: 'buyer', x: 470, y: 208 }]; R.vendor = R.vendors[0];
+      R.greet = 'Всё в одном месте: «Кум» отпускает снаряжение, «Борода» берёт хабар, оружие и приборы — на полках. Опознать артефакт тоже здесь.';
     } else if (k === 'buyer') {
       add('shelf', 190, 150, 2, { foot: 24 }); add('shelf', 290, 150, 2, { foot: 24 }); add('shelf', 510, 150, 2, { foot: 24 }); add('shelf', 610, 150, 2, { foot: 24 }); add('counter', 400, 240, 2.6, { foot: 150, base: 10 });
       add('scales', 340, 218, 2.4, { decor: true }); add('safe', 690, 190, 2.2, { foot: 20 }); add('crates', 120, 380, 2.4, { foot: 30 }); add('crates', 680, 400, 2.4, { foot: 30 }); add('rug', 400, 390, 2.6, { decor: true });
       talk(400, 300, 'Говорить: Скупщик «Борода»'); upg(120, 300); R.vendor = { x: 400, y: 200 }; R.greet = 'Скупщик щурится поверх весов: «Что принёс?»';
     } else if (k === 'gun') {
       add('rack', 220, 145, 2.2, { foot: 30 }); add('rack', 580, 145, 2.2, { foot: 30 }); add('counter', 300, 250, 2.2, { foot: 110, base: 10 }); add('benchw', 610, 250, 2.4, { foot: 80, base: 10 });
-      add('anvil', 690, 340, 2.2, { foot: 24 }); add('dummy', 140, 380, 2.2, { foot: 14 }); add('crates', 400, 130, 2.2, { foot: 24 }); add('rug', 400, 400, 2.6, { decor: true });
-      talk(300, 305, 'Говорить: Оружейник «Ржавый»'); upg(120, 250);
-      R.spots.push({ x: 610, y: 305, r: 60, label: () => 'Верстак: мастерить', fn: () => { G.ui = { k: 'craft', st: 'gun' }; renderPanel(); } });
-      R.vendor = { x: 300, y: 205 }; R.greet = 'Пахнет маслом и порохом. «Ржавый» не поднимает головы: «Показывай, что сломано».'; L(610, 200, 150, 0.7);
+      add('anvil', 690, 340, 2.2, { foot: 24 }); add('dummy', 140, 380, 2.2, { foot: 14 }); add('rug', 400, 400, 2.6, { decor: true });
+      upg(120, 250);
+      R.spots.push({ x: 610, y: 305, r: 60, label: () => 'Верстак: ремонт, тюнинг, разборка, мастерить', fn: () => { G.ui = { k: 'craft', st: 'gun' }; renderPanel(); } });
+      add('labbench', 430, 130, 2.2, { foot: 90, base: 10 }); upgFor('sci', 700, 400);
+      R.spots.push({ x: 430, y: 190, r: 60, label: () => 'Лабораторный стол: синтез', fn: () => { G.ui = { k: 'craft', st: 'sci' }; renderPanel(); } });
+      R.vendor = { x: 300, y: 205 }; R.greet = 'Пахнет маслом и порохом. «Ржавый» не поднимает головы: «Чинить, тюнинговать, разбирать — вон верстак. Стволы и патроны — в Торговом доме».'; L(610, 200, 150, 0.7);
     } else if (k === 'gear') {
       add('shelf', 200, 150, 2, { foot: 24 }); add('shelf', 300, 150, 2, { foot: 24 }); add('shelf', 500, 150, 2, { foot: 24 }); add('rackc', 640, 170, 2.2, { foot: 30 }); add('counter', 400, 250, 2.6, { foot: 150, base: 10 });
       add('crates', 130, 380, 2.4, { foot: 30 }); add('barrel', 690, 400, 2.2, { foot: 14 }); add('rug', 400, 400, 2.6, { decor: true });
@@ -132,7 +143,7 @@ Object.assign(Camp, {
     P.food = Math.max(0, P.food - CFG.player.foodRate * 0.25 * dt); P.hp = Math.min(100, P.hp + 1.2 * dt); P.rad = Math.max(0, P.rad - 1.5 * dt); P.stress = Math.max(0, P.stress - 4 * dt); if (P.bleed > 0) P.bleed -= dt;
     G.near = null; if (!G.ui) { let bd = 9999; for (const s of R.spots) { const d = Math.hypot(s.x - P.x, s.y - P.y); if (d < s.r && d < bd) { bd = d; G.near = { label: s.label(), fn: s.fn, o: s }; } } }
     if (P.y > R.h - 62 && Math.abs(P.x - R.door) < 55) return this.exitRoom();
-    if (R.fire && Math.random() < dt * 5) Snd.crackle(); Snd.setHum(50, 0.012);
+    if (R.fire && Math.random() < dt * 5) Snd.crackle(); Snd.setHum(50, 0);
     updateEmission(dt); Snd.siren(G.emi.s === 'warn');
     for (let i = tracers.length - 1; i >= 0; i--) if ((tracers[i].t -= dt) <= 0) tracers.splice(i, 1);
   },
@@ -178,12 +189,12 @@ function drawInterior() {
   ctx.fillStyle = R.wall; ctx.fillRect(50, R.h - 50, R.door - 40 - 50, 20); ctx.fillRect(R.door + 40, R.h - 50, R.w - 50 - R.door - 40, 20);
   Spr.draw(ctx, 'door', R.door, R.h - 44, false, null, 3);
   const dl = []; for (const it of R.items) if (it.decor) Spr.draw(ctx, it.spr, it.x, it.y, it.flip, null, it.sc); else dl.push({ y: it.ys, it });
-  if (R.vendor) dl.push({ y: R.vendor.y + 8, v: 1 });
+  if (R.vendors) for (const v of R.vendors) dl.push({ y: v.y + 8, v }); else if (R.vendor) dl.push({ y: R.vendor.y + 8, v: R.vendor });
   if (!G.dead) dl.push({ y: P.y + 8, p: true });
   dl.sort((a, b) => a.y - b.y);
   for (const e of dl) {
     if (e.it) Spr.draw(ctx, e.it.spr, e.it.x, e.it.y, e.it.flip, null, e.it.sc);
-    else if (e.v) { const v = R.vendor; shadow(v.x, v.y + 10, 8); Spr.draw(ctx, 'npc_' + R.key, v.x, v.y - 2, false); }
+    else if (e.v) { const v = e.v; shadow(v.x, v.y + 10, 8); Spr.draw(ctx, 'npc_' + (v.k || R.key), v.x, v.y - 2, false); }
     else { const mv = keys.mx || keys.my, bob = mv ? (Math.floor(G.t * 10) % 2 ? -1 : 0) : 0; shadow(P.x, P.y + 10, 8); Spr.draw(ctx, P.sneak ? 'player_s' : 'player', P.x, P.y + bob - 2, Math.cos(P.ang) < 0); }
   }
   for (const s of R.spots) { const a = 0.4 + 0.4 * Math.sin(G.t * 3 + s.x); ctx.strokeStyle = `rgba(232,192,96,${a})`; ctx.lineWidth = 2; ctx.beginPath(); ctx.arc(s.x, s.y + 6, 12, 0, 6.28); ctx.stroke(); }

@@ -201,15 +201,15 @@ const CFG = {
 
 
   weapons: {
-    pistol:  { name: 'Пистолет', dmg: 30, cd: 0.32, spread: 0.06, pellets: 1, range: 520, noise: 750, price: 0,   wear: 0.175, repair: 0.6 },
-    sawnoff: { name: 'Обрез',    dmg: 13, cd: 1.0,  spread: 0.32, pellets: 6, range: 260, noise: 900, price: 260, wear: 0.25,  repair: 0.7 },
-    revolver: { lvl: 2, name: 'Револьвер', dmg: 44, cd: 0.5, spread: 0.03, pellets: 1, range: 640, noise: 850, price: 380, wear: 0.175, repair: 0.8 },
-    rifle:   { lvl: 2, name: 'Винтовка', dmg: 64, cd: 0.85, spread: 0.02, pellets: 1, range: 800, noise: 950, price: 520, wear: 0.2,  repair: 1.0 },
+    pistol:  { name: 'Пистолет', dmg: 30, cd: 0.32, spread: 0.15, pellets: 1, range: 320, noise: 750, price: 0,   wear: 0.175, repair: 0.6 },
+    sawnoff: { name: 'Обрез',    dmg: 13, cd: 1.0,  spread: 0.32, pellets: 6, range: 220, noise: 900, price: 260, wear: 0.25,  repair: 0.7 },
+    revolver: { lvl: 2, name: 'Револьвер', dmg: 44, cd: 0.5, spread: 0.09, pellets: 1, range: 420, noise: 850, price: 380, wear: 0.175, repair: 0.8 },
+    rifle:   { lvl: 2, name: 'Винтовка', dmg: 64, cd: 0.85, spread: 0.05, pellets: 1, range: 680, noise: 950, price: 520, wear: 0.2,  repair: 1.0 },
     flamer:  { lvl: 3, name: 'Огнемёт-самоделка', dmg: 9, cd: 0.16, spread: 0, pellets: 1, range: 150, noise: 500, price: 540, wear: 0.15, repair: 1.0,
                cone: 0.42, pierce: true, ammo: 'canister', perAmmo: 25, note: 'конус, игнорирует броню, поджигает; топливо — канистры' },
     // Самострел — почти бесшумный (Тени и Слухачи не слышат), стреляет болтами; сильный выстрел, но медленный
-    crossbow: { lvl: 2, name: 'Самострел', dmg: 34, cd: 1.1, spread: 0.025, pellets: 1, range: 480, noise: 60, price: 340, wear: 0.15, repair: 0.7, ammo: 'bolt', ambush: 2, note: 'бесшумный, стреляет болтами; по не заметившим — двойной урон' },
-    smg:     { lvl: 3, name: 'ПП «Оса»', dmg: 15, cd: 0.14, spread: 0.16, pellets: 1, range: 430, noise: 1000, price: 620, wear: 0.14, repair: 1.1 },
+    crossbow: { lvl: 2, name: 'Самострел', dmg: 34, cd: 1.1, spread: 0.05, pellets: 1, range: 420, noise: 60, price: 340, wear: 0.15, repair: 0.7, ammo: 'bolt', ambush: 2, note: 'бесшумный, стреляет болтами; по не заметившим — двойной урон' },
+    smg:     { lvl: 3, name: 'ПП «Оса»', dmg: 15, cd: 0.14, spread: 0.2, pellets: 1, range: 330, noise: 1000, price: 620, wear: 0.14, repair: 1.1 },
   },
   gate: { rep: 15 },
   stalkers: {
@@ -299,6 +299,7 @@ const CFG = {
     gun:      { name: 'Мастерская', floor: '#3a3a3c', floor2: '#323234', wall: '#4a4a4e' },
     gear:     { name: 'Снабжение «Кум»', floor: '#2f3c4a', floor2: '#2a3642', wall: '#3a4c60' },
     sci:      { name: 'Лаборатория «Лис»', floor: '#4a5658', floor2: '#414c4e', wall: '#5a6a6c' },
+    market:   { name: 'Торговый дом «Обочина»', floor: '#3a4038', floor2: '#333930', wall: '#48503f' },
     barracks: { name: 'Казарма', floor: '#3c3f2c', floor2: '#353826', wall: '#4a4e38' },
   },
   vendors: {
@@ -306,6 +307,9 @@ const CFG = {
     gun:   { name: 'Оружейник «Ржавый»', ang: 1.5,  col: '#a5a5a5', buys: { part: 0.8, junk: 1 }, likes: { plate: 2, earbone: 1.4, scrap: 1.6 }, sells: ['ammo', 'bolt', 'canister'] },
     gear:  { name: 'Снабженец «Кум»',    ang: 2.7,  col: '#7fa06a', buys: {}, sells: ['food', 'medkit', 'antirad', 'splint', 'antibiotic', 'hook', 'suit', 'suit2', 'firecoat', 'helmet', 'helmet2', 'boots', 'pack', 'pack2', 'headlamp', 'detector', 'detector2', 'lure', 'sensor', 'bolt'] },
     sci:   { name: 'Учёный «Лис»',       ang: 3.9,  col: '#7fb8ff', buys: { art: 1.25, part: 0.6 }, likes: { mistvial: 2.2, glassgland: 1.7, gill: 1.5 }, sells: [], ident: 20 },
+    // Торговый дом — общий прилавок трёх бывших лавок (Скупка, Снабжение, Оружейная) и опознания Лаборатории: всё покупается, продаётся и опознаётся в одном здании.
+    // Ассортимент — сумма Снабжения и Оружейной (Camp.stock), цена продажи — лучшая из Скупки, Лаборатории и Оружейной (sellPrice); уровни зданий прежние.
+    market: { name: 'Торговый дом «Обочина»', ang: 0.9, col: '#c9a24a', buys: { art: 1, part: 1, meat: 1, junk: 1 }, likes: {}, sells: [], ident: 20 },
     bar:   { name: 'Бармен «Сидор»',     ang: 5.1,  col: '#d08a5a', buys: {}, sells: [], sleep: 15, map: 60, noteSell: 15 },
   },
 

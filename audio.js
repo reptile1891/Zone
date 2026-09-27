@@ -4,7 +4,7 @@
 //   ночью — далёкий звон), при погоне — глухой пульс. Режим и напряжение считает Snd.mood() (чистая функция: тестируется без звука).
 //   Настройки — в меню (громкость, музыка вкл/выкл, громкость музыки), хранятся в localStorage 'zone_snd'.
 Object.assign(Snd, {
-  musOn: true, musVol: 0.6,
+  musOn: true, musVol: 0.5,
   // (root, ratios): корни аккордов по режимам и их окраска
   MODES: {
     camp: { roots: [65.4, 55, 49, 55], ratio: [1, 1.26, 1.498], mul: 0.75, flt: 900 },
@@ -30,38 +30,31 @@ Object.assign(Snd, {
     }
     return { mode, ten: U.clamp(ten, 0, 1) };
   },
+  // Музыка — только редкие затухающие ноты (без непрерывного фона: длинный низкий тон слышится как гул мотора).
+  // Низкий «гул тревоги» появляется лишь при сильном напряжении (погоня, выброс) и вместе с ним уходит.
   initMusic() {
-    const c = this.ctx; if (!c || this.musG) return;
-    this.musG = c.createGain(); this.musG.gain.value = 0; this.musG.connect(this.master);
-    this.musF = c.createBiquadFilter(); this.musF.type = 'lowpass'; this.musF.frequency.value = 600; this.musF.connect(this.musG);
-    this.pad = [0.5, 0.34, 0.24].map((v, i) => { const o = c.createOscillator(); o.type = i === 2 ? 'triangle' : 'sine'; o.frequency.value = 55 * [1, 1.189, 1.498][i]; const g = c.createGain(); g.gain.value = v; o.connect(g); g.connect(this.musF); o.start(); return o; });
-    const l = c.createOscillator(); l.frequency.value = 0.06; const lg = c.createGain(); lg.gain.value = 160; l.connect(lg); lg.connect(this.musF.frequency); l.start();
+    const c = this.ctx; if (!c || this.tenO) return;
     this.tenO = c.createOscillator(); this.tenO.type = 'sawtooth'; this.tenO.frequency.value = 41;
-    const tf = c.createBiquadFilter(); tf.type = 'lowpass'; tf.frequency.value = 180; this.tenG = c.createGain(); this.tenG.gain.value = 0;
+    const tf = c.createBiquadFilter(); tf.type = 'lowpass'; tf.frequency.value = 160; this.tenG = c.createGain(); this.tenG.gain.value = 0;
     this.tenO.connect(tf); tf.connect(this.tenG); this.tenG.connect(this.master); this.tenO.start();
-    this.chord = 0; this.chordT = 0; this.pluckT = 4; this.beatT = 0;
+    this.chord = 0; this.chordT = 0; this.pluckT = 3; this.beatT = 0;
   },
-  // вызывается каждый кадр (update): плавно ведёт громкости и меняет аккорды
+  // вызывается каждый кадр (update): раз в четверть секунды меняет аккорд, играет ноты и ведёт гул тревоги
   tickMusic(dt) {
-    if (!this.ctx || !this.musG || !G.started) return;
+    if (!this.ctx || !this.tenO || !G.started) return;
     if ((this._mt = (this._mt || 0) - dt) > 0) return; this._mt = 0.25;
     const t = this.ctx.currentTime, m = this.mood(), M = this.MODES[m.mode], on = this.musOn && !G.dead;
-    this.musG.gain.setTargetAtTime(on ? this.musVol * 0.16 * M.mul * (1 - m.ten * 0.35) : 0, t, 1.2);
-    this.musF.frequency.setTargetAtTime(M.flt * (1 + m.ten * 0.5), t, 1.5);
-    this.tenG.gain.setTargetAtTime(on ? m.ten * m.ten * 0.09 * this.musVol : 0, t, 0.8); this.tenO.frequency.setTargetAtTime(38 + m.ten * 9, t, 1);
+    this.tenG.gain.setTargetAtTime(on && m.ten > 0.5 ? (m.ten - 0.5) * 0.14 * this.musVol : 0, t, 0.6); this.tenO.frequency.setTargetAtTime(38 + m.ten * 9, t, 1);
     this.chordT -= 0.25;
-    if (this.chordT <= 0 || this._mode !== m.mode) {
-      this._mode = m.mode; this.chordT = 12 + Math.random() * 8; this.chord = (this.chord + 1) % M.roots.length;
-      const r = M.roots[this.chord] * (m.mode === 'day' || m.mode === 'camp' ? 2 : 1); this.pad.forEach((o, i) => o.frequency.setTargetAtTime(r * M.ratio[i], t, 2.5));
-      this._root = r;
-    }
+    if (this.chordT <= 0 || this._mode !== m.mode) { this._mode = m.mode; this.chordT = 14 + Math.random() * 10; this.chord = (this.chord + 1) % M.roots.length; this._root = M.roots[this.chord] * (m.mode === 'day' || m.mode === 'camp' ? 2 : 1); this._chordR = M.ratio; }
     if (!on) return;
     this.pluckT -= 0.25;
     if (this.pluckT <= 0) {
-      const r = this._root || 110;
-      if (m.mode === 'camp') { const sc = [1, 1.125, 1.26, 1.498, 1.68, 2]; this.pluckT = 3 + Math.random() * 6; this.blip(r * 2 * sc[Math.floor(Math.random() * sc.length)], 1.8, 0.05 * this.musVol, 'triangle'); }
-      else if (m.mode === 'night') { this.pluckT = 9 + Math.random() * 14; this.blip(r * 8 * (Math.random() < 0.5 ? 1 : 1.498), 3, 0.025 * this.musVol, 'sine'); }
-      else if (m.mode === 'day' && m.ten < 0.3) { this.pluckT = 7 + Math.random() * 12; this.blip(r * 4 * (Math.random() < 0.5 ? 1 : 1.189), 2.2, 0.03 * this.musVol, 'triangle'); }
+      const r = this._root || 110, R = this._chordR || [1, 1.189, 1.498], tone = R[Math.floor(Math.random() * R.length)];
+      if (m.mode === 'camp') { const sc = [1, 1.125, 1.26, 1.498, 1.68, 2]; this.pluckT = 3 + Math.random() * 5; this.blip(r * 2 * sc[Math.floor(Math.random() * sc.length)], 1.8, 0.05 * this.musVol, 'triangle'); }
+      else if (m.mode === 'night') { this.pluckT = 9 + Math.random() * 8; this.blip(r * 8 * tone, 3, 0.03 * this.musVol, 'sine'); }
+      else if (m.mode === 'deep') { this.pluckT = 6 + Math.random() * 7; this.blip(r * 4 * tone, 2.4, 0.035 * this.musVol, 'triangle', -6); }
+      else if (m.ten < 0.35) { this.pluckT = 5 + Math.random() * 6; this.blip(r * 4 * tone, 2.2, 0.035 * this.musVol, 'triangle'); }
       else this.pluckT = 4;
     }
     if (m.ten > 0.55) { this.beatT -= 0.25; if (this.beatT <= 0) { this.beatT = 0.75 - m.ten * 0.3; this.blip(52, 0.16, 0.12 * this.musVol * m.ten, 'sine', -14); } }

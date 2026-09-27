@@ -137,3 +137,20 @@ const Wpn = {
     return out;
   },
 };
+
+// Кольцо разброса у прицела: где может лечь пуля на расстоянии до курсора (красное — курсор дальше дальности оружия)
+(function () {
+  const _dw = Meta.drawWorld;
+  Meta.drawWorld = function () {
+    _dw.call(this);
+    if ((G.scene !== 'zone' && G.scene !== 'dungeon') || G.ui || G.dead || P.sel !== 0) return;
+    const w = Wpn.of(P.weapon); if (w.cone) return;
+    const mx = mouse.x + cam.x - P.x, my = mouse.y + cam.y - P.y, dm = Math.hypot(mx, my), d = Math.min(dm, w.range);
+    const r = Math.max(3, d * Math.tan(Meta.spreadOf(w, Math.hypot(keys.mx || 0, keys.my || 0) > 0) * (1 + 1.2 * (P.bloom || 0)) / 2)) * (w.pellets > 1 ? 1 : 1);
+    const cx = P.x + Math.cos(P.ang) * d, cy = P.y + Math.sin(P.ang) * d;
+    ctx.save(); ctx.globalAlpha = 0.5; ctx.strokeStyle = dm > w.range ? '#e06060' : '#d8e8c0'; ctx.lineWidth = 1;
+    ctx.beginPath(); ctx.arc(cx, cy, r, 0, 6.2832); ctx.stroke();
+    for (let i = 0; i < 4; i++) { const an = i * 1.5708; ctx.beginPath(); ctx.moveTo(cx + Math.cos(an) * (r - 3), cy + Math.sin(an) * (r - 3)); ctx.lineTo(cx + Math.cos(an) * (r + 3), cy + Math.sin(an) * (r + 3)); ctx.stroke(); }
+    ctx.restore();
+  };
+})();

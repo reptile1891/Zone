@@ -17,7 +17,7 @@ const Camp = {
       return it;
     };
     // здания: [ключ торговца, спрайт, x, y, масштаб, ширина основания]
-    const B = [['bar', 'tavern', 420, 300, 2, 66], ['buyer', 'kiosk', 800, 235, 2, 46], ['gun', 'workshop', 1180, 280, 2, 56], ['gear', 'shopc', 1180, 830, 2, 52], ['sci', 'lab', 760, 880, 2, 50]];
+    const B = [['bar', 'tavern', 420, 300, 2, 66], ['market', 'shopc', 800, 240, 2.4, 62], ['gun', 'workshop', 1180, 280, 2, 56]];
     for (const [k, spr, x, y, sc, foot] of B) { const it = add(spr, x, y, sc, { k, foot, light: 130, ly: it_h(spr, sc) / 2 - 6, la: 0.7 }); this.vend[k] = { x, y: y + it.h / 2 + 18 }; }
     const bk = add('barracks', 330, 840, 2, { foot: 64, light: 100, la: 0.5, ly: 10 }); this.spots.bunk = { x: 330, y: 840 + bk.h / 2 + 18 };
     this.spots.locker = { x: 600, y: 500 }; add('locker', 600, 470, 2, { foot: 20 });
@@ -111,7 +111,7 @@ const Camp = {
     return false;
   },
   near(c) {
-    for (const k in CFG.vendors) { const p = this.vend[k]; c(k, Math.hypot(p.x - P.x, p.y - P.y), 70, 'Войти: ' + Camp.bName(k) + ' (ур. ' + Camp.lvl(k) + ')', () => Camp.enterRoom(k)); }
+    for (const k of ['bar', 'market', 'gun']) { const p = this.vend[k]; c(k, Math.hypot(p.x - P.x, p.y - P.y), 70, 'Войти: ' + Camp.bName(k) + (k === 'market' ? '' : ' (ур. ' + Camp.lvl(k) + ')'), () => Camp.enterRoom(k)); }
     // люди важнее мебели: жители вокруг костра иначе проигрывали ему «ближайшую цель» (смещение −18 при том же радиусе 62)
     for (const n of this.npcs) if (n.id) c(n, Math.hypot(n.x - P.x, n.y - P.y) - 18, 44, 'Поговорить: ' + n.name, () => Meta.openCampTalk(n));
     const s = this.spots;
@@ -137,7 +137,7 @@ const Camp = {
     if (this.barkT <= 0) { this.barkT = 8 + Math.random() * 8; const near = this.npcs.filter(n => Math.hypot(n.x - P.x, n.y - P.y) < 320); if (near.length) { const n = U.pick(near); n.say = U.pick(n.lines); n.sayT = 6; } }
     for (const n of this.npcs) n.sayT = Math.max(0, n.sayT - dt);
     if (Math.random() < dt * 6) Snd.crackle();
-    const gd = Math.hypot(this.spots.gen.x - P.x, this.spots.gen.y - P.y); Snd.setHum(46, Math.max(0.008, 0.05 * (1 - gd / 500)));
+    const gd = Math.hypot(this.spots.gen.x - P.x, this.spots.gen.y - P.y); Snd.setHum(46, gd < 240 ? 0.03 * (1 - gd / 240) : 0);   // гул генератора слышен только рядом с ним
     G.amb -= dt; if (G.amb <= 0) { if (G.night > 0.5 && G.rain < 0.3) { G.amb = 0.5 + Math.random(); Snd.cricket(); } else if (G.night < 0.4 && G.rain < 0.3) { G.amb = 4 + Math.random() * 6; Snd.chirp(); } else G.amb = 2; }
     updateEmission(dt); Snd.siren(G.emi.s === 'warn');
     for (let i = tracers.length - 1; i >= 0; i--) if ((tracers[i].t -= dt) <= 0) tracers.splice(i, 1);
@@ -209,7 +209,7 @@ function drawCampScene() {
   const dl = [];
   for (const it of Camp.items) if (it.x + it.w > x0 - 40 && it.x - it.w < x1 + 40 && it.y + it.h > y0 - 40 && it.y - it.h < y1 + 40) dl.push({ y: it.ys, it });
   for (const n of Camp.npcs) dl.push({ y: n.y + 8, n });
-  for (const k of ['bar', 'buyer', 'gun', 'gear', 'sci']) { const it = Camp.items.find(i => i.k === k); if (it && Camp.lvl(k) > 1) dl.push({ y: it.ys + 0.5, ov: it }); }
+  for (const k of ['bar', 'market', 'gun']) { const it = Camp.items.find(i => i.k === k); if (it && Camp.lvl(k) > 1) dl.push({ y: it.ys + 0.5, ov: it }); }
   if (!G.dead) dl.push({ y: P.y + 8, p: true });
   dl.sort((a, b) => a.y - b.y);
   ctx.font = 'bold 11px Consolas'; ctx.textAlign = 'center';
@@ -231,7 +231,7 @@ function drawCampScene() {
   for (const d of Camp.decals) if (d.k === 'fire') { const ff = Math.floor(G.t * 9 + d.x) % 3; px(d.x, d.y - ff, '#e08a30', 6); px(d.x, d.y - 5 - ff, '#ffd070', 3); }
   // вывески
   const glow = 0.7 + 0.3 * Math.sin(G.t * 5); ctx.font = 'bold 13px Consolas'; ctx.fillStyle = `rgba(255,110,160,${glow})`; ctx.fillText('БАР «ОБОЧИНА» ' + '★'.repeat(Camp.lvl('bar')), 420, 232);
-  ctx.fillStyle = '#e8d8a0'; ctx.font = 'bold 11px Consolas'; const S = (k) => '★'.repeat(Camp.lvl(k)); ctx.fillText('СКУПКА ' + S('buyer'), 800, 172); ctx.fillText('МАСТЕРСКАЯ ' + S('gun'), 1180, 214); ctx.fillText('СНАБЖЕНИЕ ' + S('gear'), 1180, 764); ctx.fillText('ЛАБОРАТОРИЯ ' + S('sci'), 760, 812);
+  ctx.fillStyle = '#e8d8a0'; ctx.font = 'bold 11px Consolas'; const S = (k) => '★'.repeat(Camp.lvl(k)); ctx.fillText('ТОРГОВЫЙ ДОМ ' + S('market'), 800, 172); ctx.fillText('МАСТЕРСКАЯ ' + S('gun'), 1180, 214);
   ctx.fillText('СКЛАД ' + '★'.repeat(Camp.lvl('storage')), 600, 448); ctx.fillText('ОБЪЯВЛЕНИЯ', 1400, 412); ctx.fillText('КАЗАРМА ' + '★'.repeat(Camp.lvl('barracks')), 330, 782);
   ctx.fillStyle = '#e0a020'; ctx.font = 'bold 14px Consolas'; ctx.fillText('ВЫХОД В ЗОНУ →', 1470, 530);
   if (Math.floor(G.t * 1.5) % 2) px(1010, 322, '#ff4040', 4);

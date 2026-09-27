@@ -49,6 +49,8 @@ const Meta = {
     Snd.crackle(); G.shake = Math.max(G.shake, 0.04); Mutants.hear(P.x, P.y, w.noise);
   },
 
+  // Полный угол разброса оружия (рад): скрытность и стойка уменьшают, ходьба и износ увеличивают
+  spreadOf(w, moving, cond) { return w.spread * (P.sneak ? 0.6 : 1) * (moving ? 1.6 : 1) * ((cond == null ? P.cond[P.weapon] : cond) < 50 ? 1.3 : 1); },
   // ---- Крюк-кошка: достать артефакт из аномалии, не заходя в неё ----
   hooks: [], reeling: [],
   throwHook() {
@@ -346,7 +348,7 @@ const Meta = {
   lureAt(m) { return this.lures.some(l => Math.hypot(l.x - m.x, l.y - m.y) < 36); },
 
   update(dt) {
-    this.tickHooks(dt);
+    this.tickHooks(dt); if (P.bloom > 0) P.bloom = Math.max(0, P.bloom - 0.9 * dt);
     const psy = fx('psy'); if (psy) P.stress = Math.min(100, P.stress + psy * dt * Meta.stressMul());
     if (P.burn > 0) { P.burn -= dt; P.hurt(4 * dt, 'fire'); if (Math.random() < dt * 14) parts.push({ x: P.x + (Math.random() - 0.5) * 8, y: P.y - 4, vx: (Math.random() - 0.5) * 20, vy: -30, life: 0.4, col: Math.random() < 0.5 ? '#ff8a30' : '#ffd070' }); if (P.burn <= 0) log('Огонь погас.', '#9ab8d8'); }
     if (P.inAnom && P.inAnom.type === 'plesh' && Math.random() < dt * 0.6) this.breakLeg('Плешь вдавила ногу в землю. Перелом.');
@@ -467,6 +469,7 @@ const Meta = {
   },
 
   tradeExtra(vk) {
+    if (vk === 'market') { const t = (G.ui && G.ui.tab) || 'trade'; return t === 'guns' ? this.tradeExtra('gun') : t === 'serv' ? this.tradeExtra('gear') + this.tradeExtra('sci') : ''; }   // вкладки одного окна
     let h = '<div class="cols">';
     if (vk === 'gun') {
       h += this.gunShopHTML();
@@ -495,6 +498,11 @@ const Meta = {
     }
     return h + '</div>';
   },
+  // Вкладки Торгового дома: товары (купить и продать, опознание), оружие (прилавок Ржавого), услуги (ремонт костюма, слоты, исследование)
+  marketTabs(u) {
+    const t = u.tab || 'trade', b = (k, n) => '<button class="btn" data-a="mtab:' + k + '" style="' + (t === k ? 'border-color:#b5742a;background:#3a2a18' : '') + '">' + n + '</button>';
+    return '<div style="display:flex;gap:6px;margin:8px 0">' + b('trade', 'Товары') + b('guns', 'Оружие') + b('serv', 'Услуги и исследования') + '</div>';
+  },
   invExtra() {
     const w = Wpn.of(P.weapon);
     return `<div class="cols"><div><h3>Состояние</h3><div class="stat">Оружие: <b style="color:${Wpn.color(P.weapon)}">${w.name}</b> (износ ${Math.round(100 - P.cond[P.weapon])}%) · сменить: клавиша 1 при выбранном слоте</div>
@@ -511,6 +519,7 @@ const Meta = {
         if (d.req) for (const k in d.req) if (P.sk[k] < d.req[k]) { log('Слишком тяжело: нужен навык «' + CFG.skills[k].name + '» ' + d.req[k] + '.'); return true; }
         if (P.money >= p) { P.money -= p; invAdd(arg, d.pack || 1); Snd.pick(); } return true;
       }
+      case 'mtab': u.tab = arg; return true;
       case 'sell': case 'sellall': {
         const s = P.inv[i]; if (!s) return true; const n = a === 'sellall' ? s.n : 1, p = sellPrice(s, u.v) * n;
         P.money += p; P.earned += p; addXp(p * 0.06); const key = s.art || s.id; G.demand[key] = Math.max(0.5, (G.demand[key] || 1) * Math.pow(0.94, n));
@@ -607,9 +616,10 @@ function shoot() {
   if (saved) { /* патрон цел */ } else if (w.perAmmo) { if (P.fuel <= 0) { invTake(w.ammo, 1); P.fuel = w.perAmmo; } P.fuel--; } else invTake(w.ammo || 'ammo', 1);
   P.cd = w.cd; P.recoil = 1; P.cond[P.weapon] = Math.max(0, cond - w.wear);
   if (w.cone) return Meta.flame(w);
-  const moving = Math.hypot(keys.mx || 0, keys.my || 0) > 0;
+  const moving = Math.hypot(keys.mx || 0, keys.my || 0) > 0, bl = 1 + 1.2 * (P.bloom || 0);   // серия выстрелов раскачивает оружие
+  P.bloom = Math.min(1, (P.bloom || 0) + 0.3);
   for (let n = 0; n < w.pellets; n++) {
-    const a = P.ang + (Math.random() - 0.5) * w.spread * (P.sneak ? 0.6 : 1) * (moving ? 1.6 : 1) * (cond < 50 ? 1.3 : 1);
+    const a = P.ang + (Math.random() - 0.5) * Meta.spreadOf(w, moving, cond) * bl;
     const dx = Math.cos(a), dy = Math.sin(a), dun = G.scene === 'dungeon'; let best = null, bt = dun ? Dungeon.rayLen(P.x, P.y, dx, dy, w.range) : w.range;
     for (const list of dun ? [Dungeon.enemies] : [Mutants.list, Stalkers.list]) for (const m of list) {
       if (m.dead || Mutants.hidden(m)) continue; const rx = m.x - P.x, ry = m.y - P.y, t = rx * dx + ry * dy; if (t < 0 || t > bt) continue;
@@ -646,6 +656,7 @@ function useItem(id) {
   log('Использовано: ' + CFG.items[id].name);
 }
 function sellPrice(s, vk) {
+  if (vk === 'market') { let best = 0; for (const k of ['buyer', 'sci', 'gun']) best = Math.max(best, sellPrice(s, k)); return best; }   // Торговый дом берёт по лучшей из трёх цен
   const v = CFG.vendors[vk], it = s.art ? null : CFG.items[s.id];
   const kind = s.art ? 'art' : it.part ? 'part' : it.junk ? 'junk' : s.id === 'meat' ? 'meat' : null;
   const m = kind && v.buys[kind]; if (!m) return 0;
