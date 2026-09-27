@@ -695,6 +695,7 @@ function panelClick(attr) {
   if (Meta.click(a, arg, arg2, u)) { renderPanel(); return; }
   if (a === 'vol') { Snd.vol = U.clamp(Math.round((Snd.vol + (arg === 'up' ? 0.1 : -0.1)) * 10) / 10, 0, 1); if (Snd.master) Snd.master.gain.value = Snd.vol; }
   else if (a === 'savenow') { if (inCamp() && G.scene !== 'dungeon') { save(); log('Сохранено.'); } else log('Сохраняться можно только в лагере.'); }
+  else if (a === 'loadnow') { if (u.confL) { closePanel(); if (!load()) log('Нет сохранения в этом слоте.'); return; } u.confL = true; }
   else if (a === 'newgame') { if (u.conf) { try { localStorage.removeItem(saveKey()); } catch (e) {} closePanel(); newGame(); return; } u.conf = true; }
   if (a === 'use') { const s = P.inv[i]; if (s) useItem(s.id); }
   else if (a === 'drop') { const s = P.inv[i]; if (s) { if (s.art) W.arts.push({ id: 0, type: s.art, q: s.q, x: P.x + 20, y: P.y, anom: 0 }); else W.loot.push({ x: P.x + 20, y: P.y, id: s.id, n: s.n, g: s.g }); P.inv.splice(i, 1); } }
@@ -737,6 +738,7 @@ function menuHTML(u) {
     <div class="row"><div class="nm">Громкость: <b>${Math.round(Snd.vol * 100)}%</b></div>${btn('vol:down', '−')}${btn('vol:up', '+')}</div>${typeof Snd.menuRows === 'function' ? Snd.menuRows() : ''}
     <div class="row"><div class="nm">Подсказки по ходу игры: <b>${P.hintsOff ? 'выключены' : 'включены'}</b><div class="sub">советы по ситуации, каждый один раз</div></div>${btn('hintsToggle', P.hintsOff ? 'Включить' : 'Выключить')}${btn('hintsReset', 'Показать заново')}</div>
     <div class="row"><div class="nm">Сохранение<div class="sub">в лагере; в Зоне — автосейв каждые 30 с (при обрыве связи: −10% денег)</div></div>${btn('savenow', 'Сохранить', !inCamp())}</div>
+    <div class="row"><div class="nm">Загрузить последнее сохранение<div class="sub">${u.confL ? 'Нажми ещё раз: всё после сохранения будет потеряно' : 'Отменит прогресс с момента последнего сохранения'}</div></div>${btn('loadnow', u.confL ? 'Точно?' : 'Загрузить', (() => { try { return !localStorage.getItem(saveKey()); } catch (e) { return true; } })())}</div>
     <div class="row"><div class="nm">Новая игра<div class="sub">${u.conf ? 'Нажми ещё раз: сохранение будет стёрто' : 'Начать заново'}</div></div>${btn('newgame', u.conf ? 'Точно?' : 'Новая')}</div>
     ${typeof Touch !== 'undefined' && Touch.on ? Touch.menuRows() : ''}${typeof Saves !== 'undefined' ? Saves.menuRows() : ''}
     <div style="margin-top:12px">${btn('resume', '▶ Продолжить')}</div></div></div>`;
