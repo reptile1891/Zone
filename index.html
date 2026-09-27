@@ -12,11 +12,11 @@
 <link rel="icon" href="icon.svg" type="image/svg+xml">
 <link rel="apple-touch-icon" href="apple-touch-icon.png">
 <style>
-:root{--bg:#0b0d0a;--fg:#c9c2a8;--dim:#7d7864;--acc:#b5742a;--red:#b04040;--grn:#6f9a55;--blu:#5f8fc0;--pan:rgba(16,18,14,.94)}
+:root{--a-l:0px;--a-t:0px;--a-r:0px;--a-b:0px;--sal:max(env(safe-area-inset-left,0px),var(--a-l));--sat:max(env(safe-area-inset-top,0px),var(--a-t));--sar:max(env(safe-area-inset-right,0px),var(--a-r));--sab:max(env(safe-area-inset-bottom,0px),var(--a-b));--bg:#0b0d0a;--fg:#c9c2a8;--dim:#7d7864;--acc:#b5742a;--red:#b04040;--grn:#6f9a55;--blu:#5f8fc0;--pan:rgba(16,18,14,.94)}
 *{box-sizing:border-box}
 html,body{margin:0;height:100%;background:var(--bg);color:var(--fg);font:14px/1.35 Consolas,"Courier New",monospace;overflow:hidden;user-select:none}
 canvas#cv{position:fixed;inset:0;display:block;cursor:crosshair}
-#hud{position:fixed;inset:0;pointer-events:none;z-index:2}
+#hud{position:fixed;top:var(--sat);right:var(--sar);bottom:var(--sab);left:var(--sal);pointer-events:none;z-index:2}   /* поля под вырез камеры и системные панели */
 #bars{position:absolute;left:12px;top:12px;width:clamp(150px,18vw,230px)}
 .bar{pointer-events:auto;position:relative;height:16px;margin-bottom:4px;background:rgba(0,0,0,.55);border:1px solid #3a3a30}
 .bar i{position:absolute;left:0;top:0;bottom:0;width:50%}
@@ -58,7 +58,7 @@ canvas#cv{position:fixed;inset:0;display:block;cursor:crosshair}
 .note{margin:3px 0;padding-left:8px;border-left:2px solid #4a4634;color:#b8b298;font-size:13px}
 #mapwrap{z-index:4;position:fixed;inset:0;background:rgba(0,0,0,.86);display:none;align-items:center;justify-content:center}
 #tz{position:fixed;inset:0;z-index:1;touch-action:none;display:none}
-#tbtns{position:fixed;inset:0;z-index:2;pointer-events:none;display:none}
+#tbtns{position:fixed;top:var(--sat);right:var(--sar);bottom:var(--sab);left:var(--sal);z-index:2;pointer-events:none;display:none}
 .tring{position:fixed;z-index:2;width:112px;height:112px;border-radius:50%;border:2px solid rgba(201,194,168,.35);background:rgba(201,194,168,.08);display:none;pointer-events:none}
 .tring.a{border-color:rgba(224,120,80,.45);background:rgba(224,120,80,.08)}
 .tring i{position:absolute;left:32px;top:32px;width:48px;height:48px;border-radius:50%;background:rgba(201,194,168,.45)}
@@ -140,6 +140,10 @@ body.touch #itip{max-width:60vw}
 <script src="rooms.js"></script>
 <script src="dungeon.js"></script>
 <script src="tips.js"></script>
+<script>
+// Приложение Android (MainActivity) отдаёт размеры выреза через AndroidInsets.insets() = "лево,верх,право,низ" в css-пикселях; в браузере работает env(safe-area-inset-*)
+(function () { function ins() { try { if (window.AndroidInsets) { const v = String(AndroidInsets.insets()).split(',').map(Number), s = document.documentElement.style; ['l', 't', 'r', 'b'].forEach((k, i) => s.setProperty('--a-' + k, (v[i] || 0) + 'px')); } } catch (e) { /* вне приложения */ } } ins(); addEventListener('resize', ins); addEventListener('orientationchange', () => setTimeout(ins, 300)); })();
+</script>
 <script src="hints.js"></script>
 <script src="codex.js"></script>
 <script src="touch.js"></script>
