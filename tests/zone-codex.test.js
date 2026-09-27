@@ -19,8 +19,8 @@ test("тексты покрывают весь контент: у каждого
     for (const k in CFG.dungeon.enemies) if (!(Codex.TEXT.d[k] && Codex.TEXT.d[k].length === 2)) miss.push("d:" + k);
     for (const k in CFG.anoms) if (!(Codex.TEXT.a[k] && Codex.TEXT.a[k].length === 2)) miss.push("a:" + k);
     for (const k in CFG.biomes) if (typeof Codex.TEXT.b[k] !== "string") miss.push("b:" + k);
-    const extra = []; for (const c of ["m", "d", "a", "b"]) for (const k in Codex.TEXT[c]) if (!Codex.ids(c).includes(k)) extra.push(c + ":" + k);
-    const html = []; for (const c of Codex.CATS) for (const id of Codex.ids(c.k)) { P.codex = { m: {}, d: {}, a: {}, b: {} }; P.known = {}; if (c.k === "r") P.known[id] = true; else P.codex[c.k][id] = { n: 3 }; try { Codex.detail(c.k, id); } catch (e) { html.push(c.k + ":" + id + " " + e.message); } }
+    const extra = []; for (const c of ["m", "d", "a", "b"]) for (const k in Codex.TEXT[c]) if (!Codex.ids(c === "d" ? "m" : c).includes(k)) extra.push(c + ":" + k);
+    const html = []; for (const c of Codex.CATS) for (const id of Codex.ids(c.k)) { P.codex = { m: {}, d: {}, a: {}, b: {} }; P.known = {}; if (c.k === "r") P.known[id] = true; else P.codex[Codex.rc(c.k, id)][id] = { n: 3 }; try { Codex.detail(c.k, id); } catch (e) { html.push(c.k + ":" + id + " " + e.message); } }
     return { miss, extra, html, all: Codex.CATS.reduce((n, c) => n + Codex.ids(c.k).length, 0) };
   })()`);
   assert.deepEqual(o.miss, []); assert.deepEqual(o.extra, []); assert.deepEqual(o.html, []); assert.ok(o.all >= 8 + 4 + 9 + 11);
@@ -117,4 +117,28 @@ test("картинки: для каждой записи рисуется изо
     document.createElement = _ce; return { missing, draw: calls.draw > 20, cached, broken };
   })()`);
   assert.deepEqual(o.missing, []); assert.ok(o.draw); assert.ok(o.cached, "картинка кэшируется"); assert.equal(o.broken, "");
+});
+
+test("значки артефактов в рюкзаке и контейнерах: у опознанного свой, у неопознанного общий; пустая вкладка не показывает счёт", () => {
+  fresh();
+  const o = run(`(() => {
+    const ctx = () => new Proxy({}, { get: (t, k) => k === "createRadialGradient" ? () => ({ addColorStop() {} }) : () => {}, set: () => true });
+    const _ce = document.createElement; document.createElement = () => ({ width: 0, height: 0, getContext: ctx, toDataURL: () => "data:image/png;base64,QQ" }); Codex._pics = {};
+    P.inv = []; invAdd("art", 1, "soul"); const unk = itemIcon(P.inv[0]); P.known.soul = true; const known = itemIcon(P.inv[0]); P.equip[0] = { art: "soul", q: 1 };
+    G.ui = { k: "inv" }; renderPanel(); document.createElement = _ce;
+    P.codex = { m: {}, d: {}, a: {}, b: {} }; Codex.openPanel(); G.ui.tab = "a"; const empty = Codex.html(G.ui);
+    return { unk, known, empty };
+  })()`);
+  assert.doesNotMatch(o.unk, /base64,QQ/); assert.match(o.known, /class="ico" src="data:image\/png;base64,QQ"/); assert.match(o.empty, /Пока пусто/); assert.doesNotMatch(o.empty, /\d\/\d|\?\?\?/);
+});
+
+test("вкладка «Мутанты» включает обитателей бункеров: они в списке с пометкой, открываются и изучаются как раньше; отдельной вкладки нет", () => {
+  fresh();
+  const o = run(`(() => {
+    Codex.see("m", "tin"); Codex.see("d", "carapace"); Codex.see("d", "crawler", 1);
+    Codex.openPanel(); G.ui.tab = "m"; const list = Codex.html(G.ui); Meta.click("cx", "m", "carapace", G.ui); const cara = Codex.html(G.ui); Meta.click("cx", "m", "crawler", G.ui); const crawl = Codex.html(G.ui);
+    return { tabs: Codex.CATS.map(c => c.k), ids: Codex.ids("m").length, list, cara, crawl, killed: Codex.studied("m", "crawler"), notKilled: Codex.studied("m", "carapace"), title: Codex.title("m", "shade") };
+  })()`);
+  assert.deepEqual(o.tabs, ["m", "a", "r", "b"]); assert.equal(o.ids, 12); assert.doesNotMatch(o.list, /Под землёй/); assert.match(o.list, /Бункер · Замечен/); assert.match(o.list, /Бункер · Изучен/);
+  assert.match(o.cara, /Панцирник/); assert.match(o.cara, /в бункерах/); assert.match(o.cara, /Характеристики и советы откроются/); assert.match(o.crawl, /Здоровье:[^]*50/); assert.equal(o.killed, true); assert.equal(o.notKilled, false); assert.equal(o.title, "Тень");
 });

@@ -1,10 +1,10 @@
 'use strict';
-// Справочник Зоны (клавиша B, кнопка 📚 на телефоне): мутанты, обитатели бункеров, аномалии, артефакты и места.
+// Справочник Зоны (клавиша B, кнопка 📚 на телефоне): мутанты (в том числе обитатели бункеров), аномалии, артефакты и места.
 // Записи открываются по ходу игры: мутант — когда увидел (описание) и убил (характеристики и советы), аномалия — когда обнаружил,
 // артефакт — когда опознал, место — когда там побывал. Прогресс хранится в P.codex = { m: {вид: {n: убито}}, d: {…}, a: {тип: 1}, b: {биом: 1} } и сохраняется.
 // Числа берутся из CFG, тексты (описание и советы) — из CODEX.TEXT ниже; списки «где обитает» и «какие артефакты» строятся из конфига сами.
 const Codex = {
-  CATS: [{ k: 'm', n: 'Мутанты', ic: '☠' }, { k: 'd', n: 'Под землёй', ic: '▼' }, { k: 'a', n: 'Аномалии', ic: '◎' }, { k: 'r', n: 'Артефакты', ic: '✦' }, { k: 'b', n: 'Места', ic: '⌖' }],
+  CATS: [{ k: 'm', n: 'Мутанты', ic: '☠' }, { k: 'a', n: 'Аномалии', ic: '◎' }, { k: 'r', n: 'Артефакты', ic: '✦' }, { k: 'b', n: 'Места', ic: '⌖' }],
   TEXT: {
     m: {
       listener: ['Ходит по ночам стаями. Почти слепой, зато слышит каждый шорох: шаг, выстрел, звон болта. Кусает до крови.', 'Красться (Ctrl или кнопка «Красться») почти вдвое тише. Стая опасна в открытом поле: держись у укрытий, бей по одиночкам, уводи шумом (болт в сторону). Кровотечение останавливает аптечка.'],
@@ -57,7 +57,7 @@ const Codex = {
   PROPSPR: { car: 'car_b', dtuft: 'tuft_d', container: 'crate', barrel: 'barrel' },
   rnd(str) { let h = 2166136261; for (const ch of str) h = Math.imul(h ^ ch.charCodeAt(0), 16777619); return () => ((h = Math.imul(h ^ (h >>> 15), 2246822507) + 1013904223 | 0) >>> 0) / 4294967296; },
   img(cat, id, S) {
-    const key = cat + ':' + id + ':' + S; let u = this._pics[key];
+    cat = this.rc(cat, id); const key = cat + ':' + id + ':' + S; let u = this._pics[key];
     if (u === undefined) { try { u = this.paint(cat, id, S) || ''; } catch (e) { u = ''; } this._pics[key] = u; }
     return u ? '<img src="' + u + '" width="' + S + '" height="' + S + '" style="image-rendering:pixelated;display:block" alt="">' : '';
   },
@@ -129,11 +129,13 @@ const Codex = {
     else if (n && e.n === 1 && (cat === 'm' || cat === 'd')) log('Справочник: ' + this.title(cat, id) + ' изучен — открыты характеристики и советы (B)', '#9ad0e8');
     return e;
   },
-  title(cat, id) { return cat === 'm' ? CFG.mut[id].name : cat === 'd' ? CFG.dungeon.enemies[id].name : cat === 'a' ? CFG.anoms[id].name : cat === 'r' ? CFG.arts[id].name : CFG.biomes[id].name; },
-  ids(cat) { return cat === 'm' ? Object.keys(CFG.mut) : cat === 'd' ? Object.keys(CFG.dungeon.enemies) : cat === 'a' ? Object.keys(CFG.anoms) : cat === 'r' ? Object.keys(CFG.arts) : Object.keys(CFG.biomes); },
-  open(cat, id) { const c = this.ensure(); return cat === 'r' ? !!P.known[id] : !!c[cat][id]; },
+  // Обитатели бункеров показываются во вкладке «Мутанты»; хранятся и считаются отдельно (P.codex.d)
+  rc(cat, id) { return cat === 'm' && !CFG.mut[id] && CFG.dungeon.enemies[id] ? 'd' : cat; },
+  title(cat, id) { cat = this.rc(cat, id); return cat === 'm' ? CFG.mut[id].name : cat === 'd' ? CFG.dungeon.enemies[id].name : cat === 'a' ? CFG.anoms[id].name : cat === 'r' ? CFG.arts[id].name : CFG.biomes[id].name; },
+  ids(cat) { return cat === 'm' ? Object.keys(CFG.mut).concat(Object.keys(CFG.dungeon.enemies)) : cat === 'd' ? Object.keys(CFG.dungeon.enemies) : cat === 'a' ? Object.keys(CFG.anoms) : cat === 'r' ? Object.keys(CFG.arts) : Object.keys(CFG.biomes); },
+  open(cat, id) { cat = this.rc(cat, id); const c = this.ensure(); return cat === 'r' ? !!P.known[id] : !!c[cat][id]; },
   // Изучен ли вид: убит хотя бы раз (характеристики и советы)
-  studied(cat, id) { const e = this.ensure()[cat][id]; return !!(e && e.n > 0); },
+  studied(cat, id) { cat = this.rc(cat, id); const e = this.ensure()[cat][id]; return !!(e && e.n > 0); },
 
   // ---------- наблюдение ----------
   tick(dt) {
@@ -163,11 +165,13 @@ const Codex = {
     return h;
   },
   sub(cat, id) {
-    if (cat === 'm' || cat === 'd') { const e = this.ensure()[cat][id]; return e && e.n > 0 ? 'Изучен · убито: ' + e.n : 'Замечен — убей, чтобы изучить'; }
+    cat = this.rc(cat, id);
+    if (cat === 'm' || cat === 'd') { const e = this.ensure()[cat][id], pre = cat === 'd' ? 'Бункер · ' : ''; return pre + (e && e.n > 0 ? 'Изучен · убито: ' + e.n : 'Замечен — убей, чтобы изучить'); }
     if (cat === 'r') return CFG.arts[id].desc;
     return cat === 'a' ? 'Найдена' : 'Посещено';
   },
   detail(cat, id) {
+    cat = this.rc(cat, id);
     const t = cat === 'b' ? [this.TEXT.b[id]] : (this.TEXT[cat] || {})[id] || [], row = (l, v) => '<div class="ti-r" style="color:#7d7864">' + l + ' <b style="color:#c9c2a8;font-weight:normal">' + v + '</b></div>';
     const pic = this.img(cat, id, 160);
     let h = '<div style="display:flex;gap:10px;align-items:center;margin-bottom:6px">' + pic + '<h3 style="margin:0;color:#b5742a;font-size:16px">' + this.title(cat, id) + '</h3></div>';
