@@ -99,7 +99,8 @@ body.touch .row{padding:8px 6px}
 body.touch .x{font-size:22px;padding:6px 10px;top:2px;right:4px}
 body.touch #panel{max-height:96vh;width:98vw;padding:10px 12px}
 body.touch #itip{max-width:60vw}
-#splash,#death{z-index:20;position:fixed;inset:0;background:rgba(6,7,5,.93);display:flex;align-items:center;justify-content:center;flex-direction:column;text-align:center;padding:20px}
+#splash,#death{z-index:20;position:fixed;inset:0;background:rgba(6,7,5,.93);display:flex;align-items:center;justify-content:center;flex-direction:column;text-align:center;padding:20px;overflow-y:auto}
+#splash>*,#death>*{flex-shrink:0}   /* короткий экран (телефон в браузере с адресной строкой) — не даём заголовку и кнопкам сжаться, лучше прокрутить */
 #death{display:none;background:rgba(40,0,0,.85);z-index:5}
 #splash h1{font-size:clamp(28px,5vw,52px);letter-spacing:.2em;color:var(--acc);margin:0 0 4px;font-weight:normal}
 #splash p{max-width:640px;color:var(--dim)}
