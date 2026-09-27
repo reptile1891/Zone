@@ -462,7 +462,11 @@ function draw() {
     for (let i = 1; i < 4; i++) { ctx.beginPath(); ctx.arc(g.x, g.y, 14 * i + pl * 6, 0, 6.28); ctx.stroke(); } px(g.x, g.y, '#e0c050', 12);
   }
   for (const l of W.loot) px(l.x, l.y, l.id === 'bolt' ? '#a8a8a8' : '#d8d0a0', 4);
-  for (const a of W.arts) { const d = Math.hypot(a.x - P.x, a.y - P.y), lim = artR(); if (d < lim) Spr.draw(ctx, 'star', a.x, a.y, false, (0.4 + 0.6 * Math.abs(Math.sin(G.t * 3 + a.x))) * (1 - d / lim)); }
+  for (const a of W.arts) {
+    const d = Math.hypot(a.x - P.x, a.y - P.y), lim = artR(), pulse = 0.5 + 0.5 * Math.abs(Math.sin(G.t * 3 + a.x));
+    if (d < 900 && artSeen(a)) { ctx.globalAlpha = 0.25 + 0.2 * pulse; circle(a.x, a.y, 9, '#e8d070'); ctx.globalAlpha = 1; Spr.draw(ctx, 'star', a.x, a.y, false, 0.7 + 0.3 * pulse, 1.4); }
+    else if (d < lim) Spr.draw(ctx, 'star', a.x, a.y, false, (0.4 + 0.6 * pulse) * (1 - d / lim));
+  }
   for (const s of W.corpses) Spr.draw(ctx, s.looted ? 'corpse_l' : 'corpse', s.x, s.y);
   for (const s of W.caches) { ctx.strokeStyle = '#e06060'; ctx.lineWidth = 2; ctx.strokeRect(s.x - 9, s.y - 9, 18, 18); }
   for (const c of W.conts) {
@@ -558,6 +562,8 @@ function drawCamp() {
 // Ночью и в тумане своё зрение хуже (налобный фонарь снимает ночную поправку); приборы от погоды не зависят. Артефакты ночью светятся — их видно дальше.
 const signR = () => (60 + P.sk.sense * 35) * (1 - (hasItem('headlamp') ? 0 : 0.3 * G.night) - 0.25 * G.fog - 0.1 * G.rain) + (hasItem('detector2') ? 170 : hasItem('detector') ? 90 : 0);
 const artR = () => signR() * 1.3 * (1 + 0.6 * G.night);
+// Артефакт лежит в аномалии, которая уже раскрыта (болт, карта, записка, детектор, крюк): его видно издалека, пока видна сама аномалия
+const artSeen = a => { if (!a.anom) return false; const an = W.anoms.find(x => x.id === a.anom); return !!an && (an.known || an.revealed > 0); };
 // Контур формы аномалии (k — масштаб) и точка на границе в направлении th (f — доля радиуса)
 function anomPath(a, k = 1, n = 44) { ctx.beginPath(); for (let i = 0; i < n; i++) { const th = i / n * 6.2832, r = a.r * AShape.edge(a, th) * k; ctx[i ? 'lineTo' : 'moveTo'](a.x + Math.cos(th) * r, a.y + Math.sin(th) * r); } ctx.closePath(); }
 const anomEdge = (a, th, f = 1) => ({ x: a.x + Math.cos(th) * a.r * AShape.edge(a, th) * f, y: a.y + Math.sin(th) * a.r * AShape.edge(a, th) * f });
@@ -643,7 +649,7 @@ function hud(dt) {
   if (mouse.r && !G.ui && G.scene === 'zone') {
     const mx = mouse.x + cam.x, my = mouse.y + cam.y; let txt = null;
     for (const a of W.anoms) if ((AShape.inside(a, mx - a.x, my - a.y, 1.15) || Math.hypot(a.x - mx, a.y - my) < 25) && Math.hypot(a.x - P.x, a.y - P.y) < a.r * 1.6 + signR()) { txt = CFG.anoms[a.type].hint + (P.sk.sense >= 2 ? ' — похоже на «' + CFG.anoms[a.type].name + '».' : ''); break; }
-    if (!txt) for (const a of W.arts) if (Math.hypot(a.x - mx, a.y - my) < 30 && Math.hypot(a.x - P.x, a.y - P.y) < artR() * 0.75) { txt = 'Что-то поблёскивает.'; break; }
+    if (!txt) for (const a of W.arts) if (Math.hypot(a.x - mx, a.y - my) < 30 && (artSeen(a) || Math.hypot(a.x - P.x, a.y - P.y) < artR() * 0.75)) { txt = artSeen(a) ? 'Артефакт в аномалии. Крюк-кошка достанет его без урона.' : 'Что-то поблёскивает.'; break; }
     if (!txt) for (const s of W.corpses) if (Math.hypot(s.x - mx, s.y - my) < 30 && Math.hypot(s.x - P.x, s.y - P.y) < 300) { txt = s.looted ? 'Обшаренный труп сталкера.' : 'Труп сталкера. Может, что-то осталось.'; break; }
     if (!txt) txt = Math.hypot(P.x - W.C.x, P.y - W.C.y) < W.C.r ? 'Лагерь.' : 'Ничего необычного. Пока.';
     tip.textContent = txt; tip.style.display = 'block'; tip.style.left = Math.min(VW - 320, mouse.x + 14) + 'px'; tip.style.top = mouse.y + 14 + 'px';
@@ -664,7 +670,7 @@ function renderPanelBase() {
     let h = '<div class="x" data-a="close">✕ Esc</div><h2>Снаряжение</h2><div class="cols"><div><h3>Рюкзак — ' + weight().toFixed(1) + ' / ' + carryCap() + ' кг</h3>';
     P.inv.forEach((s, i) => {
       const def = s.art ? null : CFG.items[s.id];
-      const act = s.art ? btn('equip:' + i, 'В контейнер') : def.use ? btn('use:' + i, 'Исп.') : '';
+      const act = s.art ? btn('equip:' + i, 'В контейнер') : (def.use ? btn('use:' + i, 'Исп.') : '') + (Quick.can(s.id) ? btn('qp:' + s.id, '⚡') : '');
       h += row(itemIcon(s), Meta.itemLabel(s) + (s.n > 1 ? ' ×' + s.n : ''), (s.art ? (P.known[s.art] ? CFG.arts[s.art].desc : 'Свойства неизвестны. Нужен учёный.') : (def.desc || '')) + ' · ' + slotW(s).toFixed(1) + ' кг', act + btn('drop:' + i, '↓'));
     });
     if (!P.inv.length) h += '<div class="stat">Пусто.</div>';

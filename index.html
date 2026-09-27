@@ -42,7 +42,7 @@ canvas#cv{position:fixed;inset:0;display:block;cursor:crosshair}
 #itip{position:fixed;z-index:9;max-width:290px;padding:7px 10px;background:rgba(10,11,8,.97);border:1px solid var(--acc);display:none;font-size:12.5px;pointer-events:none;box-shadow:0 2px 12px #000}
 #itip .ti-h{color:var(--acc);font-size:14px;margin-bottom:3px}#itip .ti-h span{color:var(--dim);font-size:11px;margin-left:4px}
 #itip .ti-d{color:#b8b298;margin:2px 0 4px}#itip .ti-r{color:var(--dim)}#itip .ti-r b{color:var(--fg);font-weight:normal}
-#panel{z-index:3;position:fixed;left:50%;top:50%;transform:translate(-50%,-50%);width:min(880px,96vw);max-height:90vh;overflow:auto;background:var(--pan);border:1px solid #4a4634;padding:14px 16px;display:none;user-select:none}
+#panel{overflow-x:hidden;z-index:3;position:fixed;left:50%;top:50%;transform:translate(-50%,-50%);width:min(880px,96vw);max-height:90vh;overflow:auto;background:var(--pan);border:1px solid #4a4634;padding:14px 16px;display:none;user-select:none}
 #panel h2{margin:0 0 8px;font-size:17px;color:var(--acc);font-weight:normal;letter-spacing:.05em}
 #panel h3{margin:12px 0 4px;font-size:13px;color:var(--dim);font-weight:normal;text-transform:uppercase}
 .x{position:absolute;right:10px;top:8px;cursor:pointer;color:var(--dim)}
@@ -54,6 +54,16 @@ canvas#cv{position:fixed;inset:0;display:block;cursor:crosshair}
 .btn{cursor:pointer;padding:3px 9px;border:1px solid #6a5a34;background:#231f14;color:var(--fg);font:inherit;pointer-events:auto}
 .btn:hover{background:#3a2f16;border-color:var(--acc)}.btn.dis{opacity:.35;pointer-events:none}
 .slot{display:inline-flex;width:64px;height:64px;border:1px dashed #5a5030;align-items:center;justify-content:center;font-size:30px;margin-right:8px;cursor:pointer;vertical-align:middle}
+/* инвентарь-сетка (inv.js) */
+.ggrid{display:grid;grid-template-columns:repeat(6,54px);gap:4px;margin:4px 0}.ggrid.q{grid-template-columns:repeat(9,minmax(0,1fr))}
+.slot.gc{position:relative;width:54px;height:54px;box-sizing:border-box;margin:0;border:1px solid #4a4030;background:#0e0f0b;font-size:24px;overflow:hidden}
+.ggrid.q .slot.gc{width:auto;height:44px;font-size:20px}
+.slot.gc.e{border:1px dashed #2c2a1c}.slot.gc.hint{border-color:#6a5a34;background:#14130d}.slot.gc.z{opacity:.45}
+.slot.gc:hover{background:#1c1b14}.slot.gc.sel{outline:2px solid #e8c060;background:#2a2412}
+.slot.gc .n{position:absolute;right:3px;bottom:1px;font-size:11px;color:#e8d8a0;text-shadow:0 0 2px #000,0 0 2px #000}
+.slot.gc .w{position:absolute;left:3px;top:0;font-size:11px;color:#e8c060}.slot.gc .k{position:absolute;left:3px;top:0;font-size:10px;color:#8a8470}
+#hand{position:fixed;z-index:9;pointer-events:none;display:none;font-size:26px;filter:drop-shadow(0 0 3px #000);opacity:.92}
+body.touch .ggrid{grid-template-columns:repeat(6,minmax(44px,1fr))}body.touch .slot.gc{width:auto;height:58px}
 .stat{color:var(--dim)}.stat b{color:var(--fg);font-weight:normal}
 .note{margin:3px 0;padding-left:8px;border-left:2px solid #4a4634;color:#b8b298;font-size:13px}
 #mapwrap{z-index:4;position:fixed;inset:0;background:rgba(0,0,0,.86);display:none;align-items:center;justify-content:center}
@@ -152,6 +162,8 @@ body.touch #itip{max-width:60vw}
 <script src="stats.js"></script>
 <script src="events.js"></script>
 <script src="audio.js"></script>
+<script src="quick.js"></script>
+<script src="inv.js"></script>
 <script src="touch.js"></script>
 <script>if ('serviceWorker' in navigator && /^https?:$/.test(location.protocol)) navigator.serviceWorker.register('sw.js').catch(() => {});</script>
 </body>
