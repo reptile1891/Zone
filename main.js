@@ -156,6 +156,13 @@ function respawn() {
 // ---------- действия игрока ----------
 // Быстрая панель (раскладка — quick.js): 'melee' — ближний бой (всегда на кнопке 1), 'weapon' — огнестрел, id предмета или null (пусто)
 const heldNames = ['melee', 'weapon', null, null, null, null, null, null, null];
+// Нажатие кнопки быстрой панели (клавиша 1–9, клик, касание): первое выбирает кнопку, второе на уже выбранной применяет расходник сразу (аптечка, еда, шина…)
+// или меняет нож на кнопке 1; оружие и метательное (болт, приманка, шок, крюк) второе нажатие не трогает — их применяют ЛКМ по прицелу
+function pressSlot(n) {
+  const h = heldNames[n];
+  if (P.sel === n) { if (h === 'melee') Melee.cycle(); else if (Quick.instant(h)) useSel(); return; }
+  P.sel = n; if (Quick.instant(h)) log('Выбрано: ' + Quick.name(h) + ' — нажми ' + (n + 1) + ' ещё раз, чтобы применить.', '#a8c890');
+}
 function stepSel(d) { const n = heldNames.length; for (let k = 1; k <= n; k++) { const i = ((P.sel + d * k) % n + n) % n; if (heldNames[i]) { P.sel = i; return; } } }
 function useSel() {
   const h = heldNames[P.sel];
@@ -797,7 +804,7 @@ addEventListener('keydown', e => {
   else if (e.code === 'Escape' || e.code === 'F1') { e.preventDefault(); G.ui ? closePanel() : openMenu(); }
   else if (e.code === 'KeyE' || e.code === 'KeyF') { if (G.ui) closePanel(); else if (G.near && !G.dead) G.near.fn(); }
   else if (e.code === 'KeyQ') stepSel(1);
-  else if (/^Digit[1-9]$/.test(e.code)) { const n = +e.code[5] - 1; if (P.sel === n && heldNames[n] === 'melee') Melee.cycle(); P.sel = n; }
+  else if (/^Digit[1-9]$/.test(e.code)) { pressSlot(+e.code[5] - 1); }
 });
 addEventListener('keyup', e => { keys[e.code] = false; });
 addEventListener('blur', () => { for (const k in keys) keys[k] = false; mouse.l = mouse.r = false; });
@@ -810,7 +817,7 @@ addEventListener('wheel', e => { if (G.started && !G.ui) stepSel(e.deltaY > 0 ? 
 $('quick').addEventListener('click', e => {
   const q = e.target.closest('[data-q]'); if (!q) return;
   if (G.ui && (G.ui.k === 'inv' || G.ui.k === 'storage')) { Inv.shift = !!e.shiftKey; Meta.click('cell', 'quick', q.dataset.q, G.ui); renderPanel(); return; }   // при открытом инвентаре кнопки панели — места для вещей
-  P.sel = +q.dataset.q;
+  pressSlot(+q.dataset.q);
 });
 $('mapwrap').addEventListener('click', closePanel);
 $('menubtn').onclick = () => { if (G.started) openMenu(); };

@@ -92,3 +92,26 @@ test("артефакт в раскрытой аномалии виден изд�
   })()`);
   assert.equal(o.hidden, false); assert.equal(o.shown, true); assert.equal(o.flash, true); assert.equal(o.loose, false);
 });
+
+test("нажатие кнопки: первое выбирает расходник, второе на выбранной применяет; оружие и метательное второе нажатие не трогает; нож — меняет", () => {
+  fresh();
+  const o = run(`(() => {
+    invAdd("medkit", 2); invAdd("food", 1); invAdd("bolt", 3); Quick.assign(4, "medkit"); Quick.assign(5, "food"); Quick.assign(6, "bolt"); P.knives = ["knife", "shiv"]; P.hp = 40; P.food = 30; P.cd = 0;
+    const inst = { medkit: Quick.instant("medkit"), food: Quick.instant("food"), bolt: Quick.instant("bolt"), hook: Quick.instant("hook"), gun: Quick.instant("w:pistol"), melee: Quick.instant("melee"), none: Quick.instant(null) };
+    pressSlot(4); const first = { sel: P.sel, hp: P.hp, med: invCount("medkit") };
+    pressSlot(4); const second = { hp: P.hp, med: invCount("medkit") };
+    pressSlot(5); const foodSel = P.sel, f0 = invCount("food"); pressSlot(5); const ate = invCount("food") === f0 - 1 && P.food > 30;
+    pressSlot(6); const b0 = invCount("bolt"); pressSlot(6); const boltKept = invCount("bolt") === b0 && bolts.length === 0;
+    pressSlot(1); const g0 = invCount("ammo"); pressSlot(1); const gunKept = invCount("ammo") === g0;
+    pressSlot(0); const k0 = P.knife; pressSlot(0); const cycled = P.knife !== k0;
+    pressSlot(7); const empty = P.sel; pressSlot(7); const idle = P.sel === 7;
+    pressSlot(4); P.hp = 30; pressSlot(4); const again = P.hp > 30, medLeft = invCount("medkit");
+    pressSlot(4); pressSlot(4); const dry = invCount("medkit");
+    return { inst, first, second, foodSel, ate, boltKept, gunKept, cycled, empty, idle, again, medLeft, dry };
+  })()`);
+  assert.deepEqual(o.inst, { medkit: true, food: true, bolt: false, hook: false, gun: false, melee: false, none: false });
+  assert.equal(o.first.sel, 4); assert.equal(o.first.hp, 40, "первое нажатие только выбирает"); assert.equal(o.first.med, 2);
+  assert.ok(o.second.hp > 40, "второе применяет"); assert.equal(o.second.med, 1); assert.equal(o.foodSel, 5); assert.equal(o.ate, true);
+  assert.equal(o.boltKept, true, "болт вторым нажатием не бросается"); assert.equal(o.gunKept, true); assert.equal(o.cycled, true); assert.equal(o.empty, 7); assert.equal(o.idle, true);
+  assert.equal(o.again, true); assert.equal(o.medLeft, 0); assert.equal(o.dry, 0, "запас кончился — кнопка серая, ничего не происходит");
+});

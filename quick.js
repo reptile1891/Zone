@@ -24,6 +24,8 @@ const Quick = {
   apply() { const L = this.layout(); P.quick = L.slice(); P.quickV = this.V; for (let i = 0; i < L.length; i++) heldNames[i] = L[i]; },
   // раскладка в списке расходится с законной (оружие продано и т.п.)
   valid() { const L = this.layout(); return L.every((x, i) => x === heldNames[i]); },
+  // расходник, который применяется сразу вторым нажатием кнопки (аптечка, еда, антирад, шина, антибиотик, датчик…): есть use и не метательное
+  instant(id) { return !!id && !this.gun(id) && !this.knife(id) && id !== 'melee' && !!CFG.items[id] && !!CFG.items[id].use && !['bolt', 'lure', 'shock', 'hook'].includes(id); },
   // выбранная кнопка держит ствол — он и в руках
   syncWeapon() { const g = this.gun(heldNames[P.sel]); if (g && P.weapon !== g && (P.weapons || []).includes(g)) P.weapon = g; },
   // поставить вещь id на кнопку n (0-based, 1..8); id = null — очистить; если вещь стояла на другой кнопке, кнопки меняются
