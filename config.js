@@ -96,6 +96,12 @@ const CFG = {
     canister:   { name: 'Канистра горючего', w: 0.8, val: 14, buy: 28, icon: '⛽', desc: 'Топливо для огнемёта. Хватает на 25 выдохов.' },
     firecoat:   { name: 'Огнеупорный плащ', w: 4, val: 110, buy: 260, icon: '🧥', desc: 'Ожог и вспышки колодцев −60%. Носится поверх костюма, места занимает много.' },
     headlamp: { name: 'Налобный фонарь', w: 0.5, val: 70, buy: 180, icon: '🔦', desc: 'Под землёй светлее (+80), а Тени различимы с большего расстояния. Работает, пока лежит в рюкзаке.' },
+    // Снаряжение по слотам (характеристики и эффекты — Gear.BASE; из вещей одного вида работает лучшая в рюкзаке)
+    helmet:   { name: 'Каска',                w: 1,   val: 45,  buy: 110, icon: '⛑', desc: 'Радиация −10%, напряжение от Зоны −20%.' },
+    helmet2:  { name: 'Противогаз',           w: 1.4, val: 120, buy: 300, icon: '🥽', desc: 'Радиация −25%, напряжение от Зоны −15%.' },
+    boots:    { name: 'Ботинки бродяги',      w: 1.2, val: 55,  buy: 140, icon: '🥾', desc: 'Скорость +6%, шаги тише на 12%.' },
+    pack:     { name: 'Разгрузка',            w: 1,   val: 50,  buy: 120, icon: '🎒', desc: 'Грузоподъёмность +5 кг.' },
+    pack2:    { name: 'Туристический рюкзак', w: 1.8, val: 130, buy: 320, icon: '🧳', desc: 'Грузоподъёмность +9 кг.' },
     suit:     { name: 'Плащ сталкера',   w: 3,    val: 60, buy: 130, icon: '🧥', desc: 'Радиация −25%, аномалии −10%.' },
     scrap:    { name: 'Металлолом',     w: 0.5, val: 6,  icon: '🔩', junk: true },
     circuit:  { name: 'Плата',          w: 0.2, val: 15, icon: '▦',  junk: true },
@@ -261,8 +267,8 @@ const CFG = {
   // Ремонт из хлама и тюнинг. repair: сколько % износа закрывает 1 металлолом / 1 схема; cost[n] — цена (n+1)-го улучшения; максимум улучшений = уровень мастерской (оружие) или снабжения (костюм)
   tune: { repair: { scrap: 8, circuit: 35 }, cost: [{ scrap: 4, circuit: 2 }, { scrap: 7, circuit: 3, plate: 1 }, { scrap: 10, circuit: 4, plate: 2, battery: 1 }] },
   // Разборка на верстаке: что даёт вещь (костюмы — ×(1 + 0.3 за ступень редкости)); оружие считается по цене
-  salvage: { suit: { scrap: 4 }, suit2: { scrap: 6, plate: 2 }, firecoat: { scrap: 5, circuit: 1, battery: 1 }, detector: { circuit: 3, battery: 1, scrap: 1 }, detector2: { circuit: 5, battery: 2 }, headlamp: { circuit: 1, battery: 1 }, sensor: { circuit: 1, battery: 1 }, repairkit: { scrap: 2 } },
-  gearStock: { suit: 2, detector: 2, sensor: 2, suit2: 3, detector2: 3, firecoat: 3, headlamp: 2 },
+  salvage: { helmet: { scrap: 3 }, helmet2: { scrap: 4, circuit: 1 }, boots: { scrap: 3 }, pack: { scrap: 2 }, pack2: { scrap: 4, plate: 1 }, suit: { scrap: 4 }, suit2: { scrap: 6, plate: 2 }, firecoat: { scrap: 5, circuit: 1, battery: 1 }, detector: { circuit: 3, battery: 1, scrap: 1 }, detector2: { circuit: 5, battery: 2 }, headlamp: { circuit: 1, battery: 1 }, sensor: { circuit: 1, battery: 1 }, repairkit: { scrap: 2 } },
+  gearStock: { suit: 2, detector: 2, sensor: 2, suit2: 3, detector2: 3, firecoat: 3, headlamp: 2, helmet: 1, pack: 1, boots: 2, helmet2: 3, pack2: 3 },
   recipes: [
     { id: 'bolts',    st: 'gun', name: 'Болты ×10',           lvl: 1, mat: { scrap: 2 }, out: ['bolt', 10] },
     { id: 'splint',   st: 'gun', name: 'Шина',                lvl: 1, mat: { scrap: 2 }, out: ['splint', 1] },
@@ -294,7 +300,7 @@ const CFG = {
   vendors: {
     buyer: { name: 'Скупщик «Борода»',   ang: 0.2,  col: '#c9a24a', buys: { art: 1, part: 1, meat: 1, junk: 1 }, likes: { battery: 1.3, circuit: 1.4 }, sells: [] },
     gun:   { name: 'Оружейник «Ржавый»', ang: 1.5,  col: '#a5a5a5', buys: { part: 0.8, junk: 1 }, likes: { plate: 2, earbone: 1.4, scrap: 1.6 }, sells: ['ammo', 'bolt', 'canister'] },
-    gear:  { name: 'Снабженец «Кум»',    ang: 2.7,  col: '#7fa06a', buys: {}, sells: ['food', 'medkit', 'antirad', 'splint', 'antibiotic', 'suit', 'suit2', 'firecoat', 'headlamp', 'detector', 'detector2', 'lure', 'sensor', 'bolt'] },
+    gear:  { name: 'Снабженец «Кум»',    ang: 2.7,  col: '#7fa06a', buys: {}, sells: ['food', 'medkit', 'antirad', 'splint', 'antibiotic', 'suit', 'suit2', 'firecoat', 'helmet', 'helmet2', 'boots', 'pack', 'pack2', 'headlamp', 'detector', 'detector2', 'lure', 'sensor', 'bolt'] },
     sci:   { name: 'Учёный «Лис»',       ang: 3.9,  col: '#7fb8ff', buys: { art: 1.25, part: 0.6 }, likes: { mistvial: 2.2, glassgland: 1.7, gill: 1.5 }, sells: [], ident: 20 },
     bar:   { name: 'Бармен «Сидор»',     ang: 5.1,  col: '#d08a5a', buys: {}, sells: [], sleep: 15, map: 60, noteSell: 15 },
   },

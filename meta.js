@@ -18,6 +18,13 @@ const Meta = {
   suitRad() { const s = this.bestSuit(); return s ? Gear.eff(s).rad * this.suitEff() : 0; },
   suitAnom() { const s = this.bestSuit(); return s ? Gear.eff(s).anom * this.suitEff() : 0; },
   wearSuit(d) { const s = this.bestSuit(); if (s) P.suitCond = Math.max(0, P.suitCond - d * 0.06 * Gear.eff(s).wear); },
+  // Эффекты вещей: шлем — радиация и напряжение, обувь — скорость и шаги, рюкзак — грузоподъёмность
+  headEff() { const s = Gear.best('head'); return s ? Gear.eff(s) : {}; },
+  headRad() { return this.headEff().rad || 0; },
+  stressMul() { return 1 - Math.min(0.8, this.headEff().psy || 0); },
+  bootSpeed() { const s = Gear.best('feet'); return s ? Gear.eff(s).speed || 0 : 0; },
+  bootNoise() { const s = Gear.best('feet'); return s ? Math.min(0.8, Gear.eff(s).noise || 0) : 0; },
+  packCarry() { const s = Gear.best('back'); return s ? Gear.eff(s).carry || 0 : 0; },
   bestCoat() { let b = null; for (const s of P.inv) if (s.id === 'firecoat' && (!b || Gear.eff(s).fire > Gear.eff(b).fire)) b = s; return b; },
 
   // ---- огонь ----
@@ -65,7 +72,7 @@ const Meta = {
   suitWorkHTML() {
     const cap = Camp.lvl('gear'), wear = 100 - P.suitCond, rc = this.repairMats(wear, 'gear'); let h = '';
     if (this.bestSuit()) h += row('🧵', 'Починить из хлама', wear < 1 ? 'Исправно' : 'Износ ' + Math.round(wear) + '% → 0%. ' + this.matsText(rc), btn('srepairm', 'Починить', wear < 1 || !this.canPay(rc)));
-    for (const s of [this.bestSuit(), this.bestCoat()]) {
+    for (const s of Gear.KINDS.map(k => Gear.best(k))) {
       if (!s) continue; const n = (s.g && s.g.t) || 0, full = n >= cap, tc = this.tuneCost(n), i = P.inv.indexOf(s);
       h += '<div class="stat"><b>' + Gear.name(s) + '</b> · тюнинг ' + n + ' / ' + cap + (full && cap < 3 ? ' (больше — с уровнем снабжения)' : '') + (full ? '' : ' · ' + this.matsText(tc)) + '</div>';
       if (!full) for (const k of Gear.keys(s.id)) h += row('⚙', Gear.TUNE[k].text, '', btn('gtune:' + i + ':' + k, 'Улучшить', !this.canPay(tc)));
@@ -127,7 +134,10 @@ const Meta = {
   itemLabel(s) {
     const n = this.itemName(s);
     if (s.art && P.known[s.art]) { const g = Gear.grade(s.q); return n + ' <span style="color:' + g.col + '">· ' + g.n + '</span>'; }
-    if (!s.art && Gear.isGear(s.id) && Gear.rarOf(s)) return '<span style="color:' + Gear.TIERS[Gear.rarOf(s)].col + '">' + n + '</span>';
+    if (!s.art && Gear.isGear(s.id)) {
+      const w = Gear.isWorn(s) ? ' <span style="color:#7fe07f;font-size:11px">· надето</span>' : '';
+      return (Gear.rarOf(s) ? '<span style="color:' + Gear.TIERS[Gear.rarOf(s)].col + '">' + n + '</span>' : n) + w;
+    }
     return n;
   },
   gainLore() { if (P.lore < CFG.lore.length) { log('Знание: ' + CFG.lore[P.lore++], '#c8b0e8'); } },
@@ -298,7 +308,7 @@ const Meta = {
   lureAt(m) { return this.lures.some(l => Math.hypot(l.x - m.x, l.y - m.y) < 36); },
 
   update(dt) {
-    const psy = fx('psy'); if (psy) P.stress = Math.min(100, P.stress + psy * dt);
+    const psy = fx('psy'); if (psy) P.stress = Math.min(100, P.stress + psy * dt * Meta.stressMul());
     if (P.burn > 0) { P.burn -= dt; P.hurt(4 * dt, 'fire'); if (Math.random() < dt * 14) parts.push({ x: P.x + (Math.random() - 0.5) * 8, y: P.y - 4, vx: (Math.random() - 0.5) * 20, vy: -30, life: 0.4, col: Math.random() < 0.5 ? '#ff8a30' : '#ffd070' }); if (P.burn <= 0) log('Огонь погас.', '#9ab8d8'); }
     if (P.inAnom && P.inAnom.type === 'plesh' && Math.random() < dt * 0.6) this.breakLeg('Плешь вдавила ногу в землю. Перелом.');
     if (P.infect > 0) { P.infect += dt; P.hp -= 0.3 * dt; if (P.infect > 180) { P.infect = 0; log('Организм справился с заражением.', '#a8c890'); } }
@@ -425,7 +435,7 @@ const Meta = {
     } else if (vk === 'gear') {
       h += '<div><h3>Услуги</h3>'; const bs = this.bestSuit();
       if (bs) { const c = this.suitRepairCost(); h += row('🧥', 'Ремонт костюма', 'Износ ' + Math.round(100 - P.suitCond) + '%', btn('srepair', c ? c + ' ₽' : 'Исправно', !c || P.money < c)); }
-      if (bs || this.bestCoat()) { h += row('⚙', 'Доработка снаряжения', 'Ремонт из хлама и тюнинг костюма', btn('swork', G.ui && G.ui.ssel ? 'Закрыть' : 'Открыть')); if (G.ui && G.ui.ssel) h += '<div class="note">' + this.suitWorkHTML() + '</div>'; }
+      if (Gear.KINDS.some(k => Gear.best(k))) { h += row('⚙', 'Доработка снаряжения', 'Ремонт из хлама и тюнинг костюма', btn('swork', G.ui && G.ui.ssel ? 'Закрыть' : 'Открыть')); if (G.ui && G.ui.ssel) h += '<div class="note">' + this.suitWorkHTML() + '</div>'; }
       const up = this.slotPrice(); if (up) h += row('✦', 'Ещё один контейнер', 'Слотов под артефакты: ' + P.equip.length + ' → ' + (P.equip.length + 1), btn('upslot', up + ' ₽', P.money < up));
       h += '</div>';
     } else if (vk === 'sci') {

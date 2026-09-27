@@ -168,7 +168,7 @@ const Dungeon = {
     if (rad > 0) P.rad = Math.min(100, P.rad + rad * dt); else P.rad = Math.max(0, P.rad - CFG.player.radDecay * 0.1 * dt);
     if (P.rad > 60) P.hp -= (P.rad - 60) / 40 * dt; if (P.rad >= 100) P.hp -= 3 * dt;
     if (P.hp <= 0) return die();
-    P.stress = U.clamp(P.stress + (0.3 * (1 - 0.05 * P.sk.resist) - 0.08) * dt, 0, 100);
+    P.stress = U.clamp(P.stress + (0.3 * (1 - 0.05 * P.sk.resist) * Meta.stressMul() - 0.08) * dt, 0, 100);
     if (Math.random() < P.geigerRate * dt * 8) Snd.geiger();
     Meta.update(dt);
     this.fieldT -= dt; if (this.fieldT <= 0) { this.fieldT = 0.3; this.computeField(); }

@@ -48,9 +48,9 @@ const slotW = s => s.art ? CFG.arts[s.art].w : Gear.isGear(s.id) ? Gear.eff(s).w
 const fx = k => P.equip.reduce((v, a) => v + (a ? (Gear.fxOf(a.art, a.q)[k] || 0) : 0), 0);
 const weight = () => P.inv.reduce((w, s) => w + slotW(s), 0) + P.equip.reduce((w, a) => w + (a ? CFG.arts[a.art].w : 0), 0);
 const equipHas = id => P.equip.some(a => a && a.art === id);
-const carryCap = () => CFG.player.carry + P.sk.carry * 4 + fx('carry');
+const carryCap = () => CFG.player.carry + P.sk.carry * 4 + fx('carry') + Meta.packCarry();
 const maxStam = () => CFG.player.stam * (1 + 0.15 * P.sk.endurance);
-const radRes = () => Math.min(0.85, fx('radRes') + Meta.suitRad() + P.sk.resist * 0.05);
+const radRes = () => Math.min(0.85, fx('radRes') + Meta.suitRad() + Meta.headRad() + P.sk.resist * 0.05);
 const hintR = () => 210 + P.sk.sense * 50 + (hasItem('detector2') ? 170 : hasItem('detector') ? 90 : 0);
 const inCamp = (x = P.x, y = P.y) => G.scene !== 'zone' || Math.hypot(x - W.C.x, y - W.C.y) < W.C.r;
 const isSheltered = () => G.scene !== 'zone' || W.sheltered(P.x, P.y);
@@ -258,8 +258,8 @@ function updateEmission(dt) {
   else if (e.s === 'warn') { e.left -= dt; if (e.left <= 0) { e.s = 'blast'; e.left = E.dur; Snd.boom(); } }
   else if (e.s === 'blast') {
     e.left -= dt; G.shake = Math.max(G.shake, 0.06);
-    if (!isSheltered()) { P.hurt(E.dps * dt * (1 - P.sk.resist * 0.05), 'emi'); P.stress = Math.min(100, P.stress + 6 * dt); }
-    else P.stress = Math.min(100, P.stress + 1.5 * dt);
+    if (!isSheltered()) { P.hurt(E.dps * dt * (1 - P.sk.resist * 0.05), 'emi'); P.stress = Math.min(100, P.stress + 6 * dt * Meta.stressMul()); }
+    else P.stress = Math.min(100, P.stress + 1.5 * dt * Meta.stressMul());
     if (e.left <= 0) {
       e.s = 'calm'; e.next = E.gapMin + Math.random() * (E.gapMax - E.gapMin); Snd.siren(false);
       W.shake(); Mutants.migrate(); G.fogBoost = 0.4;
@@ -288,7 +288,7 @@ function update(dt) {
   P.sneak = !!(keys.ControlLeft || keys.KeyC);
   P.running = !!(keys.ShiftLeft && !P.sneak && moving && P.stam > 0 && !P.fracture);
   const over = Math.max(0, weight() - carryCap()) / carryCap();
-  let sp = CFG.player.speed * (P.running ? CFG.player.run : 1) * (P.sneak ? CFG.player.sneak : 1) * P.slow * (1 - Math.min(0.65, over * 1.2));
+  let sp = CFG.player.speed * (1 + Meta.bootSpeed()) * (P.running ? CFG.player.run : 1) * (P.sneak ? CFG.player.sneak : 1) * P.slow * (1 - Math.min(0.65, over * 1.2));
   if (P.food <= 0) sp *= 0.8;
   if (P.fracture) sp *= 0.6;
   if (P.grab > 0) { P.grab -= dt * (moving ? 2.5 : 1); sp = 0; if (P.grab <= 0) log('Ты вырвался.', '#9ab8d8'); }   // Топляк держит; рывок сокращает хватку
@@ -306,7 +306,7 @@ function update(dt) {
   // шум
   P.noiseT -= dt;
   if (moving && P.noiseT <= 0 && G.scene === 'zone') {
-    P.noiseT = 0.5; const n = CFG.player.noise, r = (P.running ? n.run : P.sneak ? n.sneak : n.walk) * Math.pow(0.85, P.sk.stealth);
+    P.noiseT = 0.5; const n = CFG.player.noise, r = (P.running ? n.run : P.sneak ? n.sneak : n.walk) * Math.pow(0.85, P.sk.stealth) * (1 - Meta.bootNoise());
     Mutants.hear(P.x, P.y, r * (1 + (equipHas('moonlight') ? 1.2 : 0)) * (fx('repel') ? 0.7 : 1));
   }
   // шаги
@@ -335,7 +335,7 @@ function update(dt) {
   let ds = 0;
   if (!camp) { ds += G.night * 0.4 + G.fog * 0.25; if (P.hp < 30) ds += 0.4; } else ds -= 4;
   for (const s of W.corpses) if (Math.hypot(s.x - P.x, s.y - P.y) < 80) { ds += 1; break; }
-  P.stress = U.clamp(P.stress + ds * (ds > 0 ? 1 - 0.05 * P.sk.resist : 1) * dt - (camp ? 0 : 0.08 * dt), 0, 100);
+  P.stress = U.clamp(P.stress + ds * (ds > 0 ? (1 - 0.05 * P.sk.resist) * Meta.stressMul() : 1) * dt - (camp ? 0 : 0.08 * dt), 0, 100);
   // фон: птицы, сверчки, костёр, сердце
   G.amb -= dt;
   if (G.amb <= 0) {

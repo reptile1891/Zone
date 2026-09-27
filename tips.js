@@ -53,10 +53,13 @@ const Tip = {
   suit(s) {
     const d = CFG.items[s.id], e = Gear.eff(s), b = Gear.BASE[s.id], rar = Gear.rarOf(s), tier = Gear.TIERS[rar], w0 = d.w;
     const cmp = (v, bv, lowGood) => { if (!bv) return ''; const pc = Math.round((v / bv - 1) * 100); if (!pc) return ''; const good = lowGood ? pc < 0 : pc > 0; return ' <span style="color:' + (good ? '#8fbf7f' : '#e0a060') + '">(' + (pc > 0 ? '+' : '−') + Math.abs(pc) + '%)</span>'; };
-    let h = this.head(Gear.name(s), tier.n + ' · ' + (s.id === 'firecoat' ? 'плащ' : 'костюм'), tier.col) + '<div class="ti-d">' + d.desc + '</div>';
-    if (b.rad) h += this.row('Радиация:', '−' + Math.round(e.rad * 100) + '%' + cmp(e.rad, b.rad)); if (b.anom) h += this.row('Аномалии:', '−' + Math.round(e.anom * 100) + '%' + cmp(e.anom, b.anom)); if (b.fire) h += this.row('Огонь:', '−' + Math.round(e.fire * 100) + '%' + cmp(e.fire, b.fire));
-    h += this.row('Вес:', e.w + ' кг' + cmp(e.w, w0, true)) + this.row('Износ:', 'скорость ×' + e.wear.toFixed(2) + (e.wear < 0.95 ? ' (медленнее)' : e.wear > 1.05 ? ' (быстрее)' : ''), e.wear < 0.95 ? '#8fbf7f' : e.wear > 1.05 ? '#e0a060' : null);
-    if (s.id !== 'firecoat') h += '<div class="ti-d">Из костюмов в рюкзаке работает лучший.</div>';
+    const kind = Gear.KIND[s.id], kn = Gear.KINDNAME[kind], worn = Gear.isWorn(s);
+    let h = this.head(Gear.name(s), tier.n + ' · ' + kn, tier.col) + '<div class="ti-d">' + d.desc + '</div>';
+    const LB = { rad: ['Радиация', v => '−' + Math.round(v * 100) + '%'], anom: ['Аномалии', v => '−' + Math.round(v * 100) + '%'], fire: ['Огонь', v => '−' + Math.round(v * 100) + '%'], psy: ['Напряжение', v => '−' + Math.round(v * 100) + '%'], speed: ['Скорость', v => '+' + Math.round(v * 100) + '%'], noise: ['Шум шагов', v => '−' + Math.round(v * 100) + '%'], carry: ['Грузоподъёмность', v => '+' + Math.round(v * 10) / 10 + ' кг'] };
+    for (const k in b) if (LB[k]) h += this.row(LB[k][0] + ':', LB[k][1](e[k]) + cmp(e[k], b[k]));
+    h += this.row('Вес:', e.w + ' кг' + cmp(e.w, w0, true));
+    if (kind === 'body' || kind === 'coat') h += this.row('Износ:', 'скорость ×' + e.wear.toFixed(2) + (e.wear < 0.95 ? ' (медленнее)' : e.wear > 1.05 ? ' (быстрее)' : ''), e.wear < 0.95 ? '#8fbf7f' : e.wear > 1.05 ? '#e0a060' : null);
+    if (kind !== 'coat') h += '<div class="ti-d">' + (worn ? '<b style="color:#7fe07f">Надето сейчас.</b> ' : '') + 'Из вещей этого слота (' + kn + ') работает лучшая в рюкзаке.</div>';
     return h + this.row('Ценность:', d.val + ' ₽');
   },
   // Оружие: по id (своё, простое или со случайными характеристиками) или по описанию def (товар на прилавке)
