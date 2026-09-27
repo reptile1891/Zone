@@ -10,7 +10,8 @@
     "sim:dungeon": "node tests/zone-dungeon-sim-report.js",
     "build:web": "node tools/build-web.js",
     "android:sync": "npm run build:web && npx cap sync android",
-    "android:open": "npx cap open android"
+    "android:open": "npx cap open android",
+    "sim:field": "node tests/zone-field-sim-report.js"
   },
   "devDependencies": {
     "@capacitor/android": "^8.5.2",

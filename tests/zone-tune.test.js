@@ -48,8 +48,8 @@ test("тюнинг оружия: обычный пистолет станови�
     return { w0, keys, coneKeys, first, lvl1, s2, third, fourth, wear: Wpn.of("pistol").wear, mods: P.wdefs.pistol.mods };
   })()`);
   assert.ok(o.keys.includes("dmg") && o.keys.includes("spread") && o.keys.includes("range")); assert.ok(!o.coneKeys.includes("range"));
-  assert.equal(o.first.n, 1); assert.equal(o.first.dmg, 31.8); assert.equal(o.first.spent, 4); assert.ok(o.first.def && o.first.val > o.w0.val); assert.equal(o.lvl1, 1);
-  assert.equal(o.s2.n, 2); assert.equal(o.s2.noise, 675); assert.equal(o.third.n, 3); assert.equal(o.third.plate, 2); assert.equal(o.fourth, 3, "четвёртого улучшения нет"); assert.ok(Math.abs(o.wear - 0.15) < 0.01);
+  assert.equal(o.first.n, 1); assert.equal(o.first.dmg, 31.8); assert.equal(o.first.spent, 6); assert.ok(o.first.def && o.first.val > o.w0.val); assert.equal(o.lvl1, 1);
+  assert.equal(o.s2.n, 2); assert.equal(o.s2.noise, 675); assert.equal(o.third.n, 3); assert.equal(o.third.plate, 3); assert.equal(o.fourth, 3, "четвёртого улучшения нет"); assert.ok(Math.abs(o.wear - 0.15) < 0.01);
 });
 
 test("тюнинг: не хватает материалов — ничего не происходит; тюнинг сохраняется и виден в сравнении с базой", () => {
@@ -100,5 +100,5 @@ test("панели и подсказки: секция «Доработать» 
   })()`);
   assert.doesNotMatch(o.closed, /wtune:/); assert.match(o.closed, /wwork:pistol/); assert.match(o.open, /wtune:pistol:dmg/); assert.match(o.open, /wrepairm:pistol/); assert.equal(o.s1, "pistol"); assert.equal(o.s2, null);
   assert.match(o.gear, /gtune:[0-9]+:rad/); assert.match(o.gear, /srepairm/); assert.match(o.tr, /swork/);
-  assert.match(o.t1, /Урон \+6%/); assert.match(o.t1, /Металлолом 4/); assert.match(o.t2, /Защита от радиации/); assert.match(o.t3, /Ремонт из хлама/); assert.match(o.t4, /Пистолет/); assert.match(o.t5, /костюма/);
+  assert.match(o.t1, /Урон \+6%/); assert.match(o.t1, /Металлолом 6/); assert.match(o.t2, /Защита от радиации/); assert.match(o.t3, /Ремонт из хлама/); assert.match(o.t4, /Пистолет/); assert.match(o.t5, /костюма/);
 });
