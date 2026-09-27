@@ -675,45 +675,11 @@ function openTrade(k) { G.ui = { k: 'trade', v: k }; renderPanel(); }
 function renderPanelBase() {
   const u = G.ui; if (!u || u.k === 'map') return; panel.style.display = 'block';
   if (u.k === 'menu') { panel.innerHTML = menuHTML(u); return; }
-  if (u.k === 'inv') {
-    let h = '<div class="x" data-a="close">✕ Esc</div><h2>Снаряжение</h2><div class="cols"><div><h3>Рюкзак — ' + weight().toFixed(1) + ' / ' + carryCap() + ' кг</h3>';
-    P.inv.forEach((s, i) => {
-      const def = s.art ? null : CFG.items[s.id];
-      const act = s.art ? btn('equip:' + i, 'В контейнер') : (def.use ? btn('use:' + i, 'Исп.') : '') + (Quick.can(s.id) ? btn('qp:' + s.id, '⚡') : '');
-      h += row(itemIcon(s), Meta.itemLabel(s) + (s.n > 1 ? ' ×' + s.n : ''), (s.art ? (P.known[s.art] ? CFG.arts[s.art].desc : 'Свойства неизвестны. Нужен учёный.') : (def.desc || '')) + ' · ' + slotW(s).toFixed(1) + ' кг', act + btn('drop:' + i, '↓'));
-    });
-    if (!P.inv.length) h += '<div class="stat">Пусто.</div>';
-    h += '</div><div><h3>Контейнеры для артефактов</h3>';
-    P.equip.forEach((a, i) => { h += `<span class="slot" data-a="unequip:${i}" title="${a ? CFG.arts[a.art].name + ': ' + CFG.arts[a.art].desc : 'Пусто'}">${a ? Codex.artHtml(a.art) : '·'}</span>`; });
-    h += '<div class="stat">' + P.equip.map(a => a ? Meta.itemLabel(Gear.asSlot(a)) : '—').join(' · ') + '</div>';
-    h += `<h3>Навыки — очков: ${P.sp} · опыт ${Math.floor(P.xp)}/${Math.floor(60 * Math.pow(P.lvl, 1.4))}</h3>`;
-    for (const k in CFG.skills) { const s = CFG.skills[k]; h += row('', `${s.name} <b>${P.sk[k]}/${s.max}</b>`, s.desc, btn('skill:' + k, '+', !P.sp || P.sk[k] >= s.max)); }
-    h += `<h3>Записки (${P.notes.length})</h3>` + (P.notes.map(n => `<div class="note">${n.txt}</div>`).join('') || '<div class="stat">Нет.</div>') + '</div></div>';
-    panel.innerHTML = h;
-  } else if (u.k === 'trade') {
+  if (u.k === 'trade') {
     const v = CFG.vendors[u.v];
-    let h = `<div class="x" data-a="close">✕ Esc</div><h2>${v.name}</h2><div class="stat">Деньги: <b style="color:#e8c060">${P.money} ₽</b> · Вес ${weight().toFixed(1)}/${carryCap()}</div>${u.v === 'market' ? Meta.marketTabs(u) : ''}<div class="cols">`;
-    const mt = u.v === 'market' && u.tab && u.tab !== 'trade';   // в Торговом доме вкладки: товары / оружие / услуги
-    if (!mt && Camp.stock(u.v).length) { h += '<div><h3>Купить</h3>'; for (const id of Camp.stock(u.v)) { const p = buyPrice(id), d = CFG.items[id]; h += row(d.icon, d.name + (d.pack ? ' ×' + d.pack : ''), (d.desc || '') + ' · ' + d.w + ' кг', btn('buy:' + id, p + ' ₽', P.money < p)); } h += '</div>'; }
-    if (!mt && (Object.keys(v.buys).length || v.ident)) {
-      h += '<div><h3>' + (v.ident ? 'Опознать / продать' : 'Продать') + '</h3>'; let any = false;
-      P.inv.forEach((s, i) => {
-        const p = sellPrice(s, u.v), unk = s.art && !P.known[s.art];
-        if (v.ident && unk) { any = true; h += row(itemIcon(s), itemName(s), 'Опознание: ' + Camp.identCost() + ' ₽', btn('ident:' + i, 'Опознать', P.money < Camp.identCost())); }
-        else if (p) { any = true; const dm = !s.art ? (G.demand[s.id] || 1) : (G.demand[s.art] || 1); h += row(itemIcon(s), itemName(s) + (s.n > 1 ? ' ×' + s.n : ''), unk ? 'Ценность неясна — берут по низу' : 'Спрос ' + (dm > 1.05 ? '↑' : dm < 0.95 ? '↓' : '→'), btn('sell:' + i, p + ' ₽') + (s.n > 1 ? btn('sellall:' + i, 'Все') : '')); }
-      });
-      if (u.v === 'market') {   // оружие тоже продаётся здесь (в том числе последний ствол — останется нож)
-        for (const id of P.weapons) { any = true; h += row(Icons.html('w_' + Wpn.base(id)), '<span style="color:' + Wpn.color(id) + '">' + Wpn.name(id) + '</span>', 'Огнестрел · износ ' + Math.round(100 - P.cond[id]) + '%', btn('wsell:' + id, Wpn.sellPrice(id) + ' ₽')); }
-        for (const k of P.knives || []) if (k !== 'knife') { any = true; h += row(Melee.DEF[k].icon, Melee.DEF[k].name, 'Нож', btn('msell:' + k, Math.floor(Melee.DEF[k].price / 2) + ' ₽')); }
-      }
-      if (!any) h += '<div class="stat">Нечего предложить.</div>'; h += '</div>';
-    }
-    if (u.v === 'bar') {
-      h += `<div><h3>Услуги</h3>${row('☾', 'Переночевать', 'Утро, здоровье, сохранение', btn('sleep', Camp.sleepCost() + ' ₽', P.money < Camp.sleepCost()))}${row('🗺', 'Карта участка', 'Открывает район и отмечает аномалии', btn('map', v.map + ' ₽', P.money < v.map))}${row('💬', 'Слухи', 'Бесплатно', btn('rumor', 'Слушать'))}<div class="note" id="rumortxt">${u.r || ''}</div>`;
-      h += '<h3>Продать информацию</h3>'; let any = false; P.notes.forEach((n, i) => { if (!n.sold) { any = true; h += row('✎', n.txt.slice(0, 46) + '…', '', btn('tell:' + i, v.noteSell + ' ₽')); } });
-      if (!any) h += '<div class="stat">Новых записок нет.</div>'; h += '</div>';
-    }
-    panel.innerHTML = h + '</div>';
+    let h = `<div class="x" data-a="close">✕ Esc</div><h2>${v.name}</h2><div class="stat">Деньги: <b style="color:#e8c060">${P.money} ₽</b> · Вес ${weight().toFixed(1)}/${carryCap()}</div>`;
+    h += u.v === 'bar' ? Shop.barHTML(u) : Shop.tradeHTML(u);
+    panel.innerHTML = h; Inv.syncHand(u);
   }
 }
 // Обработка нажатия на кнопку панели (data-a вида «действие:аргумент:аргумент2»)

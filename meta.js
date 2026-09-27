@@ -100,25 +100,6 @@ const Meta = {
     c.scrap = Math.max(1, Math.ceil(wear / r.scrap * m)); const k = wear >= 30 ? Math.ceil(wear / r.circuit * m) : 0; if (k) c.circuit = k; return c;
   },
   tuneCost(n) { return CFG.tune.cost[Math.min(n, CFG.tune.cost.length - 1)]; },
-  // Строки «Доработать» под оружием: ремонт из хлама и тюнинг
-  weaponWorkHTML(id) {
-    const cap = Camp.lvl('gun'), n = Wpn.tuneCount(id), wear = 100 - P.cond[id], rc = this.repairMats(wear, 'gun'), full = n >= cap, tc = this.tuneCost(n);
-    let h = row('🔧', 'Починить из хлама', wear < 1 ? 'Исправно' : 'Износ ' + Math.round(wear) + '% → 0%. ' + this.matsText(rc), btn('wrepairm:' + id, 'Починить', wear < 1 || !this.canPay(rc)));
-    h += '<div class="stat">Тюнинг: ' + n + ' / ' + cap + (full && cap < 3 ? ' (больше — с уровнем мастерской)' : '') + (full ? '' : ' · каждое улучшение: ' + this.matsText(tc)) + '</div>';
-    if (!full) for (const k of Wpn.tuneKeys(id)) h += row('⚙', Wpn.TUNE[k].text, '', btn('wtune:' + id + ':' + k, 'Улучшить', !this.canPay(tc)));
-    return h;
-  },
-  // Костюм и плащ: ремонт износа (общий) и тюнинг
-  suitWorkHTML() {
-    const cap = Camp.lvl('gear'), wear = 100 - P.suitCond, rc = this.repairMats(wear, 'gear'); let h = '';
-    if (this.bestSuit()) h += row('🧵', 'Починить из хлама', wear < 1 ? 'Исправно' : 'Износ ' + Math.round(wear) + '% → 0%. ' + this.matsText(rc), btn('srepairm', 'Починить', wear < 1 || !this.canPay(rc)));
-    for (const s of Gear.KINDS.map(k => Gear.best(k))) {
-      if (!s) continue; const n = (s.g && s.g.t) || 0, full = n >= cap, tc = this.tuneCost(n), i = P.inv.indexOf(s);
-      h += '<div class="stat"><b>' + Gear.name(s) + '</b> · тюнинг ' + n + ' / ' + cap + (full && cap < 3 ? ' (больше — с уровнем снабжения)' : '') + (full ? '' : ' · ' + this.matsText(tc)) + '</div>';
-      if (!full) for (const k of Gear.keys(s.id)) h += row('⚙', Gear.TUNE[k].text, '', btn('gtune:' + i + ':' + k, 'Улучшить', !this.canPay(tc)));
-    }
-    return h;
-  },
 
   // ---- разборка (верстак): вещь → материалы ----
   // Оружие: по цене и состоянию; редкое даёт пластины, уникальное — ещё и батарею. Тюнинг не возвращается
@@ -146,30 +127,6 @@ const Meta = {
   slotPrice() { return [300, 700][P.equip.length - 2] || 0; },
 
   // ---- знания ----
-  // Оружейник: ваше оружие, стандартный товар, прилавок дня со случайными характеристиками
-  gunShopHTML() {
-    const st = w => 'урон ' + w.dmg + (w.pellets > 1 ? '×' + w.pellets : '') + ' · ' + (1 / w.cd).toFixed(1) + ' выстр./с · дальн. ' + w.range, col = w => Wpn.TIERS[w.rar || 0].col;
-    let h = '<div><h3>Твоё оружие</h3>';
-    for (const id of P.weapons) {
-      const w = Wpn.of(id), c = this.repairCost(id), d = Wpn.defOf(id), df = Wpn.diff(d).map(x => '<span style="color:' + (x.good ? '#8fbf7f' : '#e0a060') + '">' + x.text + '</span>').join(', ');
-      h += row(Icons.html('w_' + Wpn.base(id)), '<span style="color:' + col(w) + '">' + w.name + '</span>' + (P.weapon === id ? ' ★' : ''), 'Износ ' + Math.round(100 - P.cond[id]) + '% · ' + st(w) + (df ? '<br>' + df : ''),
-        '<div style="display:flex;flex-direction:column;gap:3px;min-width:104px">' + btn('wequip:' + id, 'В руки', P.weapon === id) + btn('wrepair:' + id, c ? 'Починить ' + c + ' ₽' : 'Исправно', !c || P.money < c) + btn('wsell:' + id, 'Продать ' + Wpn.sellPrice(id) + ' ₽') + btn('wwork:' + id, (G.ui && G.ui.wsel === id ? 'Закрыть' : 'Доработать') + (Wpn.tuneCount(id) ? ' (' + Wpn.tuneCount(id) + ')' : '')) + '</div>');
-      if (G.ui && G.ui.wsel === id) h += '<div class="note">' + this.weaponWorkHTML(id) + '</div>';
-    }
-    h += '</div><div><h3>Стандартный товар</h3>'; let any = false;
-    for (const k in CFG.weapons) {
-      const w = CFG.weapons[k]; if ((w.lvl || 1) > Camp.lvl('gun') || P.weapons.includes(k)) continue; any = true;
-      h += row(Icons.html('w_' + k), w.name, st(w) + (w.note ? ' · ' + w.note : ''), btn('wbuy:' + k, w.price + ' ₽', P.money < w.price));
-    }
-    if (!any) h += '<div class="stat">Всё стандартное у тебя уже есть.</div>';
-    h += '<h3>На прилавке сегодня (обновляется после ночёвки и выброса)</h3>';
-    (P.gunOffers || []).forEach((o, i) => {
-      const w = Wpn.eff(o.def), df = Wpn.diff(o.def).map(x => '<span style="color:' + (x.good ? '#8fbf7f' : '#e0a060') + '">' + x.text + '</span>').join(', ');
-      h += row(Icons.html('w_' + o.def.base), '<span style="color:' + col(w) + '">' + w.name + '</span> <span class="stat">' + Wpn.TIERS[o.def.rar].n + '</span>', st(w) + (df ? '<br>' + df : ''), btn('wbuyg:' + i, o.price + ' ₽', P.money < o.price));
-    });
-    if (!(P.gunOffers || []).length) h += '<div class="stat">Пусто. Загляни после ночёвки.</div>';
-    return h;
-  },
   // Подпись в панелях (HTML): у артефакта — класс качества (только у опознанного), у костюма — цвет редкости
   itemLabel(s) {
     const n = this.itemName(s);
@@ -468,41 +425,6 @@ const Meta = {
     closePanel(); G.ui = { k: 'ending', key }; renderPanel();
   },
 
-  tradeExtra(vk) {
-    if (vk === 'market') { const t = (G.ui && G.ui.tab) || 'trade'; return t === 'guns' ? this.tradeExtra('gun') : t === 'serv' ? this.tradeExtra('gear') : ''; }   // вкладки одного окна
-    let h = '<div class="cols">';
-    if (vk === 'gun') {
-      h += this.gunShopHTML();
-      h += '</div>';
-    } else if (vk === 'gear') {
-      h += '<div><h3>Услуги</h3>'; const bs = this.bestSuit();
-      if (bs) { const c = this.suitRepairCost(); h += row('🧥', 'Ремонт костюма', 'Износ ' + Math.round(100 - P.suitCond) + '%', btn('srepair', c ? c + ' ₽' : 'Исправно', !c || P.money < c)); }
-      if (Gear.KINDS.some(k => Gear.best(k))) { h += row('⚙', 'Доработка снаряжения', 'Ремонт из хлама и тюнинг костюма', btn('swork', G.ui && G.ui.ssel ? 'Закрыть' : 'Открыть')); if (G.ui && G.ui.ssel) h += '<div class="note">' + this.suitWorkHTML() + '</div>'; }
-      const up = this.slotPrice(); if (up) h += row('✦', 'Ещё один контейнер', 'Слотов под артефакты: ' + P.equip.length + ' → ' + (P.equip.length + 1), btn('upslot', up + ' ₽', P.money < up));
-      h += '</div>';
-    } else if (vk === 'sci') {
-      h += '<div><h3>Исследование (' + Camp.researchCost() + ' ₽)</h3>'; let any = false;
-      P.inv.forEach((s, i) => { if (s.art && P.known[s.art] && !P.researched[s.art]) { any = true; h += row('🔬', CFG.arts[s.art].name, 'Учёный расскажет, что знает о Зоне', btn('research:' + i, Camp.researchCost() + ' ₽', P.money < Camp.researchCost() || P.lore >= CFG.lore.length)); } });
-      if (!any) h += '<div class="stat">Принеси опознанный артефакт нового вида.</div>';
-      h += '</div>';
-    } else if (vk === 'bar') {
-      h += '<div><h3>Задания</h3>';
-      P.offers.forEach((o, i) => { h += row('📋', o.text, 'Награда ' + o.reward + ' ₽ · репутация +' + o.rep + (o.item ? ' · артефакт' : ''), btn('qacc:' + i, 'Взять', P.quests.length >= 3)); });
-      P.quests.forEach((q, i) => { h += row('✔', q.text, this.progText(q), btn('qturn:' + i, 'Сдать', !this.done(q))); });
-      const cells = known.reduce((a, b) => a + b, 0) - P.mapSold, pay = Math.round(Math.max(0, cells) * 0.04 * (1 + 0.1 * P.sk.mapping));
-      h += '</div><div><h3>Услуги</h3>' + row('🛡', 'Страховка', 'Если погибнешь — вернут вместе с хабаром (один раз)', btn('ins', '150 ₽', P.insured || P.money < 150));
-      h += row('🎫', 'Пропуск в сектор 4', P.pass ? 'Уже есть' : 'Нужна репутация 5+. Оцепление пропустит.', btn('pass', '250 ₽', P.pass || P.rep < 5 || P.money < 250));
-      h += row('🧭', 'Проводник', 'Проведёт и отметит аномалии на большом участке', btn('guide', '220 ₽', P.money < 220));
-      h += row('🗺', 'Продать данные разведки', 'Новых клеток карты: ' + Math.max(0, cells) + ' (' + pay + ' ₽)', btn('sellmap', pay + ' ₽', pay < 20));
-      h += '<h3>На рынке</h3>' + ((G.events || []).map(e => '<div class="note">' + e.text + '</div>').join('') || '<div class="stat">Спокойно.</div>') + '</div>';
-    }
-    return h + '</div>';
-  },
-  // Вкладки Торгового дома: товары (купить и продать, опознание), оружие (прилавок Ржавого), услуги (ремонт костюма, слоты, исследование)
-  marketTabs(u) {
-    const t = u.tab || 'trade', b = (k, n) => '<button class="btn" data-a="mtab:' + k + '" style="' + (t === k ? 'border-color:#b5742a;background:#3a2a18' : '') + '">' + n + '</button>';
-    return '<div style="display:flex;gap:6px;margin:8px 0">' + b('trade', 'Товары') + b('guns', 'Оружие') + b('serv', 'Услуги и исследования') + '</div>';
-  },
   invExtra() {
     const w = Wpn.of(P.weapon);
     return `<div class="cols"><div><h3>Состояние</h3><div class="stat">Оружие: ${P.weapons.length ? '<b style="color:' + Wpn.color(P.weapon) + '">' + w.name + '</b> (износ ' + Math.round(100 - P.cond[P.weapon]) + '%)' : '<b>только нож</b>'}</div>
@@ -514,17 +436,6 @@ const Meta = {
   click(a, arg, arg2, u) {
     const i = +arg;
     switch (a) {
-      case 'buy': {
-        const d = CFG.items[arg], p = this.buyPrice(arg);
-        if (d.req) for (const k in d.req) if (P.sk[k] < d.req[k]) { log('Слишком тяжело: нужен навык «' + CFG.skills[k].name + '» ' + d.req[k] + '.'); return true; }
-        if (P.money >= p) { P.money -= p; invAdd(arg, d.pack || 1); Snd.pick(); } return true;
-      }
-      case 'mtab': u.tab = arg; return true;
-      case 'sell': case 'sellall': {
-        const s = P.inv[i]; if (!s) return true; const n = a === 'sellall' ? s.n : 1, p = sellPrice(s, u.v) * n;
-        P.money += p; P.earned += p; addXp(p * 0.06); const key = s.art || s.id; G.demand[key] = Math.max(0.5, (G.demand[key] || 1) * Math.pow(0.94, n));
-        if (s.art) P.inv.splice(i, 1); else { s.n -= n; if (s.n <= 0) P.inv.splice(i, 1); } Snd.pick(); return true;
-      }
       case 'ident': {
         const s = P.inv[i], v = CFG.vendors[u.v];
         if (s && s.art && u && u.v === 'sci' && P.money >= Camp.identCost()) { P.money -= Camp.identCost(); P.known[s.art] = true; addXp(25); P.karma.study += 0.5; log('Опознан: ' + CFG.arts[s.art].name + ' (' + Gear.grade(s.q).n.toLowerCase() + '). ' + CFG.arts[s.art].desc, Gear.grade(s.q).col); } return true;
@@ -534,17 +445,11 @@ const Meta = {
         if (P.money >= Camp.sleepCost()) { P.money -= Camp.sleepCost(); Camp.sleepBonus(); G.clock += (((7 - G.hour) + 24) % 24) * CFG.time.dayLen / 24; P.hp = 100; P.stam = maxStam(); P.rad = Math.max(0, P.rad - 20); P.stress = 0; P.food = Math.max(20, P.food - 15); this.genOffers(); save(); log('Ты выспался. Утро. Игра сохранена.'); closePanel(); }
         return true;
       }
-      case 'wbuy': { const w = CFG.weapons[arg]; if (P.money >= w.price && !P.weapons.includes(arg)) { P.money -= w.price; P.weapons.push(arg); P.weapon = arg; P.cond[arg] = 100; Snd.pick(); log('Куплено: ' + w.name); } return true; }
-      case 'wequip': P.weapon = arg; return true;
-      case 'wbuyg': Wpn.buyOffer(i); return true;
-      case 'wsell': { if (P.weapons.includes(arg)) { const p = Wpn.sellPrice(arg), nm = Wpn.name(arg); Wpn.remove(arg); P.money += p; P.earned += p; Snd.pick(); log('Продано: ' + nm + ' за ' + p + ' ₽'); } return true; }
-      case 'wwork': u.wsel = u.wsel === arg ? null : arg; return true;
       case 'wrepairm': { if (!P.weapons.includes(arg)) return true; const c = this.repairMats(100 - P.cond[arg], 'gun'); if (Object.keys(c).length && this.canPay(c)) { this.pay(c); P.cond[arg] = 100; Snd.pick(); log('Оружие починено из хлама.', '#a8c890'); } return true; }
       case 'wtune': {
         if (!P.weapons.includes(arg) || !Wpn.tuneKeys(arg).includes(arg2)) return true; const n = Wpn.tuneCount(arg), c = this.tuneCost(n);
         if (n >= Camp.lvl('gun') || !this.canPay(c)) return true; this.pay(c); Wpn.tune(arg, arg2); Snd.pick(); addXp(8); log('Тюнинг: ' + Wpn.name(arg) + ' — ' + Wpn.TUNE[arg2].text.toLowerCase() + '.', '#8fbf7f'); return true;
       }
-      case 'swork': u.ssel = !u.ssel; return true;
       case 'srepairm': { const c = this.repairMats(100 - P.suitCond, 'gear'); if (this.bestSuit() && Object.keys(c).length && this.canPay(c)) { this.pay(c); P.suitCond = 100; Snd.pick(); log('Костюм починен из хлама.', '#a8c890'); } return true; }
       case 'gtune': {
         const s = P.inv[i]; if (!s || !Gear.isGear(s.id) || !Gear.keys(s.id).includes(arg2)) return true; const n = (s.g && s.g.t) || 0, c = this.tuneCost(n);
@@ -676,6 +581,4 @@ function renderPanel() {
   if (u.k === 'talk') { panel.style.display = 'block'; panel.innerHTML = Meta.talkHTML(u); return; }
   if (u.k === 'ending') { panel.style.display = 'block'; panel.innerHTML = Meta.endingHTML(u); return; }
   renderPanelBase();
-  if (u.k === 'trade') panel.insertAdjacentHTML('beforeend', Meta.tradeExtra(u.v));
-  else if (u.k === 'inv') panel.insertAdjacentHTML('beforeend', Meta.invExtra());
 }

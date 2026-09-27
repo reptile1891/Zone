@@ -78,27 +78,28 @@ test("тюнинг костюма: обычный костюм получает 
   assert.equal(o.name, "Плащ сталкера"); assert.ok(Math.abs(o.coat - 0.636) < 1e-9); assert.ok(Math.abs(o.rad - 0.265) < 1e-9);
 });
 
-test("верстак: ремонт и тюнинг доступны и на самом верстаке, там же костюм; совет про тюнинг", () => {
+test("верстак: ремонт и тюнинг доступны прямо в руке, там же костюм; совет про тюнинг", () => {
   fresh();
   const o = run(`(() => {
-    ${mats} G.ui = { k: "craft", st: "gun" }; const closed = Camp.craftHTML("gun"); P.inv.push({ id: "suit", n: 1 });
-    Meta.click("wwork", "pistol", undefined, G.ui); const open = Camp.craftHTML("gun"); Meta.click("wtune", "pistol", "dmg", G.ui); const tuned = Wpn.tuneCount("pistol");
-    Meta.click("swork", undefined, undefined, G.ui); const suit = Camp.craftHTML("gun"), sci = Camp.craftHTML("sci");
+    ${mats} P.cond.pistol = 60; const uGun = { k: "craft", st: "gun" }; G.ui = uGun; const closed = Shop.workshopHTML(uGun);
+    uGun.hand = { z: "gun", i: P.weapons.indexOf("pistol") }; const open = Shop.workshopHTML(uGun);
+    Meta.click("wtune", "pistol", "dmg", uGun); const tuned = Wpn.tuneCount("pistol");
+    P.suitCond = 70; P.inv.push({ id: "suit", n: 1 }); uGun.hand = { z: "inv", i: P.inv.length - 1, n: 1 }; const suit = Shop.workshopHTML(uGun);
+    const sci = Shop.labHTML({ k: "craft", st: "sci" });
     P.hints = {}; P.hintsOff = false; const rule = Hint.rules.find(r => r.id === "tune"); P.bld.gun = 2; const on = !!rule.when(); P.bld.gun = 1; const done = !!rule.when();
     return { closed, open, tuned, suit, sci, on, done };
   })()`);
-  assert.match(o.closed, /Ремонт и тюнинг/); assert.match(o.closed, /wwork:pistol/); assert.doesNotMatch(o.closed, /wtune:/); assert.match(o.open, /wtune:pistol:dmg/); assert.match(o.open, /wrepairm:pistol/);
-  assert.equal(o.tuned, 1); assert.match(o.suit, /gtune:[0-9]+:rad/); assert.match(o.suit, /srepairm/); assert.doesNotMatch(o.sci, /Ремонт и тюнинг/); assert.ok(o.on); assert.equal(o.done, false, "улучшение уже сделано — совет не нужен");
+  assert.doesNotMatch(o.closed, /wtune:/); assert.match(o.open, /wtune:pistol:dmg/); assert.match(o.open, /wrepairm:pistol/);
+  assert.equal(o.tuned, 1); assert.match(o.suit, /gtune:[0-9]+:rad/); assert.match(o.suit, /srepairm/); assert.doesNotMatch(o.sci, /wtune:/); assert.ok(o.on); assert.equal(o.done, false, "улучшение уже сделано — совет не нужен");
 });
 
-test("панели и подсказки: секция «Доработать» раскрывается, у кнопок есть подсказки", () => {
+test("подсказки: у кнопок ремонта и тюнинга в руке есть текст с материалами и процентами", () => {
   fresh();
   const o = run(`(() => {
-    ${mats} const closed = Meta.gunShopHTML(); Meta.click("wwork", "pistol", undefined, G.ui); const open = Meta.gunShopHTML(); const s1 = G.ui.wsel; Meta.click("wwork", "pistol", undefined, G.ui);
-    P.inv.push({ id: "suit", n: 1 }); Meta.click("swork", undefined, undefined, G.ui); G.ui.v = "gear"; const gear = Meta.suitWorkHTML(), tr = Meta.tradeExtra("gear"); G.ui.ssel = false;
-    return { closed, open, s1, s2: G.ui.wsel, gear, tr, t1: Tip.fromAttr("wtune:pistol:dmg"), t2: Tip.fromAttr("gtune:0:rad"), t3: Tip.fromAttr("wrepairm:pistol"), t4: Tip.fromAttr("wwork:pistol"), t5: Tip.fromAttr("srepairm") };
+    ${mats} P.cond.pistol = 60; const uGun = { k: "craft", st: "gun", hand: { z: "gun", i: P.weapons.indexOf("pistol") } }; G.ui = uGun; const open = Shop.workshopHTML(uGun);
+    P.suitCond = 70; P.inv.push({ id: "suit", n: 1 }); const i = P.inv.length - 1;
+    return { open, t1: Tip.fromAttr("wtune:pistol:dmg"), t2: Tip.fromAttr("gtune:" + i + ":rad"), t3: Tip.fromAttr("wrepairm:pistol"), t4: Tip.fromAttr("wwork:pistol"), t5: Tip.fromAttr("srepairm") };
   })()`);
-  assert.doesNotMatch(o.closed, /wtune:/); assert.match(o.closed, /wwork:pistol/); assert.match(o.open, /wtune:pistol:dmg/); assert.match(o.open, /wrepairm:pistol/); assert.equal(o.s1, "pistol"); assert.equal(o.s2, null);
-  assert.match(o.gear, /gtune:[0-9]+:rad/); assert.match(o.gear, /srepairm/); assert.match(o.tr, /swork/);
+  assert.match(o.open, /wtune:pistol:dmg/); assert.match(o.open, /wrepairm:pistol/);
   assert.match(o.t1, /Урон \+6%/); assert.match(o.t1, /Металлолом 6/); assert.match(o.t2, /Защита от радиации/); assert.match(o.t3, /Ремонт из хлама/); assert.match(o.t4, /Пистолет/); assert.match(o.t5, /костюма/);
 });

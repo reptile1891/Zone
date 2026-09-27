@@ -54,11 +54,12 @@ test("тишина: удар шумит куда меньше выстрела; 
 test("разные ножи: продаются в Торговом доме, покупка, смена, продажа; свойства отличаются; топорик пробивает броню", () => {
   fresh();
   const o = run(`(() => {
-    P.bld = Camp.DEFAULT_BLD(); P.money = 1000; const html = Meta.gunShopHTML(), lvl1 = { shiv: /mbuy:shiv/.test(html), machete: /mbuy:machete/.test(html), hatchet: /mbuy:hatchet/.test(html) };
-    const u = { k: "trade", v: "market" }; Meta.click("mbuy", "shiv", undefined, u); const own = P.knives.slice(), cur = P.knife, spent = 1000 - P.money;
-    P.bld.gun = 3; const html3 = Meta.gunShopHTML(); const lvl3 = /mbuy:machete/.test(html3) && /mbuy:hatchet/.test(html3);
-    Meta.click("mbuy", "hatchet", undefined, u); Meta.click("mequip", "knife", undefined, u); const eq = P.knife; Melee.cycle(); const cyc = P.knife;
-    Meta.click("msell", "shiv", undefined, u); const sold = P.knives.slice(); Meta.click("msell", "knife", undefined, u); const keepKnife = P.knives.includes("knife");
+    P.bld = Camp.DEFAULT_BLD(); P.money = 1000; const list = () => Shop.knifeList().map(o => o.id), lvl1 = { shiv: list().includes("shiv"), machete: list().includes("machete"), hatchet: list().includes("hatchet") };
+    const sellKnife = id => { const u = { v: "market", hand: { z: "melee", i: P.knives.indexOf(id) } }; Inv.act(u, "sell"); };
+    Inv.buy(Shop.knifeList().find(o => o.id === "shiv"), 1); const own = P.knives.slice(), cur = P.knife, spent = 1000 - P.money;
+    P.bld.gun = 3; const lvl3 = list().includes("machete") && list().includes("hatchet");
+    Inv.buy(Shop.knifeList().find(o => o.id === "hatchet"), 1); P.knife = "knife"; const eq = P.knife; Melee.cycle(); const cyc = P.knife;
+    sellKnife("shiv"); const sold = P.knives.slice(); sellKnife("knife"); const keepKnife = P.knives.includes("knife");
     P.knife = "hatchet"; const tin = new Mutant("tin", 3030, 3000, null); tin.hp = 1000; tin.state = "hunt"; Mutants.list = [tin]; const armor = tin.c.armor; useSel(); const hatchet = 1000 - tin.hp;
     return { lvl1, own, cur, spent, lvl3, eq, cyc, sold, keepKnife, armor, hatchet, expect: Melee.DEF.hatchet.dmg };
   })()`);

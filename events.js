@@ -97,27 +97,19 @@ const Events = {
     if (e.sec >= 2 && Math.random() < 0.4) { const ids = Object.keys(CFG.arts).filter(k => k !== 'echo'); invAdd('art', 1, ids[Math.floor(Math.random() * ids.length)]); got.push('артефакт'); }
     log('Груз вскрыт: ' + got.join(', '), '#e8c060'); Snd.pick(); Stats.on('events');
   },
-  // ---- коробейник ----
+  // ---- коробейник: та же витрина, что в Торговом доме (Inv 'shop' — взял в руку, «Купить» подтверждает) ----
   offers(sec) {
-    const o = [], tm = 1 - 0.04 * P.sk.trade, add = (id, n, mul) => o.push({ id, n, price: Math.max(1, Math.round(CFG.items[id].buy * n * mul * tm)), sold: false });
-    const g = Gear.loot(Math.random, sec); o.push({ slot: g, price: Math.round(CFG.items[g.id].buy * (1.1 + 0.45 * ((g.g && g.g.rar) || 0)) * tm), sold: false });
+    const o = [], tm = 1 - 0.04 * P.sk.trade, add = (id, n, mul) => { const d = CFG.items[id]; o.push({ id, kind: 'item', icon: d.icon, name: d.name + (n > 1 ? ' ×' + n : ''), sub: d.desc, price: Math.max(1, Math.round(d.buy * n * mul * tm)), buyLabel: 'Купить', qty: n }); };
+    const g = Gear.loot(Math.random, sec); o.push({ id: 'g0', kind: 'gear', gear: g, icon: itemIcon(g), name: Meta.itemLabel(g).replace(/<[^>]+>/g, ''), sub: 'Редкая вещь: свои случайные характеристики', price: Math.round(CFG.items[g.id].buy * (1.1 + 0.45 * ((g.g && g.g.rar) || 0)) * tm), buyLabel: 'Купить' });
     add('medkit', 2, 0.95); add('antirad', 2, 0.95); add('bolt', 10, 0.9);
     if (!hasItem('hook')) add('hook', 1, 0.85); else add('ammo', 20, 0.9);
     return o;
   },
   openPeddler(s) { G.ui = { k: 'peddler', s }; renderPanel(); },
   peddlerHtml(u) {
+    Inv.shopList = (u.s.offers || []).filter(o => !o.sold);
     let h = '<div class="x" data-a="close">✕ Esc</div><h2>Коробейник</h2><div class="stat">«Что тут у меня… Только без торга — я сам рискую шкурой.» · Деньги: <b style="color:#e8c060">' + P.money + ' ₽</b> · Вес ' + weight().toFixed(1) + '/' + carryCap() + '</div>';
-    u.s.offers.forEach((o, i) => {
-      const nm = o.slot ? Meta.itemLabel(o.slot) : CFG.items[o.id].name + (o.n > 1 ? ' ×' + o.n : ''), ic = o.slot ? itemIcon(o.slot) : CFG.items[o.id].icon;
-      h += row(ic, nm, o.slot ? Gear.TIERS[(o.slot.g && o.slot.g.rar) || 0].n + ' · свои случайные характеристики' : CFG.items[o.id].desc, o.sold ? '<span class="stat">продано</span>' : btn('pdl:' + i, o.price + ' ₽', P.money < o.price));
-    });
-    return h;
-  },
-  buy(i) {
-    const s = G.ui && G.ui.s, o = s && s.offers[i]; if (!o || o.sold || P.money < o.price) return;
-    P.money -= o.price; o.sold = true; if (o.slot) P.inv.push(o.slot); else invAdd(o.id, o.n); Snd.pick();
-    const e = this.act.find(x => x.s === s); if (e && !e.paid) { e.paid = true; Stats.on('events'); }
+    return h + Inv.shopGrid(u) + Inv.handBar(u);
   },
   // ---- рисование ----
   draw() {
@@ -154,6 +146,10 @@ const Events = {
   const _do = drawOverlays; drawOverlays = function () { _do(); Events.drawArrows(); };
   const _dep = Camp.depart; Camp.depart = function () { _dep.call(this); Events.reset(); };
   const _ent = Camp.enter; Camp.enter = function (silent) { _ent.call(this, silent); Events.clear(true); };
-  const _render = Camp.render; Camp.render = function (u) { if (u.k === 'peddler') { panel.style.display = 'block'; panel.innerHTML = Events.peddlerHtml(u); return true; } return _render.call(this, u); };
-  const _click = Meta.click; Meta.click = function (a, arg, arg2, u) { if (a === 'pdl') { Events.buy(+arg); return true; } return _click.call(this, a, arg, arg2, u); };
+  const _render = Camp.render; Camp.render = function (u) { if (u.k === 'peddler') { panel.style.display = 'block'; panel.innerHTML = Events.peddlerHtml(u); Inv.syncHand(u); return true; } return _render.call(this, u); };
+  // первая успешная покупка у коробейника засчитывается в статистику событий
+  const _ib = Inv.buy; Inv.buy = function (o, n) {
+    const before = o.sold; _ib.call(this, o, n);
+    if (!before && o.sold && G.ui && G.ui.k === 'peddler') { const e = Events.act.find(x => x.s === G.ui.s); if (e && !e.paid) { e.paid = true; Stats.on('events'); } }
+  };
 })();

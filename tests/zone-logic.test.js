@@ -139,9 +139,10 @@ test("торговля: продажа снижает спрос, «продат
   fresh();
   const o = run(`(() => {
     invAdd("scrap", 4); const u = { v: "buyer" }; const price = sellPrice(P.inv[0], "buyer"), m0 = P.money;
-    Meta.click("sell", 0, 0, u); const one = { m: P.money - m0, left: invCount("scrap"), demand: G.demand.scrap };
-    Meta.click("sellall", 0, 0, u); const all = { left: invCount("scrap") };
-    const m1 = P.money; Meta.click("buy", "medkit", 0, { v: "gear" }); return { price, one, all, spent: m1 - P.money, kits: invCount("medkit"), buy: buyPrice("medkit") };
+    Inv.shift = true; u.hand = { z: "inv", i: 0, n: 1 }; Inv.act(u, "sell"); Inv.shift = false;
+    const one = { m: P.money - m0, left: invCount("scrap"), demand: G.demand.scrap };
+    u.hand = { z: "inv", i: P.inv.findIndex(s => s.id === "scrap"), n: invCount("scrap") }; Inv.act(u, "sell"); const all = { left: invCount("scrap") };
+    const m1 = P.money; Inv.buy(Shop.stockList("gear").find(o => o.id === "medkit"), 1); return { price, one, all, spent: m1 - P.money, kits: invCount("medkit"), buy: buyPrice("medkit") };
   })()`);
   assert.equal(o.one.m, o.price); assert.equal(o.one.left, 3); assert.ok(o.one.demand < 1); assert.equal(o.all.left, 0);
   assert.equal(o.spent, o.buy); assert.equal(o.kits, 1);
@@ -218,7 +219,7 @@ test("оружие: без патронов выстрела нет; изнош�
 test("оружие: покупка, смена, ремонт стоит денег и зависит от навыка и уровня мастерской", () => {
   fresh();
   const o = run(`(() => {
-    P.bld = Camp.DEFAULT_BLD(); P.bld.gun = 2; P.money = 2000; Meta.click("wbuy", "revolver", 0, { v: "gun" });
+    P.bld = Camp.DEFAULT_BLD(); P.bld.gun = 2; P.money = 2000; Inv.buy(Shop.weaponList().find(o => o.id === "revolver"), 1);
     const bought = { w: P.weapon, has: P.weapons.includes("revolver"), money: P.money };
     P.cond.revolver = 50; const cost = Meta.repairCost("revolver"); P.sk.repair = 5; const cheap = Meta.repairCost("revolver"); P.sk.repair = 0;
     const m0 = P.money; Meta.click("wrepair", "revolver", 0, { v: "gun" }); return { bought, cost, cheap, paid: m0 - P.money, cond: P.cond.revolver };

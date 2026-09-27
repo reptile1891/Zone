@@ -83,9 +83,10 @@ test("экземпляры: id уникальны, сохраняются изн
   fresh();
   const o = run(`(() => {
     const d1 = Wpn.roll("rifle", U.rng(1), { rar: 1 }), d2 = Wpn.roll("rifle", U.rng(2), { rar: 1 }); const a = Wpn.add(d1), b = Wpn.add(d2, 60);
+    const sellGun = id => { const u = { v: "market", hand: { z: "gun", i: P.weapons.indexOf(id) } }; Inv.act(u, "sell"); };
     const ids = [a, b], cond = { a: P.cond[a], b: P.cond[b] }; P.weapon = b; const cyc = []; for (let i = 0; i < 4; i++) { Meta.cycleWeapon(); cyc.push(P.weapon); }
-    P.money = 0; const price = Wpn.sellPrice(b); P.weapon = b; Meta.click("wsell", b, 0, { v: "gun" }); const after = { has: P.weapons.includes(b), weapon: P.weapon, money: P.money, price, def: !!P.wdefs[b], cond: P.cond[b] };
-    Meta.click("wsell", a, 0, {}); Meta.click("wsell", "pistol", 0, {}); const last = { weapons: P.weapons.slice() };
+    P.money = 0; const price = Wpn.sellPrice(b); P.weapon = b; sellGun(b); const after = { has: P.weapons.includes(b), weapon: P.weapon, money: P.money, price, def: !!P.wdefs[b], cond: P.cond[b] };
+    sellGun(a); sellGun("pistol"); const last = { weapons: P.weapons.slice() };
     return { ids, cond, cyc, after, last, value: Wpn.value(d2) };
   })()`);
   assert.deepEqual(o.ids, ["rifle#1", "rifle#2"]); assert.deepEqual(o.cond, { a: 100, b: 60 }); assert.equal(o.cyc.length, 4); assert.ok(new Set(o.cyc).size >= 3, "перебор проходит по всем");
@@ -128,30 +129,32 @@ test("прилавок: число и тип товаров зависят от 
   assert.ok(o.res[3].bases.length > o.res[1].bases.length); for (const l of [1, 2, 3]) assert.equal(o.res[l].badPrice, 0); assert.equal(o.dup, 0, "типы на прилавке не повторяются, пока хватает разных"); assert.ok(o.changed); assert.ok(o.emi >= 3, "выброс обновляет прилавок");
 });
 
-test("покупка с прилавка: платит, добавляет, берёт в руки, убирает товар; бедному не продают; стандартный товар как раньше", () => {
+test("покупка с прилавка: витрина Торгового дома — свой товар и предложение дня, платит, добавляет, берёт в руки; бедному не продают; стандартный товар как раньше", () => {
   fresh();
   const o = run(`(() => {
     P.bld = Camp.DEFAULT_BLD(); P.bld.gun = 3; Wpn.genShop(U.rng(4)); const offers = P.gunOffers.slice(), n0 = offers.length, first = offers[0], m0 = P.money;
-    P.money = first.price - 1; Meta.click("wbuyg", 0, 0, { v: "gun" }); const poor = { weapons: P.weapons.length, offers: P.gunOffers.length };
-    P.money = first.price + 10; Meta.click("wbuyg", 0, 0, { v: "gun" }); const rich = { weapons: P.weapons.length, offers: P.gunOffers.length, money: P.money, weapon: P.weapon, name: Wpn.name(P.weapon), inHand: P.weapon === P.weapons[P.weapons.length - 1], cond: P.cond[P.weapon] };
-    P.money = 2000; Meta.click("wbuy", "smg", 0, { v: "gun" }); const std = { has: P.weapons.includes("smg") };
-    return { n0, poor, rich, std, price: first.price, name: first.def.name, html: plain(Meta.tradeExtra("gun")) };
-    function plain(h) { return String(h).replace(/<[^>]+>/g, " ").replace(/\\s+/g, " "); }
+    const list = () => Shop.weaponList(), offerEntry = () => list().find(x => x.kind === "offer" && x.idx === 0);
+    P.money = first.price - 1; Inv.buy(offerEntry(), 1); const poor = { weapons: P.weapons.length, offers: P.gunOffers.length };
+    P.money = first.price + 10; Inv.buy(offerEntry(), 1); const rich = { weapons: P.weapons.length, offers: P.gunOffers.length, money: P.money, weapon: P.weapon, name: Wpn.name(P.weapon), inHand: P.weapon === P.weapons[P.weapons.length - 1], cond: P.cond[P.weapon] };
+    P.money = 2000; const std0 = list().find(x => x.kind === "weapon" && x.id === "smg"); Inv.buy(std0, 1); const std = { has: P.weapons.includes("smg"), stillListed: !!list().find(x => x.kind === "weapon" && x.id === "smg") };
+    return { n0, poor, rich, std, price: first.price, name: first.def.name };
   })()`);
   assert.deepEqual(o.poor, { weapons: 1, offers: o.n0 }); assert.equal(o.rich.weapons, 2); assert.equal(o.rich.offers, o.n0 - 1); assert.equal(o.rich.money, 10); assert.equal(o.rich.name, o.name); assert.ok(o.rich.inHand); assert.equal(o.rich.cond, 100);
-  assert.equal(o.std.has, true); assert.match(o.html, /Твоё оружие/); assert.match(o.html, /На прилавке сегодня/); assert.match(o.html, /Стандартный товар/);
+  assert.equal(o.std.has, true); assert.equal(o.std.stillListed, false, "купленный ствол больше не в списке стандартного товара");
 });
 
 test("интерфейс оружейника: имя цветом редкости, отличия от базового, цены; подсказка со сравнением и силой", () => {
   fresh();
   const o = run(`(() => {
     P.bld = Camp.DEFAULT_BLD(); P.bld.gun = 3; const def = { base: "revolver", rar: 2, mods: { dmg: 1.15, cd: 0.9, wear: 1.2 }, perks: {}, name: "Револьвер «Тяжёлый Скорый»" }; P.gunOffers = [{ def, price: 700 }]; const id = Wpn.add(Wpn.roll("rifle", U.rng(3), { rar: 3 }));
-    const html = Meta.gunShopHTML(); const offerTip = Tip.fromAttr("wbuyg:0"), ownTip = Tip.fromAttr("wequip:" + id), plainTip = Tip.fromAttr("wequip:pistol"), hud = Tip.quick(1);
-    return { html, offerTip, ownTip, plainTip, id, hasIcon: html.includes("<img") };
+    Inv.shopList = Shop.weaponList(); const offerIdx = Inv.shopList.findIndex(x => x.kind === "offer" && x.idx === 0);
+    const offerTip = Tip.fromAttr("cell:shop:" + offerIdx), ownTip = Tip.fromAttr("cell:gun:" + P.weapons.indexOf(id)), std = Inv.shopList.find(x => x.kind === "weapon" && x.id === "pistol"), hud = Tip.quick(1);
+    return { offerTip, ownTip, offerBadge: Inv.shopList[offerIdx].price, id, offerName: Inv.shopList[offerIdx].name, std };
   })()`);
-  assert.match(o.html, /color:#6fa8e8/); assert.match(o.html, /color:#e8a040/); assert.match(o.html, /урон \+15%/); assert.match(o.html, /темп \+10%/); assert.match(o.html, /износ \+20%/); assert.match(o.html, /wbuyg:0/); assert.match(o.html, /wsell:/); assert.ok(o.hasIcon);
+  assert.equal(o.offerBadge, 700); assert.match(o.offerName, /Тяжёлый Скорый/);
   const t = plain(o.offerTip); assert.match(t, /Редкое/); assert.match(t, /Урон: 50\.6 \(\+15%\)/); assert.match(t, /Сила: 1\.\d\d/); assert.doesNotMatch(t, /Мастерская/); assert.ok(t.includes("выстр./с") && t.includes("(+11%)"), "темп +11% показан плюсом: " + t);
-  const u = plain(o.ownTip); assert.match(u, /Уникальное/); assert.match(u, /★/); assert.match(u, /Состояние: 100%/); assert.match(u, /Цена продажи: \d+ ₽/); assert.match(plain(o.plainTip), /Обычное/);
+  const u = plain(o.ownTip); assert.match(u, /Уникальное/); assert.match(u, /★/); assert.match(u, /Состояние: 100%/); assert.match(u, /Цена продажи: \d+ ₽/); assert.equal(o.std, undefined, "пистолет уже есть — в стандартном товаре его нет");
+  function plain(h) { return String(h).replace(/<[^>]+>/g, " ").replace(/\s+/g, " "); }
 });
 
 test("добыча: сейф бункера часто даёт оружие не хуже Хорошего; бросок детерминирован; шкафчики и трупы бандитов иногда тоже", () => {

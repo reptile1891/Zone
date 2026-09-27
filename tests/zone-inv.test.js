@@ -61,7 +61,7 @@ test("кнопка с расходником помнит вещь без зап
     invAdd("medkit", 2); invAdd("splint", 1); Quick.assign(2, "medkit"); Quick.assign(3, "splint"); P.hp = 40; P.sel = 2; P.cd = 0; useSel(); P.cd = 0; useSel(); P.sel = 3; P.cd = 0; P.fracture = true; useSel();
     Quick._t = 1; update(0.1); Meta.afterLoad(); const empty = { held: heldNames.slice(2, 4), med: Quick.count("medkit"), spl: Quick.count("splint"), valid: Quick.valid() };
     P.sel = 2; P.cd = 0; const hp0 = P.hp; useSel(); const idle = P.hp === hp0;
-    invAdd("medkit", 3); const picked = Quick.count("medkit"); G.scene = "camp"; P.money = 500; P.bld = Camp.DEFAULT_BLD(); Meta.click("buy", "medkit", undefined, { k: "trade", v: "market" }); const bought = Quick.count("medkit");
+    invAdd("medkit", 3); const picked = Quick.count("medkit"); G.scene = "camp"; P.money = 500; P.bld = Camp.DEFAULT_BLD(); Inv.buy(Shop.stockList("market").find(o => o.id === "medkit"), 1); const bought = Quick.count("medkit");
     P.hp = 40; P.cd = 0; useSel(); const again = P.hp > 40;
     return { empty, idle, picked, bought, again, layout: Quick.layout().slice(2, 4) };
   })()`);
@@ -90,10 +90,11 @@ test("продажа оружия: все стволы, в том числе п�
   fresh();
   const o = run(`(() => {
     P.bld = Camp.DEFAULT_BLD(); P.money = 0; const before = { weapons: P.weapons.slice(), held: heldNames.slice(1, 2) };
-    const price = Wpn.sellPrice("pistol"); Meta.click("wsell", "pistol", undefined, { k: "trade", v: "market" }); const after = { weapons: P.weapons.slice(), weapon: P.weapon, money: P.money, held: heldNames[1] };
-    Quick._t = 1; update(0.1); const freed = heldNames[1]; const html = Inv.html(G.ui); const grid = /cell:gun:/.test(html);
+    const price = Wpn.sellPrice("pistol"); const u = { v: "market", hand: { z: "gun", i: P.weapons.indexOf("pistol") } }; Inv.act(u, "sell");
+    const after = { weapons: P.weapons.slice(), weapon: P.weapon, money: P.money, held: heldNames[1] };
+    Quick._t = 1; update(0.1); const freed = heldNames[1]; const grid = /cell:gun:0/.test(Inv.bigGrid({}));
     invAdd("ammo", 5); P.sel = 1; P.cd = 0; const a0 = invCount("ammo"); shoot(); const noShot = invCount("ammo") === a0; const checks = Camp.confirmChecks().map(c => c[1]).join("|"); const cyc = (Meta.cycleWeapon(), P.weapons.length);
-    const buy = CFG.weapons.pistol.price; P.money = buy; Meta.click("wbuy", "pistol", undefined, { k: "trade", v: "market" }); const rebought = P.weapons.includes("pistol") && P.money === 0;
+    const buy = CFG.weapons.pistol.price; P.money = buy; Inv.buy(Shop.weaponList().find(o => o.id === "pistol"), 1); const rebought = P.weapons.includes("pistol") && P.money === 0;
     return { before, price, after, freed, grid, noShot, noGun: /Нет огнестрела/.test(checks), cyc, buy, rebought };
   })()`);
   assert.deepEqual(o.before.weapons, ["pistol"]); assert.deepEqual(o.after.weapons, [], "последний ствол продан"); assert.equal(o.after.money, o.price); assert.ok(o.price > 0); assert.equal(o.after.weapon, "pistol", "запасной указатель, оружием не считается");

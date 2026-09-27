@@ -23,14 +23,16 @@ test("лагерь: три входа — Бар, Торговый дом, Ма�
   assert.ok(enter.some(l => /Торговый дом/.test(l)));
 });
 
-test("Торговый дом: в одном окне — ассортимент Снабжения и Оружейной, продажа, опознание, оружие, услуги, исследование", () => {
+test("Торговый дом: одно окно point & click — витрина Снабжения, Оружейной, ножей и слотов плюс продажа всего рюкзака; опознания и вкладок нет", () => {
   fresh();
   const o = run(`(() => {
     P.bld = Camp.DEFAULT_BLD(); P.money = 500; invAdd("scrap", 3); invAdd("art", 1, "soul"); invAdd("art", 1, "medusa"); P.known.medusa = true; P.gunOffers = [];
-    const stock = Camp.stock("market"), v = CFG.vendors.market; G.ui = { k: "trade", v: "market" }; const first = Meta.tradeExtra("market"); Meta.click("mtab", "serv", undefined, G.ui); const extra = Meta.tradeExtra("market"); Meta.click("mtab", "guns", undefined, G.ui); const guns = Meta.tradeExtra("market"); const tabs = Meta.marketTabs(G.ui); G.ui = null;
-    return { stock, hasGun: CFG.vendors.gun.sells.every(id => stock.includes(id)), hasGear: Camp.stock("gear").every(id => stock.includes(id)), buy: stock.length > 5, sell: !!(v.buys.art && v.buys.junk && v.buys.part), ident: v.ident === undefined, name: /Торговый дом/.test(v.name), extra: /Услуги/.test(extra) && !/Исследование/.test(extra), first, guns: guns.length > 20 && !/Исследование/.test(guns), tabs: /mtab:trade/.test(tabs) && /mtab:guns/.test(tabs) && /mtab:serv/.test(tabs) };
+    const stock = Camp.stock("market"), v = CFG.vendors.market; const u = { k: "trade", v: "market" }; const html = Shop.tradeHTML(u);
+    return { stock, hasGun: CFG.vendors.gun.sells.every(id => stock.includes(id)), hasGear: Camp.stock("gear").every(id => stock.includes(id)), ident: v.ident === undefined, name: /Торговый дом/.test(v.name),
+      shopKinds: [...new Set(Shop.stockList("market").concat(Shop.weaponList(), Shop.knifeList()).map(o2 => o2.kind))], noTabs: !/mtab:/.test(html), grid: /cell:shop:/.test(html) && /ggrid big/.test(html) };
   })()`);
-  assert.equal(o.hasGun, true); assert.equal(o.hasGear, true); assert.equal(o.buy, true); assert.equal(o.sell, true); assert.equal(o.ident, true); assert.equal(o.name, true); assert.equal(o.extra, true); assert.equal(o.first, "", "по умолчанию — вкладка товаров"); assert.equal(o.guns, true); assert.equal(o.tabs, true);
+  assert.equal(o.hasGun, true); assert.equal(o.hasGear, true); assert.equal(o.ident, true); assert.equal(o.name, true); assert.equal(o.noTabs, true, "вкладок больше нет — один экран");
+  assert.deepEqual(o.shopKinds.sort(), ["item", "knife", "weapon"], "витрина смешивает снабжение, оружие и ножи"); assert.equal(o.grid, true);
 });
 
 test("Торговый дом: цена продажи — лучшая из Скупки, Лаборатории и Оружейной; покупка и опознание работают отсюда", () => {
@@ -40,9 +42,9 @@ test("Торговый дом: цена продажи — лучшая из С�
     const prices = ["buyer", "sci", "gun"].map(k => sellPrice(s, k)), m = sellPrice(s, "market");
     const junk = { id: "scrap", n: 1 }, jm = sellPrice(junk, "market"), jbest = Math.max(sellPrice(junk, "buyer"), sellPrice(junk, "gun"));
     P.money = 500; invAdd("art", 1, "soul"); const un = P.inv.length - 1; const u = { k: "trade", v: "market" }; G.ui = u;
-    Meta.click("buy", "medkit", undefined, u); const bought = invCount("medkit"); Meta.click("buy", "ammo", undefined, u); const ammo = invCount("ammo");
+    Inv.buy(Shop.stockList("market").find(o => o.id === "medkit"), 1); const bought = invCount("medkit"); Inv.buy(Shop.stockList("market").find(o => o.id === "ammo"), 1); const ammo = invCount("ammo");
     const before = P.money; Meta.click("ident", String(un), undefined, u); const knownAtMarket = !!P.known.soul; const sciU = { k: "trade", v: "sci" }; Meta.click("ident", String(un), undefined, sciU); const known = !!P.known.soul, spent = before - P.money;
-    invAdd("scrap", 4); const si = P.inv.findIndex(x => x.id === "scrap"); const m0 = P.money; Meta.click("sell", String(si), undefined, u);
+    invAdd("scrap", 4); const si = P.inv.findIndex(x => x.id === "scrap"); const m0 = P.money; u.hand = { z: "inv", i: si, n: 1 }; Inv.act(u, "sell");
     return { prices, m, jm, jbest, bought, ammo, spent, known, knownAtMarket, sold: P.money - m0 };
   })()`);
   assert.equal(o.m, Math.max(...o.prices)); assert.equal(o.jm, o.jbest); assert.ok(o.jm > 0);
@@ -117,7 +119,7 @@ test("опознание: только у Учёного «Лиса» в Мас�
     P.money = 100; Meta.click("ident", String(i0), undefined, { k: "trade", v: "sci" }); const paid = 100 - P.money, known = !!P.known.soul;
     P.known = {}; invAdd("art", 1, "medusa", 1); const ui = P.inv.findIndex(s => s.art === "medusa"), s = P.inv[ui];
     const unkPrice = sellPrice(s, "market"); P.known.medusa = true; const knownPrice = sellPrice(s, "market"); P.known.medusa = false;
-    const m0 = P.money; Meta.click("sell", String(ui), undefined, { k: "trade", v: "market" }); const sold = P.money - m0, gone = !P.inv.some(x => x.art === "medusa");
+    const m0 = P.money; const mu = { v: "market", hand: { z: "inv", i: ui, n: 1 } }; Inv.act(mu, "sell"); const sold = P.money - m0, gone = !P.inv.some(x => x.art === "medusa");
     Camp.buildRoom("gun"); const R = Camp.rooms.gun; const lis = R.vendors.some(v => v.k === "sci"), spot = R.spots.some(x => /Лис/.test(x.label()));
     return { costs, poor, moneyKept, paid, known, unkPrice, knownPrice, sold, gone, lis, spot, mktIdent: CFG.vendors.market.ident };
   })()`);

@@ -62,12 +62,13 @@ test("магазин и подсказки: вещи слотов покупаю
   fresh();
   const o = run(`(() => {
     P.money = 5000; P.bld = Camp.DEFAULT_BLD(); P.bld.gear = 3; const price = buyPrice("helmet"); const rars = [0, 0, 0, 0];
-    for (let i = 0; i < 100; i++) { P.money = 1e6; P.inv = []; Meta.click("buy", "boots", undefined, { v: "gear" }); rars[P.inv[0].g.rar]++; }
-    P.money = 5000; P.inv = []; Meta.click("buy", "helmet", undefined, { v: "gear" }); Meta.click("buy", "pack", undefined, { v: "gear" }); Meta.click("buy", "boots", undefined, { v: "gear" });
-    const tipH = Tip.slot(P.inv[0]), tipP = Tip.slot(P.inv[1]), tipB = Tip.slot(P.inv[2]), buyTip = Tip.fromAttr("buy:pack2");
+    const buyGear = id => Inv.buy(Shop.stockList("gear").find(o => o.id === id), 1);
+    for (let i = 0; i < 100; i++) { P.money = 1e6; P.inv = []; buyGear("boots"); rars[P.inv[0].g.rar]++; }
+    P.money = 5000; P.inv = []; buyGear("helmet"); buyGear("pack"); buyGear("boots");
+    const tipH = Tip.slot(P.inv[0]), tipP = Tip.slot(P.inv[1]), tipB = Tip.slot(P.inv[2]), buyTip = Tip.item("pack2", "buy");
     P.inv.forEach(s => { s.g.t = 0; }); P.money = 0; invAdd("scrap", 40); invAdd("circuit", 20); invAdd("plate", 6); invAdd("battery", 4);
     const i = P.inv.findIndex(s => s.id === "boots"), before = Gear.eff(P.inv[i]).speed; Meta.click("gtune", String(i), "speed", { v: "gear" }); const after = Gear.eff(P.inv[i]).speed;
-    const work = Meta.suitWorkHTML();
+    const u = { k: "craft", st: "gun", hand: { z: "inv", i, n: 1 } }; const work = Inv.handBar(u);
     return { price, rars, tipH, tipP, tipB, buyTip, before, after, work };
   })()`);
   assert.ok(o.price >= 60 && o.price <= 250, "цена около 110: " + o.price); assert.ok(o.rars[0] > 40 && o.rars[3] === 0);

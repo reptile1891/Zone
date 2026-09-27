@@ -37,19 +37,20 @@ test("разборка снаряжения: костюмы по редкост�
   assert.equal(o.det.n, 1); assert.equal(o.det.circuit, 3); assert.deepEqual(o.left, ["suit", "detector", "medkit", "art", "circuit", "battery", "scrap"]); assert.equal(o.scrap, 4 + 1);
 });
 
-test("панель верстака: раздел «Разборка», подтверждение вторым нажатием, подсказка с выходом", () => {
+test("панель верстака: разборка кнопкой «в руке», подтверждение вторым нажатием, подсказка с выходом", () => {
   fresh();
   const o = run(`(() => {
     const extra = Wpn.add(Wpn.roll("revolver", Math.random, { rar: 1 })); P.inv = [{ id: "suit2", n: 1 }];
-    const html = Camp.craftHTML("gun"), sci = Camp.craftHTML("sci");
-    Camp.click("salv", "g", "0"); const ask = { sc: G.ui.sc, has: P.inv.length, html: Camp.craftHTML("gun").includes("Точно?") };
-    Camp.click("salv", "w", extra); const switched = { sc: G.ui.sc, has: P.weapons.includes(extra) };
-    Camp.click("salv", "w", extra); const done = { has: P.weapons.includes(extra), sc: G.ui.sc };
-    P.inv = [{ id: "suit", n: 1 }]; Camp.click("salv", "g", "0"); Camp.click("craft", "bolts"); const cleared = G.ui.sc, kept = P.inv.some(s => s.id === "suit");
+    const uGun = { k: "craft", st: "gun", hand: { z: "inv", i: 0, n: 1 } }, uSci = { k: "craft", st: "sci", hand: { z: "inv", i: 0, n: 1 } };
+    G.ui = uGun; const html = Shop.workshopHTML(uGun); const sci = Shop.labHTML(uSci);
+    Camp.click("salv", "g", "0", uGun); const ask = { sc: G.ui.sc, has: P.inv.length, html: Shop.workshopHTML(uGun).includes("Точно?") };
+    uGun.hand = { z: "gun", i: P.weapons.indexOf(extra) }; Camp.click("salv", "w", extra, uGun); const switched = { sc: G.ui.sc, has: P.weapons.includes(extra) };
+    Camp.click("salv", "w", extra, uGun); const done = { has: P.weapons.includes(extra), sc: G.ui.sc };
+    P.inv = [{ id: "suit", n: 1 }]; uGun.hand = { z: "inv", i: 0, n: 1 }; Camp.click("salv", "g", "0", uGun); Camp.click("craft", "bolts", undefined, uGun); const cleared = G.ui.sc, kept = P.inv.some(s => s.id === "suit");
     const tipW = (() => { const i2 = Wpn.add(Wpn.roll("smg", Math.random, { rar: 0 })); return Tip.fromAttr("salv:w:" + i2); })(), tipG = Tip.fromAttr("salv:g:0");
     return { html, sci, ask, switched, done, cleared, kept, tipW, tipG };
   })()`);
-  assert.match(o.html, /Разборка/); assert.match(o.html, /salv:g:0/); assert.match(o.html, /Ветеран/); assert.match(o.html, /Даст: [^<]*Металлолом/); assert.doesNotMatch(o.sci, /Разборка/);
+  assert.match(o.html, /salv:g:0/); assert.match(o.html, /Ветеран/); assert.match(o.html, /Разобрать[^<]*Металлолом/); assert.doesNotMatch(o.sci, /salv:g:0/);
   assert.deepEqual(o.ask, { sc: "g0", has: 1, html: true }); assert.equal(o.switched.sc, "w" + o.switched.sc.slice(1)); assert.ok(o.switched.has); assert.equal(o.done.has, false); assert.equal(o.done.sc, null);
   assert.equal(o.cleared, null); assert.ok(o.kept); assert.match(o.tipW, /Разборка даст/); assert.match(o.tipG, /Плащ сталкера/); assert.match(o.tipG, /Нажми дважды/);
 });

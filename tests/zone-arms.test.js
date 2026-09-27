@@ -64,8 +64,8 @@ test("Самострел: из засады бьёт вдвое сильнее �
 test("Самострел: покупается у оружейника с уровня 2; износ и ремонт работают", () => {
   fresh();
   const o = run(`(() => {
-    P.bld = Camp.DEFAULT_BLD(); const hidden = !Meta.tradeExtra("gun").includes("Самострел"); P.bld.gun = 2; P.money = 2000; const shown = Meta.tradeExtra("gun").includes("Самострел");
-    Meta.click("wbuy", "crossbow", 0, { v: "gun" }); const bought = P.weapons.includes("crossbow") && P.weapon === "crossbow", m = P.money;
+    P.bld = Camp.DEFAULT_BLD(); const hidden = !Shop.weaponList().some(o => o.id === "crossbow"); P.bld.gun = 2; P.money = 2000; const shown = Shop.weaponList().some(o => o.id === "crossbow");
+    Inv.buy(Shop.weaponList().find(o => o.id === "crossbow"), 1); const bought = P.weapons.includes("crossbow") && P.weapon === "crossbow", m = P.money;
     P.cond.crossbow = 60; const cost = Meta.repairCost("crossbow"); Meta.click("wrepair", "crossbow", 0, { v: "gun" }); return { hidden, shown, bought, m, cost, cond: P.cond.crossbow };
   })()`);
   assert.ok(o.hidden && o.shown && o.bought); assert.equal(o.m, 2000 - CFG.weapons.crossbow.price); assert.ok(o.cost > 0); assert.equal(o.cond, 100);

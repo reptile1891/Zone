@@ -48,33 +48,6 @@ Object.assign(Camp, {
   take(id, n) { if (!id.startsWith('art:')) return invTake(id, n); for (let i = P.inv.length - 1; i >= 0 && n > 0; i--) if (P.inv[i].art === id.slice(4)) { P.inv.splice(i, 1); n--; } },
   matName(id) { return id.startsWith('art:') ? CFG.arts[id.slice(4)].name : CFG.items[id].name; },
   canCraft(r) { return this.lvl(r.st) >= r.lvl && Object.keys(r.mat).every(id => this.have(id) >= r.mat[id]) && (!r.req || Object.keys(r.req).every(k => P.sk[k] >= r.req[k])); },
-  craftHTML(st) {
-    const l = this.lvl(st), nm = st === 'sci' ? 'Лабораторный синтез (лаборатория ур. ' + l + ')' : 'Верстак (мастерская ур. ' + l + ')';
-    return '<div class="x" data-a="close">✕ Esc</div><h2>' + nm + '</h2><div class="stat">Хлам и трофеи — в дело. Сложные рецепты открываются с уровнем здания.</div>' + (st === 'gun' ? this.upgradeHTML() : '') + CFG.recipes.filter(r => r.st === st).map(r => {
-      const mats = Object.keys(r.mat).map(id => this.matName(id) + ' ' + this.have(id) + '/' + r.mat[id]).join(', '), ic = r.out[0] === 'art' ? Icons.html('art') : CFG.items[r.out[0]].icon;
-      const sub = l < r.lvl ? 'Нужен уровень здания ' + r.lvl : (r.req && !Object.keys(r.req).every(k => P.sk[k] >= r.req[k]) ? 'Нужен навык «' + CFG.skills[Object.keys(r.req)[0]].name + '» ' + Object.values(r.req)[0] : mats);
-      return row(ic, r.name, sub, btn('craft:' + r.id, 'Сделать', !this.canCraft(r)));
-    }).join('') + (st === 'gun' ? this.salvageHTML() : '');
-  },
-  // Ремонт из хлама и тюнинг — прямо на верстаке (то же, что «Доработать» у Оружейника и Снабженца)
-  upgradeHTML() {
-    const u = G.ui || {}; let h = '<h3>Ремонт и тюнинг</h3>';
-    for (const id of P.weapons) {
-      const w = Wpn.of(id), n = Wpn.tuneCount(id);
-      h += row(Icons.html('w_' + Wpn.base(id)), '<span style="color:' + Wpn.color(id) + '">' + Wpn.name(id) + '</span>' + (P.weapon === id ? ' ★' : ''), 'Износ ' + Math.round(100 - P.cond[id]) + '% · тюнинг ' + n + ' / ' + this.lvl('gun'), btn('wwork:' + id, u.wsel === id ? 'Закрыть' : 'Доработать'));
-      if (u.wsel === id) h += '<div class="note">' + Meta.weaponWorkHTML(id) + '</div>';
-    }
-    if (Meta.bestSuit() || Meta.bestCoat()) { h += row('🧥', 'Костюм и плащ', 'Износ костюма ' + Math.round(100 - P.suitCond) + '% · тюнинг зависит от уровня Снабжения', btn('swork', u.ssel ? 'Закрыть' : 'Доработать')); if (u.ssel) h += '<div class="note">' + Meta.suitWorkHTML() + '</div>'; }
-    return h;
-  },
-  // Разборка: оружие и снаряжение → материалы (два нажатия: второе подтверждает)
-  salvageHTML() {
-    const u = G.ui || {}, ask = key => (u.sc === key ? 'Точно?' : 'Разобрать');
-    let h = '<h3>Разборка</h3><div class="stat">Лишнее оружие и снаряжение — в металлолом и детали. Деньгами выгоднее продать, материалами — чинить и тюнинговать.</div>', any = false;
-    for (const id of P.weapons) { any = true; h += row(Icons.html('w_' + Wpn.base(id)), '<span style="color:' + Wpn.color(id) + '">' + Wpn.name(id) + '</span>', 'Даст: ' + Meta.matsPlain(Meta.salvageWeapon(id)), btn('salv:w:' + id, ask('w' + id))); }
-    P.inv.forEach((s, i) => { const m = Meta.salvageSlot(s); if (!m) return; any = true; h += row(itemIcon(s), Meta.itemLabel(s) + (s.n > 1 ? ' ×' + s.n : ''), 'Даст: ' + Meta.matsPlain(m), btn('salv:g:' + i, ask('g' + i))); });
-    return h + (any ? '' : '<div class="stat">Разбирать нечего.</div>');
-  },
 
   // ---- комнаты ----
   enterRoom(k) {
@@ -218,20 +191,22 @@ function drawInterior() {
   Camp.tick = function (dt) { if (G.scene === 'interior') return this.tickRoom(dt); return _tick(dt); };
   Camp.render = function (u) {
     if (u.k === 'upgrade') { panel.style.display = 'block'; panel.innerHTML = this.upgradeHTML(u.b); return true; }
-    if (u.k === 'craft') { panel.style.display = 'block'; panel.innerHTML = this.craftHTML(u.st || 'gun'); return true; }
+    if (u.k === 'craft') { panel.style.display = 'block'; panel.innerHTML = (u.st || 'gun') === 'sci' ? Shop.labHTML(u) : Shop.workshopHTML(u); Inv.syncHand(u); return true; }
     const r = _render(u);
     if (r && u.k === 'storage') panel.insertAdjacentHTML('beforeend', '<div class="stat" style="margin-top:8px">Вместимость: ' + P.stash.length + ' / ' + (this.stashLimit() > 999 ? '∞' : this.stashLimit()) + ' · ' + this.bonusText('storage') + ' ' + btn('ubuild:storage', 'Улучшить ящик', !this.canUp('storage') || this.lvl('storage') >= 3) + '</div>');
     return r;
   };
   Camp.click = function (a, arg, arg2, u) {
     if (a !== 'salv' && G.ui) G.ui.sc = null;
-    if (a === 'salv') { const key = arg + arg2; if (G.ui.sc !== key) G.ui.sc = key; else { G.ui.sc = null; Meta.salvage(arg, arg2); } return true; }
+    if (a === 'salv') { const key = arg + arg2; if (G.ui.sc !== key) G.ui.sc = key; else { G.ui.sc = null; Meta.salvage(arg, arg2); if (u) u.hand = null; } return true; }
     if (a === 'ubuild') { this.upgrade(arg); return true; }
     if (a === 'craft') {
       const r = CFG.recipes.find(x => x.id === arg); if (!r || !this.canCraft(r)) return true;
       for (const id in r.mat) this.take(id, r.mat[id]);
       if (r.out[0] === 'art') { const t = U.pick(r.out[1]); invAdd('art', 1, t); log('Из переплавки вышло: ' + (P.known[t] ? CFG.arts[t].name : 'неопознанный артефакт'), '#e8c060'); } else invAdd(r.out[0], r.out[1]);
-      Snd.pick(); Snd.tick(); addXp(6); log('Сделано: ' + r.name, '#a8c890'); return true;
+      Snd.pick(); Snd.tick(); addXp(6); log('Сделано: ' + r.name, '#a8c890');
+      const idx = r.out[0] === 'art' ? P.inv.length - 1 : P.inv.findIndex(s => s.id === r.out[0] && !s.art); if (u && idx >= 0) u.hand = { z: 'inv', i: idx, n: 1 };   // результат — сразу в руку: удобно поставить на кнопку
+      return true;
     }
     if (a === 'stash' && P.stash.length >= this.stashLimit() && !P.stash.find(t => P.inv[+arg] && !P.inv[+arg].g && t.id === P.inv[+arg].id && !t.art && !t.g)) { log('Ящик полон. Улучши его.'); return true; }
     return _click.call(this, a, arg, arg2, u);

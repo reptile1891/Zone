@@ -101,7 +101,7 @@ test("события: засада — бандиты впереди, побед
   const o = run(`(() => {
     Events.spawn("ambush"); const e = Events.act[0]; if (!e) return { none: true };
     const n = e.guards.length; for (const s of e.guards) s.dead = true; const before = P.st.events; Events.update(0.1); const won = P.st.events - before;
-    Events.act = []; Events.spawn("peddler"); const p = Events.act[0]; P.money = 1000; Events.openPeddler(p.s); const html = Events.peddlerHtml(G.ui); const hp = P.money; Events.buy(1);
+    Events.act = []; Events.spawn("peddler"); const p = Events.act[0]; P.money = 1000; Events.openPeddler(p.s); const html = Events.peddlerHtml(G.ui); const hp = P.money; Inv.buy(p.s.offers[1], 1);
     return { n, won, offers: p.s.offers.length, html: /Коробейник/.test(html), paid: hp - P.money, sold: p.s.offers[1].sold, ev: P.st.events - before };
   })()`);
   assert.equal(o.none, undefined); assert.ok(o.n >= 3); assert.equal(o.won, 1); assert.ok(o.offers >= 4); assert.equal(o.html, true); assert.ok(o.paid > 0); assert.equal(o.sold, true); assert.equal(o.ev, 2);

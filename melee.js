@@ -37,16 +37,6 @@ const Melee = {
   },
   // подсказка для ячейки быстрой панели
   tip(id) { const d = id ? this.DEF[id] : this.cur(); return Tip.head(d.name, 'ближний бой') + '<div class="ti-d">' + d.note + '</div>' + Tip.row('▸', this.stats(d)) + (!id && (P.knives || []).length > 1 ? Tip.row('Сменить:', 'нажми 1 ещё раз') : ''); },
-  // ---- продажа (вкладка «Оружие» Торгового дома) ----
-  shopHTML() {
-    let h = '<h3>Холодное оружие</h3>';
-    for (const k in this.DEF) {
-      const d = this.DEF[k], own = (P.knives || []).includes(k); if (!own && (d.lvl || 1) > Camp.lvl('gun')) continue;
-      const btns = own ? '<div style="display:flex;flex-direction:column;gap:3px;min-width:104px">' + btn('mequip:' + k, P.knife === k ? 'В руках' : 'В руки', P.knife === k) + (k === 'knife' || P.knife === k ? '' : btn('msell:' + k, 'Продать ' + Math.floor(d.price / 2) + ' ₽')) + '</div>' : btn('mbuy:' + k, d.price + ' ₽', P.money < d.price);
-      h += row(d.icon, d.name + (P.knife === k ? ' ★' : ''), this.stats(d) + '<br>' + d.note, btns);
-    }
-    return h;
-  },
 };
 
 (function () {
@@ -55,14 +45,5 @@ const Melee = {
   P.knives = ['knife']; P.knife = 'knife';
   const _upd = update; update = function (dt) { _upd(dt); Melee.tick(dt); };
   const _dw = Meta.drawWorld; Meta.drawWorld = function () { _dw.call(this); Melee.draw(); };
-  const _gs = Meta.gunShopHTML; Meta.gunShopHTML = function () { return _gs.call(this) + Melee.shopHTML(); };
   const _tq = Tip.quick; Tip.quick = function (i) { return heldNames[i] === 'melee' ? Melee.tip() : _tq.call(this, i); };
-  const _fa = Tip.fromAttr; Tip.fromAttr = function (attr) { const [a, k] = String(attr).split(':'); if ((a === 'mbuy' || a === 'mequip' || a === 'msell') && Melee.DEF[k]) { const d = Melee.DEF[k]; return Tip.head(d.name, 'ближний бой') + '<div class="ti-d">' + d.note + '</div>' + Tip.row('▸', Melee.stats(d)); } return _fa.call(this, attr); };
-  const _click = Meta.click; Meta.click = function (a, arg, arg2, u) {
-    const d = Melee.DEF[arg];
-    if (a === 'mbuy' && d) { if (!(P.knives || []).includes(arg) && P.money >= d.price) { P.money -= d.price; P.knives.push(arg); P.knife = arg; Snd.pick(); log('Куплено: ' + d.name, '#c8c090'); } return true; }
-    if (a === 'mequip' && d) { if ((P.knives || []).includes(arg)) P.knife = arg; return true; }
-    if (a === 'msell' && d) { if (arg !== 'knife' && P.knives.length > 1 && P.knives.includes(arg)) { const p = Math.floor(d.price / 2); P.knives.splice(P.knives.indexOf(arg), 1); P.money += p; if (P.knife === arg) P.knife = P.knives[0]; Snd.pick(); log('Продано: ' + d.name + ' за ' + p + ' ₽'); } return true; }
-    return _click.call(this, a, arg, arg2, u);
-  };
 })();

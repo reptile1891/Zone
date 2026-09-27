@@ -65,7 +65,7 @@ test("промах: на голую землю крюк падает и его �
 test("крюк можно купить и сделать; подсказка про него; справочник называет шанс зацепа", () => {
   fresh();
   const o = run(`(() => {
-    P.money = 500; P.bld = Camp.DEFAULT_BLD(); Meta.click("buy", "hook", undefined, { v: "gear" }); const bought = invCount("hook");
+    P.money = 500; P.bld = Camp.DEFAULT_BLD(); Inv.buy(Shop.stockList("gear").find(o => o.id === "hook"), 1); const bought = invCount("hook");
     invAdd("scrap", 3); invAdd("circuit", 1); G.ui = { k: "craft", st: "gun" }; Camp.click("craft", "hook"); const crafted = invCount("hook");
     const rule = Hint.rules.find(r => r.id === "hook"); P.inv = []; W.anoms = [{ type: "plesh", known: true, x: 0, y: 0, r: 30 }]; P.money = 100; const on = !!rule.when(); invAdd("hook", 1); const off = !!rule.when();
     P.codex = { m: {}, d: {}, a: { magnet: { n: 1 } }, b: {}, r: {}, w: {}, i: {} }; const det = Codex.detail("a", "magnet");
