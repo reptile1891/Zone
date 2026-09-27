@@ -61,9 +61,16 @@ const Codex = {
     if (u === undefined) { try { u = this.paint(cat, id, S) || ''; } catch (e) { u = ''; } this._pics[key] = u; }
     return u ? '<img src="' + u + '" width="' + S + '" height="' + S + '" style="image-rendering:pixelated;display:block" alt="">' : '';
   },
-  paint(cat, id, S) {
+  // Значок артефакта для рюкзака, торговли и контейнеров (у неопознанного — общий «?»-значок)
+  artHtml(id) {
+    if (!P.known[id]) return Icons.html('art_u');
+    const key = 'r:' + id + ':bare'; let u = this._pics[key];
+    if (u === undefined) { try { u = this.paint('r', id, 32, true) || ''; } catch (e) { u = ''; } this._pics[key] = u; }
+    return u ? '<img class="ico" src="' + u + '" alt="">' : Icons.html('art');
+  },
+  paint(cat, id, S, bare) {
     const c = document.createElement('canvas'); c.width = c.height = S; const g = c.getContext('2d'); g.imageSmoothingEnabled = false;
-    g.fillStyle = '#10120d'; g.fillRect(0, 0, S, S); g.strokeStyle = '#33321f'; g.strokeRect(0.5, 0.5, S - 1, S - 1);
+    if (!bare) { g.fillStyle = '#10120d'; g.fillRect(0, 0, S, S); g.strokeStyle = '#33321f'; g.strokeRect(0.5, 0.5, S - 1, S - 1); }
     const R = this.rnd(cat + id), sprite = (spr, box) => { const w = spr.width, h = spr.height, k = Math.max(1, Math.floor(Math.min(box / w, box / h))); return { w: w * k, h: h * k }; };
     if (cat === 'm' || cat === 'd') {
       if (cat === 'd' && typeof Dungeon !== 'undefined') Dungeon.initSprites();   // спрайты подземных врагов создаются лениво
@@ -125,8 +132,6 @@ const Codex = {
   title(cat, id) { return cat === 'm' ? CFG.mut[id].name : cat === 'd' ? CFG.dungeon.enemies[id].name : cat === 'a' ? CFG.anoms[id].name : cat === 'r' ? CFG.arts[id].name : CFG.biomes[id].name; },
   ids(cat) { return cat === 'm' ? Object.keys(CFG.mut) : cat === 'd' ? Object.keys(CFG.dungeon.enemies) : cat === 'a' ? Object.keys(CFG.anoms) : cat === 'r' ? Object.keys(CFG.arts) : Object.keys(CFG.biomes); },
   open(cat, id) { const c = this.ensure(); return cat === 'r' ? !!P.known[id] : !!c[cat][id]; },
-  count(cat) { const ids = this.ids(cat); return { have: ids.filter(i => this.open(cat, i)).length, all: ids.length }; },
-  total() { let h = 0, a = 0; for (const c of this.CATS) { const n = this.count(c.k); h += n.have; a += n.all; } return { have: h, all: a }; },
   // Изучен ли вид: убит хотя бы раз (характеристики и советы)
   studied(cat, id) { const e = this.ensure()[cat][id]; return !!(e && e.n > 0); },
 
@@ -145,15 +150,16 @@ const Codex = {
   // ---------- панель ----------
   openPanel() { G.ui = { k: 'codex', tab: (G.ui && G.ui.tab) || 'm', sel: null }; renderPanel(); },
   html(u) {
-    const tot = this.total(), cat = this.CATS.find(c => c.k === u.tab) || this.CATS[0], ids = this.ids(cat.k);
-    let h = '<div class="x" data-a="close">✕ Esc</div><h2>Справочник Зоны</h2><div class="stat">Открыто записей: <b>' + tot.have + ' из ' + tot.all + '</b>. Мутанты изучаются, когда их увидишь и убьёшь; аномалии — когда найдёшь; артефакты — когда опознаешь; места — когда побываешь.</div>';
-    h += '<div style="display:flex;gap:6px;flex-wrap:wrap;margin:8px 0">' + this.CATS.map(c => { const n = this.count(c.k); return '<button class="btn" data-a="cxt:' + c.k + '" style="' + (c.k === cat.k ? 'border-color:#b5742a;background:#3a2f16;color:#f0d9a0' : '') + '">' + c.ic + ' ' + c.n + ' ' + n.have + '/' + n.all + '</button>'; }).join('') + '</div>';
+    const cat = this.CATS.find(c => c.k === u.tab) || this.CATS[0], ids = this.ids(cat.k).filter(id => this.open(cat.k, id));
+    let h = '<div class="x" data-a="close">✕ Esc</div><h2>Справочник Зоны</h2><div class="stat">Записи появляются по ходу игры: мутантов заносят, когда увидишь, а характеристики и советы — когда убьёшь; аномалии — когда найдёшь; артефакты — когда опознаешь; места — когда побываешь.</div>';
+    h += '<div style="display:flex;gap:6px;flex-wrap:wrap;margin:8px 0">' + this.CATS.map(c => '<button class="btn" data-a="cxt:' + c.k + '" style="' + (c.k === cat.k ? 'border-color:#b5742a;background:#3a2f16;color:#f0d9a0' : '') + '">' + c.ic + ' ' + c.n + '</button>').join('') + '</div>';
     h += '<div class="cols"><div>';
     for (const id of ids) {
-      const on = this.open(cat.k, id), sel = u.sel === id;
-      h += '<div class="row"' + (on ? ' data-a="cx:' + cat.k + ':' + id + '" style="cursor:pointer' + (sel ? ';background:#1c1b14;border-left:2px solid #b5742a' : '') + '"' : ' style="opacity:.45"') + '><div class="ic" style="width:52px;height:52px;padding:0">' + (on ? (this.img(cat.k, id, 48) || cat.ic) : '?') + '</div><div class="nm">' + (on ? this.title(cat.k, id) : '??? ') + '<div class="sub">' + (on ? this.sub(cat.k, id) : 'Не открыто') + '</div></div></div>';
+      const sel = u.sel === id;
+      h += '<div class="row" data-a="cx:' + cat.k + ':' + id + '" style="cursor:pointer' + (sel ? ';background:#1c1b14;border-left:2px solid #b5742a' : '') + '"><div class="ic" style="width:52px;height:52px;padding:0">' + (this.img(cat.k, id, 48) || cat.ic) + '</div><div class="nm">' + this.title(cat.k, id) + '<div class="sub">' + this.sub(cat.k, id) + '</div></div></div>';
     }
-    h += '</div><div>' + (u.sel && this.open(cat.k, u.sel) ? this.detail(cat.k, u.sel) : '<div class="stat">Выберите запись слева.</div>') + '</div></div>';
+    if (!ids.length) h += '<div class="stat">Пока пусто.</div>';
+    h += '</div><div>' + (u.sel && this.open(cat.k, u.sel) ? this.detail(cat.k, u.sel) : '<div class="stat">' + (ids.length ? 'Выберите запись слева.' : '') + '</div>') + '</div></div>';
     return h;
   },
   sub(cat, id) {
@@ -163,7 +169,7 @@ const Codex = {
   },
   detail(cat, id) {
     const t = cat === 'b' ? [this.TEXT.b[id]] : (this.TEXT[cat] || {})[id] || [], row = (l, v) => '<div class="ti-r" style="color:#7d7864">' + l + ' <b style="color:#c9c2a8;font-weight:normal">' + v + '</b></div>';
-    const pic = this.img(cat, id, 96);
+    const pic = this.img(cat, id, 160);
     let h = '<div style="display:flex;gap:10px;align-items:center;margin-bottom:6px">' + pic + '<h3 style="margin:0;color:#b5742a;font-size:16px">' + this.title(cat, id) + '</h3></div>';
     if (cat === 'm') {
       const c = CFG.mut[id], st = this.studied('m', id), e = this.ensure().m[id];
@@ -183,15 +189,15 @@ const Codex = {
       const c = CFG.anoms[id], where = Object.keys(CFG.biomes).filter(b => (CFG.biomes[b].am[id] || 0) > 0).map(b => CFG.biomes[b].name);
       h += '<div class="note">Признак: ' + t[0] + '</div>' + row('Болт покажет:', c.react) + row('Радиус:', c.r + ' пикс.') + (where.length ? row('Встречается:', where.join(', ')) : '');
       h += '<h3>Как обойти</h3><div class="note">' + t[1] + '</div>';
-      h += '<h3>Артефакты в ней</h3><div class="stat">' + c.arts.map(a => P.known[a] ? '<b>' + CFG.arts[a].name + '</b>' : '???').join(', ') + '</div>';
+      const ka = c.arts.filter(a => P.known[a]); h += '<h3>Артефакты в ней</h3><div class="stat">' + (ka.length ? ka.map(a => '<b>' + CFG.arts[a].name + '</b>').join(', ') : 'пока неизвестно') + '</div>';
     } else if (cat === 'r') {
-      const a = CFG.arts[id], where = Object.keys(CFG.anoms).filter(k => CFG.anoms[k].arts.includes(id)).map(k => this.open('a', k) ? CFG.anoms[k].name : '???');
+      const a = CFG.arts[id], where = Object.keys(CFG.anoms).filter(k => CFG.anoms[k].arts.includes(id)).filter(k => this.open('a', k)).map(k => CFG.anoms[k].name);
       h += '<div class="note">' + a.desc + '</div>';
       for (const k in a.fx) if (Tip.FX[k]) h += '<div class="ti-r">▸ <b style="color:#c9c2a8;font-weight:normal">' + Tip.FX[k](Tip.FX_ROUND.includes(k) ? a.fx[k] : Math.round(a.fx[k] * 10) / 10) + '</b></div>';
       h += row('Фон:', a.rad ? a.rad.toFixed(2) : 'нет') + row('Вес:', a.w + ' кг') + row('Ценность:', a.val + ' ₽') + '<div class="stat" style="margin-top:6px">Значения — для качества «Обычный»; у каждого экземпляра сила эффектов своя (×0.70–1.35).</div>';
-      h += row('Ищи в:', where.length ? where.join(', ') : id === 'echo' ? 'награда за цепочку «Нижний ярус»' : 'не встречается в аномалиях');
+      h += row('Ищи в:', id === 'echo' ? 'награда за цепочку «Нижний ярус»' : where.length ? where.join(', ') : 'пока неизвестно');
     } else {
-      const inh = Object.keys(CFG.mut).filter(k => CFG.mut[k].biomes.includes(id)).map(k => this.open('m', k) ? CFG.mut[k].name : '???'), an = Object.keys(CFG.anoms).filter(k => (CFG.biomes[id].am[k] || 0) > 0).map(k => this.open('a', k) ? CFG.anoms[k].name : '???');
+      const inh = Object.keys(CFG.mut).filter(k => CFG.mut[k].biomes.includes(id) && this.open('m', k)).map(k => CFG.mut[k].name), an = Object.keys(CFG.anoms).filter(k => (CFG.biomes[id].am[k] || 0) > 0 && this.open('a', k)).map(k => CFG.anoms[k].name);
       h += '<div class="note">' + t[0] + '</div>' + row('Мутанты:', inh.join(', ') || '—') + row('Аномалии:', an.join(', ') || '—');
     }
     return h;

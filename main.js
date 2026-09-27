@@ -55,7 +55,7 @@ const hintR = () => 210 + P.sk.sense * 50 + (hasItem('detector2') ? 170 : hasIte
 const inCamp = (x = P.x, y = P.y) => G.scene !== 'zone' || Math.hypot(x - W.C.x, y - W.C.y) < W.C.r;
 const isSheltered = () => G.scene !== 'zone' || W.sheltered(P.x, P.y);
 const itemName = s => Meta.itemName(s);
-const itemIcon = s => s.art ? Icons.html(P.known[s.art] ? 'art' : 'art_u') : CFG.items[s.id].icon;
+const itemIcon = s => s.art ? Codex.artHtml(s.art) : CFG.items[s.id].icon;   // у опознанного артефакта свой значок (codex.js)
 const baseVal = s => s.art ? CFG.arts[s.art].val * (P.known[s.art] ? Gear.valMul(s.q) : 1) : CFG.items[s.id].val;   // качество проявляется в цене только у опознанного
 function log(txt, col) { const d = document.createElement('div'); d.textContent = txt; if (col) d.style.color = col; $('log').appendChild(d); while ($('log').children.length > 7) $('log').firstChild.remove(); setTimeout(() => d.remove(), 9000); }
 function addXp(n) {
@@ -651,7 +651,7 @@ function renderPanelBase() {
     });
     if (!P.inv.length) h += '<div class="stat">Пусто.</div>';
     h += '</div><div><h3>Контейнеры для артефактов</h3>';
-    P.equip.forEach((a, i) => { h += `<span class="slot" data-a="unequip:${i}" title="${a ? CFG.arts[a.art].name + ': ' + CFG.arts[a.art].desc : 'Пусто'}">${a ? Icons.html('art') : '·'}</span>`; });
+    P.equip.forEach((a, i) => { h += `<span class="slot" data-a="unequip:${i}" title="${a ? CFG.arts[a.art].name + ': ' + CFG.arts[a.art].desc : 'Пусто'}">${a ? Codex.artHtml(a.art) : '·'}</span>`; });
     h += '<div class="stat">' + P.equip.map(a => a ? Meta.itemLabel(Gear.asSlot(a)) : '—').join(' · ') + '</div>';
     h += `<h3>Навыки — очков: ${P.sp} · опыт ${Math.floor(P.xp)}/${Math.floor(60 * Math.pow(P.lvl, 1.4))}</h3>`;
     for (const k in CFG.skills) { const s = CFG.skills[k]; h += row('', `${s.name} <b>${P.sk[k]}/${s.max}</b>`, s.desc, btn('skill:' + k, '+', !P.sp || P.sk[k] >= s.max)); }

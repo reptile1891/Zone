@@ -21,9 +21,9 @@ test("тексты покрывают весь контент: у каждого
     for (const k in CFG.biomes) if (typeof Codex.TEXT.b[k] !== "string") miss.push("b:" + k);
     const extra = []; for (const c of ["m", "d", "a", "b"]) for (const k in Codex.TEXT[c]) if (!Codex.ids(c).includes(k)) extra.push(c + ":" + k);
     const html = []; for (const c of Codex.CATS) for (const id of Codex.ids(c.k)) { P.codex = { m: {}, d: {}, a: {}, b: {} }; P.known = {}; if (c.k === "r") P.known[id] = true; else P.codex[c.k][id] = { n: 3 }; try { Codex.detail(c.k, id); } catch (e) { html.push(c.k + ":" + id + " " + e.message); } }
-    return { miss, extra, html, total: Codex.total() };
+    return { miss, extra, html, all: Codex.CATS.reduce((n, c) => n + Codex.ids(c.k).length, 0) };
   })()`);
-  assert.deepEqual(o.miss, []); assert.deepEqual(o.extra, []); assert.deepEqual(o.html, []); assert.ok(o.total.all >= 8 + 4 + 9 + 11);
+  assert.deepEqual(o.miss, []); assert.deepEqual(o.extra, []); assert.deepEqual(o.html, []); assert.ok(o.all >= 8 + 4 + 9 + 11);
 });
 
 test("запись: первое появление пишет в лог один раз, убийства открывают характеристики", () => {
@@ -81,11 +81,11 @@ test("панель: вкладки и счётчики, закрытые зап�
     Meta.click("cxt", "b", undefined, G.ui); Meta.click("cx", "b", "junkyard", G.ui); const jy = Codex.html(G.ui);
     return { ui: G.ui.k, first, tin, lis, arts, soul, mag, jy };
   })()`);
-  assert.equal(o.ui, "codex"); assert.match(o.first, /Справочник Зоны/); assert.match(o.first, /Мутанты 2\/8/); assert.match(o.first, /Артефакты 1\/\d+/); assert.match(o.first, /Места 1\/11/); assert.match(o.first, /\?\?\?/);
+  assert.equal(o.ui, "codex"); assert.match(o.first, /Справочник Зоны/); assert.doesNotMatch(o.first, /\d+ из \d+|\d+\/\d+|\?\?\?|Не открыто/, "сколько закрыто — не показываем"); assert.match(o.first, /Слухач/); assert.match(o.first, /Жестянка/); assert.doesNotMatch(o.first, /Стеклоед|Углеглот/); assert.match(o.arts, /Душа/); assert.doesNotMatch(o.arts, /Медуза/);
   assert.match(o.tin, /Жестянка/); assert.match(o.tin, /Характеристики и советы откроются/); assert.doesNotMatch(o.tin, /Здоровье:/);
   assert.match(o.lis, /Здоровье:[^]*40/); assert.match(o.lis, /Как справиться/); assert.match(o.lis, /Красться/);
   assert.match(o.arts, /Душа/); assert.match(o.soul, /Регенерация \+1\.2/); assert.match(o.soul, /×0\.70–1\.35/); assert.match(o.soul, /Ищи в:/);
-  assert.match(o.mag, /Магнитная яма/); assert.match(o.mag, /Как обойти/); assert.match(o.mag, /Артефакты в ней[^]*\?\?\?/);
+  assert.match(o.mag, /Магнитная яма/); assert.match(o.mag, /Как обойти/); assert.match(o.mag, /Артефакты в ней[^]*пока неизвестно/); assert.doesNotMatch(o.mag, /\?\?\?/);
   assert.match(o.jy, /Свалка техники/); assert.match(o.jy, /Жестянка/);
 });
 
