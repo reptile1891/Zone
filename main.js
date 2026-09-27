@@ -799,3 +799,5 @@ function frame(now) {
 }
 requestAnimationFrame(frame);
 addEventListener('beforeunload', () => save(true));
+// на телефоне приложение сворачивают, а не закрывают, и система может выгрузить его из памяти: сохраняемся при уходе в фон
+document.addEventListener('visibilitychange', () => { if (document.hidden && G.started && !G.dead) save(true); });

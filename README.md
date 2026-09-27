@@ -106,6 +106,16 @@ npm test    # все тесты (node:test, без зависимостей и �
 
 Игра публикуется через GitHub Pages: https://reptile1891.github.io/Zone/ — откройте ссылку в Chrome или Safari и добавьте на экран «Домой». Управление касаниями включается само; на компьютере проверить можно адресом `?touch=1`.
 
+## Приложение для Android (APK)
+
+Игра оборачивается в приложение через Capacitor (проект в `android/`, настройки — `capacitor.config.json`). Игровые файлы копируются внутрь приложения, поэтому интернет и хостинг не нужны.
+
+1. Установите Android Studio (она ставит нужную Java и Android SDK) и один раз откройте в ней папку `android/` (File → Open): Gradle сам всё скачает.
+2. После изменений в игре выполните `npm run android:sync` (копирует игру в приложение).
+3. В Android Studio: Build → Build Bundle(s) / APK(s) → Build APK(s). Готовый файл: `android/app/build/outputs/apk/debug/app-debug.apk` — скопируйте на телефон и установите (разрешив установку из неизвестных источников). Либо подключите телефон по USB (включив отладку) и нажмите ▶ Run.
+
+Приложение: горизонтальная ориентация, полный экран (панели выезжают свайпом с края), экран не гаснет. Сохранения лежат внутри приложения и не связаны с сохранениями в браузере. Значки генерируются командой `node tools/make-android-icons.js`.
+
 ## Тесты
 
 Из корня проекта: `npm test` — `tests/zone.test.js` грузит скрипты в песочницу (`tests/zone-load.js`) и проверяет целостность конфига, детерминизм мира, поведение Пружины и Магнитной ямы, лаборатории и оружие; `tests/zone-gar.test.js` — Гарь (углеглот, колодец, тракт, огнемёт, ожог, задание); `tests/zone-dungeon.test.js` и `tests/zone-dungeon-enemies.test.js` — подземелья и их враги; `tests/zone-talk-tips.test.js` — подсказки и разговоры; `tests/zone-lake.test.js` — Озёрный край и Топляк; `tests/zone-story.test.js` — цепочка «Нижний ярус»; `tests/zone-dungeon-sim.test.js` — кривая сложности подземелий по бот-прогонам; `tests/zone-hover.test.js` — подсказки над миром; `tests/zone-hints.test.js` — советы по ходу игры; `tests/zone-weapons.test.js` — оружие со случайными характеристиками; `tests/zone-arms.test.js` — самострел и фонарь. Отчёт баланса: `npm run balance:zone`. Игровая логика покрыта `tests/zone-logic.test.js`; отрисовка, ввод и звук — нет.

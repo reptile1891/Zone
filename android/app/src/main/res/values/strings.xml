@@ -1,0 +1,7 @@
+<?xml version='1.0' encoding='utf-8'?>
+<resources>
+    <string name="app_name">Обочина</string>
+    <string name="title_activity_main">Обочина</string>
+    <string name="package_name">ru.obochina.game</string>
+    <string name="custom_url_scheme">ru.obochina.game</string>
+</resources>

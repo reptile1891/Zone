@@ -1,0 +1,7 @@
+{
+  "appId": "ru.obochina.game",
+  "appName": "Обочина",
+  "webDir": "www",
+  "backgroundColor": "#0b0d0a",
+  "android": { "allowMixedContent": false }
+}

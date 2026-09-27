@@ -6,3 +6,6 @@ desktop.ini
 # локальные настройки Claude Code; launch.json оставляем в репозитории
 .claude/*
 !.claude/launch.json
+
+# собранная веб-часть приложения (npm run build:web)
+www/
