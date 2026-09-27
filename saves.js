@@ -69,6 +69,12 @@ const Saves = {
   },
   closeModal() { if (this.m && this.m.parentNode) this.m.parentNode.removeChild(this.m); this.m = null; },
 
+  // ---------- надёжность хранилища ----------
+  // Проверка «прямо сейчас» — не ловит главный случай (файл открыт как content://вложение в чате: при
+  // каждом новом открытии браузер может завести новое хранилище) — тот определяется по протоколу ниже.
+  storageOk() { try { const k = '__zone_probe__'; localStorage.setItem(k, '1'); const ok = localStorage.getItem(k) === '1'; localStorage.removeItem(k); return ok; } catch (e) { return false; } },
+  originRisky() { try { return !/^https?:$/.test(location.protocol); } catch (e) { return true; } },
+
   // ---------- заставка и меню ----------
   refresh() {
     const bar = this.bar; if (!bar) return; const cur = this.slot();
@@ -77,6 +83,12 @@ const Saves = {
   },
   initSplash() {
     const cont = document.getElementById('bCont'); if (!cont || !cont.parentNode || !cont.parentNode.parentNode) return;
+    if (this.originRisky() || !this.storageOk()) {
+      const warn = document.createElement('div'); warn.id = 'storagewarn';
+      warn.style.cssText = 'max-width:640px;margin:4px auto 8px;padding:8px 12px;border:1px solid #6a5a34;background:#2a2010;color:#e0c090;font-size:12px;text-align:left;line-height:1.5';
+      warn.innerHTML = '⚠ Игра открыта не как обычная веб-страница (например, файл прямо из чата) — сохранения могут пропадать между запусками. Надёжнее играть по ссылке: <a href="https://reptile1891.github.io/Zone/" style="color:#f0d9a0" target="_blank" rel="noopener">reptile1891.github.io/Zone</a>. Если играете здесь — периодически делайте «Экспорт» в меню (Esc → слот сохранения) и сохраняйте код отдельно.';
+      cont.parentNode.parentNode.insertBefore(warn, cont.parentNode);
+    }
     const bar = this.bar = document.createElement('div'); bar.id = 'slotbar'; bar.style.cssText = 'display:flex;gap:8px;flex-wrap:wrap;justify-content:center;margin:8px 0';
     cont.parentNode.parentNode.insertBefore(bar, cont.parentNode);
     bar.addEventListener('click', e => { const b = e.target.closest && e.target.closest('[data-slot]'); if (!b) return; if (b.dataset.slot === 'imp') this.modal('imp'); else { this.setSlot(+b.dataset.slot); this.refresh(); } });
