@@ -154,7 +154,7 @@ const Tip = {
     for (const s of Stalkers.list) if (!s.dead && near(s, 16) && Math.hypot(s.x - P.x, s.y - P.y) < 420) return this.stalker(s);
     for (const l of W.loot) if (near(l, 14)) return (l.g ? this.suit({ id: l.id, n: 1, g: l.g }) : this.item(l.id, null, null, l.n)) + '<div class="ti-r">Подобрать: <b>E</b></div>';
     for (const c of W.conts) if (near(c, 30) && Math.hypot(c.x - P.x, c.y - P.y) < 200) return this.head(this.CONT[c.kind] || 'Контейнер', c.opened ? 'обыскан' : 'можно обыскать') + '<div class="ti-d">' + (c.opened ? 'Пусто.' : 'Подойди и нажми E: хлам, патроны, деньги.') + '</div>';
-    for (const a of W.arts) if (near(a, 22) && Math.hypot(a.x - P.x, a.y - P.y) < hintR() * 0.75) return this.head('Что-то поблёскивает', 'артефакт', '#e8c060') + '<div class="ti-d">Подойди и возьми (E). Если вокруг аномалия — сначала проверь болтом.</div>';
+    for (const a of W.arts) if (near(a, 22) && Math.hypot(a.x - P.x, a.y - P.y) < signR() * 1.3 * 0.75) return this.head('Что-то поблёскивает', 'артефакт', '#e8c060') + '<div class="ti-d">Подойди и возьми (E). Если вокруг аномалия — сначала проверь болтом.</div>';
     for (const c of W.caches) if (near(c, 16)) return this.head('Твой хабар', 'тайник смерти', '#e06060') + '<div class="ti-d">Здесь остались артефакты и часть денег. Забери (E).</div>';
     return null;
   },

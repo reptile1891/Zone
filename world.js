@@ -40,6 +40,23 @@ const PROPS = {
   ashpile:  { spr: 'ashpile', sc: [1, 1.8], decor: true, noflip: true },
 };
 
+// Формы аномалий (CFG.anoms[*].shape): edge(a, th) — радиус границы в долях a.r в направлении th (мировой угол); поворот a.rot производный от a.ph
+// (новых случайных чисел при генерации не тратится). Внутри — расстояние до центра меньше R(); у кольца ещё вне «дырки» hole.
+const AShape = {
+  edge(a, th) {
+    const c = CFG.anoms[a.type], ph = a.ph || 0, l = th - (a.rot || 0), cs = Math.cos(l), sn = Math.sin(l), s = c.shape;
+    if (s === 'ellipse') return 1 / Math.hypot(cs / c.asp, sn * c.asp);
+    if (s === 'blob') return (1 / Math.hypot(cs / (c.asp || 1), sn * (c.asp || 1))) * (1 + c.rough * (0.6 * Math.sin(3 * l + ph) + 0.4 * Math.sin(5 * l + ph * 1.7)));
+    if (s === 'star') return 0.6 + 0.62 * Math.pow(Math.abs(Math.cos(c.lobes * l / 2)), 1.4);
+    if (s === 'square') return 0.9 / Math.max(Math.abs(cs), Math.abs(sn));
+    if (s === 'egg') return 0.9 + 0.4 * cs + 0.1 * Math.cos(2 * l);
+    return 1;
+  },
+  R(a, dx, dy) { return a.r * this.edge(a, Math.atan2(dy, dx)); },
+  inside(a, dx, dy, k = 1) { const d = Math.hypot(dx, dy), c = CFG.anoms[a.type]; if (c.shape === 'ring' && d < a.r * c.hole) return false; return d < this.R(a, dx, dy) * k; },
+  // точка внутри формы: i — номер, f0 — сдвиг; равномерно «золотым углом» (для рисования и для мест артефактов)
+  pt(a, i, f0 = 0.13) { const c = CFG.anoms[a.type], th = i * 2.399963 + (a.ph || 0), f = Math.sqrt((i * 0.618 + f0) % 1), lo = c.shape === 'ring' ? c.hole : 0, r = a.r * this.edge(a, th) * (lo + (0.95 - lo) * f); return { x: a.x + Math.cos(th) * r, y: a.y + Math.sin(th) * r }; },
+};
 class World {
   constructor(seed) {
     this.seed = seed; this.R = U.rng(seed);
@@ -140,6 +157,7 @@ class World {
     const c = CFG.anoms[type], r = c.r * (0.85 + R() * 0.3);
     if (this.anoms.some(a => Math.hypot(a.x - x, a.y - y) < a.r + r + 42)) return null;
     const a = { id: this.uid++, type, x, y, r, t: R() * (c.period || c.cycle || 1), state: 0, known: false, flash: 0, revealed: 0, vx: 0, vy: 0, ph: R() * 6.28, act: false, dir: 0 };
+    a.rot = (a.ph * 7.13) % 6.2832;   // поворот формы — из фазы, чтобы не менять поток случайных чисел мира
     if (type === 'fluff') { const ang = R() * 6.28; a.vx = Math.cos(ang) * c.drift; a.vy = Math.sin(ang) * c.drift; }
     this.anoms.push(a);
     return a;
@@ -151,7 +169,9 @@ class World {
   addArtifact(a, d, R) {
     const list = CFG.anoms[a.type].arts;
     const idx = Math.floor(Math.min(0.999, R() * (0.4 + d * 0.2)) * list.length);
-    const ang = R() * 6.28, rr = R() * a.r * 0.6;
+    const ang = R() * 6.28; let rr = R() * a.r * 0.6; const cs = CFG.anoms[a.type];
+    rr = Math.min(rr, AShape.R(a, Math.cos(ang), Math.sin(ang)) * 0.8);                                   // артефакт всегда внутри формы
+    if (cs.shape === 'ring') rr = Math.min(rr, a.r * cs.hole * 0.85);                                     // у Мясорубки — в безопасной «дырке» кольца
     this.arts.push({ id: this.uid++, type: list[idx], x: a.x + Math.cos(ang) * rr, y: a.y + Math.sin(ang) * rr, anom: a.id });
   }
   genAnoms() {
@@ -322,7 +342,7 @@ class World {
   }
   discharge(a, ents) {
     const c = CFG.anoms.electra; a.state = 0; a.t = 0; a.flash = 0.4;
-    for (const e of ents) if (!e.dead && Math.hypot(e.x - a.x, e.y - a.y) < a.r) e.hurt(c.dmg, 'anom');
+    for (const e of ents) if (!e.dead && AShape.inside(a, e.x - a.x, e.y - a.y)) e.hurt(c.dmg, 'anom');
     if (Math.hypot(a.x - P.x, a.y - P.y) < 500) Snd.zap();
   }
   // Пружина: короткий заряд, затем всех в круге подбрасывает и отшвыривает от центра
@@ -330,8 +350,8 @@ class World {
     const c = CFG.anoms.spring; a.state = 0; a.t = 0; a.flash = 0.4;
     for (const e of ents) {
       if (e.dead) continue; const dx = e.x - a.x, dy = e.y - a.y, d = Math.hypot(dx, dy);
-      if (d >= a.r) continue;
-      const k = c.push * (1 - d / a.r * 0.5) / (d || 1); e.x = U.clamp(e.x + dx * k, 20, this.S - 20); e.y = U.clamp(e.y + dy * k, 20, this.S - 20);
+      if (!AShape.inside(a, dx, dy)) continue;
+      const k = c.push * (1 - d / AShape.R(a, dx, dy) * 0.5) / (d || 1); e.x = U.clamp(e.x + dx * k, 20, this.S - 20); e.y = U.clamp(e.y + dy * k, 20, this.S - 20);
       e.hurt(c.dmg, 'anom');
     }
     if (Math.hypot(a.x - P.x, a.y - P.y) < 500) Snd.zap();
@@ -342,7 +362,8 @@ class World {
     for (const e of ents) {
       if (e.dead || (e.c && e.c.fireproof)) continue;
       const dx = e.x - a.x, dy = e.y - a.y, d = Math.hypot(dx, dy);
-      if (!(d < a.r * 0.4 || (d < a.r * c.reach && U.angDiff(a.dir, Math.atan2(dy, dx)) < c.arc / 2))) continue;
+      const ar = AShape.R(a, dx, dy);
+      if (!(d < ar * 0.4 || (d < a.r * c.reach && U.angDiff(a.dir, Math.atan2(dy, dx)) < c.arc / 2))) continue;
       e.hurt(c.dmg * (e === P ? 1 - Meta.fireRes() : 1), 'anom'); Meta.ignite(e, c.burn);
     }
     if (Math.hypot(a.x - P.x, a.y - P.y) < 500) Snd.zap();
@@ -351,26 +372,24 @@ class World {
     e.slow = 1; let cur = null;
     for (const a of this.anoms) {
       const dx = e.x - a.x, dy = e.y - a.y;
-      if (Math.abs(dx) > a.r * 1.8 || Math.abs(dy) > a.r * 1.8) continue;
-      const d = Math.hypot(dx, dy) || 1, c = CFG.anoms[a.type];
+      if (Math.abs(dx) > a.r * 2.4 || Math.abs(dy) > a.r * 2.4) continue;
+      const d = Math.hypot(dx, dy) || 1, c = CFG.anoms[a.type], ar = AShape.R(a, dx, dy), inn = AShape.inside(a, dx, dy);
       if (a.type === 'funnel') {
-        const pr = a.r * 1.7;
+        const pr = ar * 1.7;
         if (d < pr) {
           const pull = c.pull * (1 - d / pr) * dt; e.x -= dx / d * pull; e.y -= dy / d * pull;
-          if (d < a.r) { e.hurt(c.dps * dt, 'anom'); if (d < a.r * c.core) e.hurt(c.coreDps * dt, 'anom'); cur = a; }
+          if (inn) { e.hurt(c.dps * dt, 'anom'); if (d < ar * c.core) e.hurt(c.coreDps * dt, 'anom'); cur = a; }
         }
-      } else if (a.type === 'fluff' && d < a.r) { e.hurt(c.dps * dt, 'anom'); e.slow = Math.min(e.slow, c.slow); cur = a; }
-      else if (a.type === 'slime' && d < a.r) { e.hurt(c.dps * dt, 'anom'); e.slow = Math.min(e.slow, c.slow); cur = a; }
-      else if (a.type === 'plesh' && d < a.r) { e.hurt(c.dps * dt, 'anom'); const pl = 45 * (1 - d / a.r) * dt; e.x -= dx / d * pl; e.y -= dy / d * pl; e.slow = Math.min(e.slow, 0.55); cur = a; }
-      else if (a.type === 'grinder' && d < a.r) { cur = a; if (a.act) e.hurt(c.dps * dt, 'anom'); }
-      else if (a.type === 'electra' && d < a.r) cur = a;
-      else if (a.type === 'spring' && d < a.r) cur = a;
-      else if (a.type === 'smolder' && d < a.r) cur = a;
+      } else if (a.type === 'fluff' && inn) { e.hurt(c.dps * dt, 'anom'); e.slow = Math.min(e.slow, c.slow); cur = a; }
+      else if (a.type === 'slime' && inn) { e.hurt(c.dps * dt, 'anom'); e.slow = Math.min(e.slow, c.slow); cur = a; }
+      else if (a.type === 'plesh' && inn) { e.hurt(c.dps * dt, 'anom'); const pl = 45 * (1 - d / ar) * dt; e.x -= dx / d * pl; e.y -= dy / d * pl; e.slow = Math.min(e.slow, 0.55); cur = a; }
+      else if (a.type === 'grinder' && inn) { cur = a; if (a.act) e.hurt(c.dps * dt, 'anom'); }
+      else if ((a.type === 'electra' || a.type === 'spring' || a.type === 'smolder') && inn) cur = a;
       else if (a.type === 'magnet') {
-        const pr = a.r * 1.5, metal = !!(e.c && e.c.metal);
+        const pr = ar * 1.5, metal = !!(e.c && e.c.metal);
         if (d < pr) {
           const pull = c.pull * (metal ? 1.6 : 0.6) * (1 - d / pr) * dt; e.x -= dx / d * pull; e.y -= dy / d * pull;
-          if (d < a.r) { e.hurt(c.dps * dt, 'anom'); if (metal) e.hurt(c.metalDps * dt, 'anom'); cur = a; }
+          if (inn) { e.hurt(c.dps * dt, 'anom'); if (metal) e.hurt(c.metalDps * dt, 'anom'); cur = a; }
         }
       }
     }
@@ -379,7 +398,7 @@ class World {
   boltHit(x, y) {
     for (const a of this.anoms) {
       const c = CFG.anoms[a.type];
-      if (Math.hypot(a.x - x, a.y - y) < a.r * (a.type === 'funnel' ? 1.2 : 1)) {
+      if (AShape.inside(a, x - a.x, y - a.y, a.type === 'funnel' ? 1.2 : 1)) {
         const first = !a.known; a.known = true; a.revealed = 45; a.flash = 0.6;
         if (a.type === 'electra' && a.state === 0) { a.state = 1; a.t = c.charge - 0.5; }
         else if (a.type === 'electra' && a.state === 1) a.t = c.charge;

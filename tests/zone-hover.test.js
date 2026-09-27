@@ -78,7 +78,7 @@ test("предметы и контейнеры на земле: предмет �
     W.loot = [{ x: 3100, y: 3050, id: "medkit", n: 2 }]; const item = Tip.world(${scr(3100, 3050)}); W.loot = [];
     W.conts = [{ x: 3100, y: 3050, kind: "stash", opened: false, loot: [] }]; const closed = Tip.world(${scr(3100, 3050)}); W.conts[0].opened = true; const opened = Tip.world(${scr(3100, 3050)});
     W.conts[0].x = 3500; const farCont = Tip.world(${scr(3500, 3050)}); W.conts = [];
-    W.arts = [{ id: 1, type: "soul", x: 3100, y: 3050, anom: 0 }]; const art = Tip.world(${scr(3100, 3050)}); W.arts[0].x = 3600; W.arts[0].y = 3600; const farArt = Tip.world(${scr(3600, 3600)}); W.arts = [];
+    W.arts = [{ id: 1, type: "soul", x: 3040, y: 3030, anom: 0 }]; const art = Tip.world(${scr(3040, 3030)}); W.arts[0].x = 3600; W.arts[0].y = 3600; const farArt = Tip.world(${scr(3600, 3600)}); W.arts = [];
     W.caches = [{ x: 3100, y: 3050, items: [], money: 1 }]; const cache = Tip.world(${scr(3100, 3050)});
     return { item, closed, opened, farCont, art, farArt, cache };
   })()`);

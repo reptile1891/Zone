@@ -49,6 +49,44 @@ const Meta = {
     Snd.crackle(); G.shake = Math.max(G.shake, 0.04); Mutants.hear(P.x, P.y, w.noise);
   },
 
+  // ---- Крюк-кошка: достать артефакт из аномалии, не заходя в неё ----
+  hooks: [], reeling: [],
+  throwHook() {
+    if (P.cd > 0) return;
+    if (invCount('hook') < 1) { if (!(G.t < (this._hookLog || 0))) { this._hookLog = G.t + 4; log('Крюка нет: купи у Снабженца или сделай на верстаке.'); } return; }
+    const d = Math.min(CFG.player.hookRange, Math.hypot(mouse.x + cam.x - P.x, mouse.y + cam.y - P.y));
+    invTake('hook', 1); P.cd = 0.5; this.hooks.push({ sx: P.x, sy: P.y, x: P.x, y: P.y, tx: P.x + Math.cos(P.ang) * d, ty: P.y + Math.sin(P.ang) * d, t: 0, dur: 0.25 + d / 800 }); Snd.tick();
+  },
+  // Шанс зацепить артефакт в аномалии: базовый по типу, «Чутьё» +4% за уровень; во время активной фазы или заряда — не цепляется
+  snagChance(an) {
+    if (!an) return 1; const c = CFG.anoms[an.type]; if (an.act || an.state === 1) return 0;
+    return Math.min(0.97, c.snag + P.sk.sense * 0.04);
+  },
+  landHook(h) {
+    // ближайший артефакт к точке падения (щадящий радиус — на телефоне не прицелишься точно)
+    let best = null, bd = 70; for (const a of W.arts) { if (a.reel) continue; const d = Math.hypot(a.x - h.tx, a.y - h.ty); if (d < bd) { bd = d; best = a; } }
+    const an = best ? (best.anom ? W.anoms.find(x => x.id === best.anom) : null) : W.anoms.find(x => AShape.inside(x, h.tx - x.x, h.ty - x.y, 1.15));
+    const chance = best ? this.snagChance(an) : 0, busy = !!(an && (an.act || an.state === 1)), hit = W.boltHit(best ? best.x : h.tx, best ? best.y : h.ty);   // как болт: раскрывает аномалию
+    if (hit && hit.first) { addXp(6); Meta.onDiscover(); }
+    if (best) {
+      if (Math.random() < chance) { best.reel = true; this.reeling.push(best); log('Крюк зацепился: артефакт идёт к тебе.', '#9ad0e8'); }
+      else log(busy ? 'Аномалия сработала в момент броска — крюк потерян.' : 'Крюк сорвался и пропал.', '#e0a060');
+      return;
+    }
+    if (hit) log(CFG.anoms[hit.a.type].react + ' Крюк потерян.', '#9ab8d8'); else W.loot.push({ x: h.tx, y: h.ty, id: 'hook', n: 1 });   // упал на землю — можно подобрать
+  },
+  tickHooks(dt) {
+    for (let i = this.hooks.length - 1; i >= 0; i--) { const h = this.hooks[i]; h.t += dt; const k = Math.min(1, h.t / h.dur); h.x = h.sx + (h.tx - h.sx) * k; h.y = h.sy + (h.ty - h.sy) * k; if (k >= 1) { this.hooks.splice(i, 1); this.landHook(h); } }
+    for (let i = this.reeling.length - 1; i >= 0; i--) {
+      const a = this.reeling[i]; if (G.scene !== 'zone' || !W.arts.includes(a)) { a.reel = false; this.reeling.splice(i, 1); continue; }
+      const dx = P.x - a.x, dy = P.y - a.y, d = Math.hypot(dx, dy) || 1;
+      if (d < 22) { this.reeling.splice(i, 1); takeArt(a); invAdd('hook', 1); log('Крюк вернулся с добычей.', '#9ad0e8'); continue; }
+      const s = Math.min(d, 230 * dt); a.x += dx / d * s; a.y += dy / d * s;
+    }
+  },
+  drawHooks() { for (const h of this.hooks) { ctx.strokeStyle = '#9aa0a8'; ctx.lineWidth = 1; ctx.beginPath(); ctx.moveTo(P.x, P.y - 4); ctx.lineTo(h.x, h.y); ctx.stroke(); px(h.x, h.y, '#e0e0e0', 4); }
+    for (const a of this.reeling) { ctx.strokeStyle = '#7f96b0'; ctx.lineWidth = 1; ctx.beginPath(); ctx.moveTo(P.x, P.y - 4); ctx.lineTo(a.x, a.y); ctx.stroke(); } },
+
   // ---- ремонт из хлама и тюнинг ----
   matsText(cost) { return Object.keys(cost).map(m => '<span style="color:' + (Camp.have(m) >= cost[m] ? '#8fbf7f' : '#e06060') + '">' + Camp.matName(m) + ' ' + cost[m] + '</span>').join(', '); },
   matsPlain(m) { return Object.keys(m).map(k => CFG.items[k].name + ' ×' + m[k]).join(', '); },
@@ -308,6 +346,7 @@ const Meta = {
   lureAt(m) { return this.lures.some(l => Math.hypot(l.x - m.x, l.y - m.y) < 36); },
 
   update(dt) {
+    this.tickHooks(dt);
     const psy = fx('psy'); if (psy) P.stress = Math.min(100, P.stress + psy * dt * Meta.stressMul());
     if (P.burn > 0) { P.burn -= dt; P.hurt(4 * dt, 'fire'); if (Math.random() < dt * 14) parts.push({ x: P.x + (Math.random() - 0.5) * 8, y: P.y - 4, vx: (Math.random() - 0.5) * 20, vy: -30, life: 0.4, col: Math.random() < 0.5 ? '#ff8a30' : '#ffd070' }); if (P.burn <= 0) log('Огонь погас.', '#9ab8d8'); }
     if (P.inAnom && P.inAnom.type === 'plesh' && Math.random() < dt * 0.6) this.breakLeg('Плешь вдавила ногу в землю. Перелом.');
@@ -583,8 +622,8 @@ function shoot() {
 }
 function useSel() {
   const h = heldNames[P.sel];
-  if (G.scene === 'dungeon' && (h === 'bolt' || h === 'lure' || h === 'shock')) { if (!(G.t < (Meta._dunLog || 0))) { Meta._dunLog = G.t + 3; log('Под землёй это ни к чему.'); } return; }
-  if (h === 'weapon') shoot(); else if (h === 'bolt') throwBolt(); else if (h === 'lure') Meta.throwLure(); else if (h === 'shock') Meta.throwShock(); else if (invCount(h) > 0) useItem(h);
+  if (G.scene === 'dungeon' && (h === 'bolt' || h === 'lure' || h === 'shock' || h === 'hook')) { if (!(G.t < (Meta._dunLog || 0))) { Meta._dunLog = G.t + 3; log('Под землёй это ни к чему.'); } return; }
+  if (h === 'weapon') shoot(); else if (h === 'bolt') throwBolt(); else if (h === 'lure') Meta.throwLure(); else if (h === 'shock') Meta.throwShock(); else if (h === 'hook') Meta.throwHook(); else if (invCount(h) > 0) useItem(h);
 }
 function useItem(id) {
   const u = CFG.items[id].use; if (!u || invCount(id) < 1) return;

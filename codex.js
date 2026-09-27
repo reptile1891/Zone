@@ -236,6 +236,7 @@ const Codex = {
       const c = CFG.anoms[id], where = Object.keys(CFG.biomes).filter(b => (CFG.biomes[b].am[id] || 0) > 0).map(b => CFG.biomes[b].name);
       h += '<div class="note">Признак: ' + t[0] + '</div>' + row('Болт покажет:', c.react) + row('Радиус:', c.r + ' пикс.') + (where.length ? row('Встречается:', where.join(', ')) : '');
       h += '<h3>Как обойти</h3><div class="note">' + t[1] + '</div>';
+      h += row('Крюк-кошка:', 'цепляет артефакт с шансом ' + Math.round(Math.min(0.97, c.snag + P.sk.sense * 0.04) * 100) + '%' + (['grinder', 'electra', 'spring', 'smolder'].includes(id) ? ' (не в момент срабатывания)' : ''));
       const ka = c.arts.filter(a => P.known[a]); h += '<h3>Артефакты в ней</h3><div class="stat">' + (ka.length ? ka.map(a => '<b>' + CFG.arts[a].name + '</b>').join(', ') : 'пока неизвестно') + '</div>';
     } else if (cat === 'r') {
       const a = CFG.arts[id], where = Object.keys(CFG.anoms).filter(k => CFG.anoms[k].arts.includes(id)).filter(k => this.open('a', k)).map(k => CFG.anoms[k].name);

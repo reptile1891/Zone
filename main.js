@@ -154,7 +154,7 @@ function respawn() {
 }
 
 // ---------- действия игрока ----------
-const heldNames = ['weapon', 'bolt', 'medkit', 'food', 'antirad', 'lure', 'splint', 'shock'];
+const heldNames = ['weapon', 'bolt', 'medkit', 'food', 'antirad', 'lure', 'splint', 'shock', 'hook'];
 function useSel() {
   const h = heldNames[P.sel];
   if (h === 'pistol') shoot(); else if (h === 'bolt') throwBolt();
@@ -462,7 +462,7 @@ function draw() {
     for (let i = 1; i < 4; i++) { ctx.beginPath(); ctx.arc(g.x, g.y, 14 * i + pl * 6, 0, 6.28); ctx.stroke(); } px(g.x, g.y, '#e0c050', 12);
   }
   for (const l of W.loot) px(l.x, l.y, l.id === 'bolt' ? '#a8a8a8' : '#d8d0a0', 4);
-  for (const a of W.arts) { const d = Math.hypot(a.x - P.x, a.y - P.y), lim = hintR(); if (d < lim) Spr.draw(ctx, 'star', a.x, a.y, false, (0.4 + 0.6 * Math.abs(Math.sin(G.t * 3 + a.x))) * (1 - d / lim)); }
+  for (const a of W.arts) { const d = Math.hypot(a.x - P.x, a.y - P.y), lim = signR() * 1.3; if (d < lim) Spr.draw(ctx, 'star', a.x, a.y, false, (0.4 + 0.6 * Math.abs(Math.sin(G.t * 3 + a.x))) * (1 - d / lim)); }
   for (const s of W.corpses) Spr.draw(ctx, s.looted ? 'corpse_l' : 'corpse', s.x, s.y);
   for (const s of W.caches) { ctx.strokeStyle = '#e06060'; ctx.lineWidth = 2; ctx.strokeRect(s.x - 9, s.y - 9, 18, 18); }
   for (const c of W.conts) {
@@ -490,6 +490,7 @@ function draw() {
     }
   }
   for (const b of bolts) px(b.x, b.y, '#d0d0d0', 3);
+  if (Meta.hooks.length || Meta.reeling.length) Meta.drawHooks();
   Meta.drawWorld();
   for (const t of tracers) { ctx.strokeStyle = 'rgba(255,230,150,.8)'; ctx.lineWidth = 1.5; ctx.beginPath(); ctx.moveTo(t.x1, t.y1); ctx.lineTo(t.x2, t.y2); ctx.stroke(); }
   for (const p of parts) { ctx.globalAlpha = Math.max(0, p.life * 2); px(p.x, p.y, p.col); } ctx.globalAlpha = 1;
@@ -553,46 +554,58 @@ function drawCamp() {
     ctx.font = 'bold 11px Consolas'; ctx.textAlign = 'center'; ctx.fillStyle = '#c9c2a8'; ctx.fillText(v.name.split('«')[0].trim(), p.x, p.y - 22);
   }
 }
+// Насколько далеко от края аномалии замечаешь её признаки: чутьё и детекторы. Без них — только вплотную (аномалии не видны издалека)
+const signR = () => 60 + P.sk.sense * 35 + (hasItem('detector2') ? 170 : hasItem('detector') ? 90 : 0);
+// Контур формы аномалии (k — масштаб) и точка на границе в направлении th (f — доля радиуса)
+function anomPath(a, k = 1, n = 44) { ctx.beginPath(); for (let i = 0; i < n; i++) { const th = i / n * 6.2832, r = a.r * AShape.edge(a, th) * k; ctx[i ? 'lineTo' : 'moveTo'](a.x + Math.cos(th) * r, a.y + Math.sin(th) * r); } ctx.closePath(); }
+const anomEdge = (a, th, f = 1) => ({ x: a.x + Math.cos(th) * a.r * AShape.edge(a, th) * f, y: a.y + Math.sin(th) * a.r * AShape.edge(a, th) * f });
 function drawAnom(a) {
-  const c = CFG.anoms[a.type], d = Math.hypot(a.x - P.x, a.y - P.y), vis = a.revealed > 0 ? 1 : a.known ? 0.6 : 0;
-  const h = U.clamp(1 - (d - a.r) / hintR(), 0, 1), ah = Math.max(h * 0.7, vis), t = G.t;
-  if (ah <= 0.02 && a.flash <= 0) return;
-  ctx.globalAlpha = 0.2 * Math.max(h, vis); circle(a.x, a.y, a.r * 1.05, '#6a5030'); ctx.globalAlpha = ah;
-  if (a.type === 'funnel') for (let i = 0; i < 9; i++) { const an = t * 0.7 + i * 0.7, rr = a.r * (0.2 + ((i * 0.13 + t * 0.12) % 1) * 0.8); px(a.x + Math.cos(an) * rr, a.y + Math.sin(an) * rr, '#c9b98f'); }
-  else if (a.type === 'electra') {
-    if (a.state === 1 || (t * 2.7 + a.ph) % 1 < 0.05) { ctx.strokeStyle = '#9ad0ff'; ctx.lineWidth = 2; for (let i = 0; i < 4; i++) { const an = Math.random() * 6.28; ctx.beginPath(); ctx.moveTo(a.x + Math.cos(an) * 6, a.y + Math.sin(an) * 6); ctx.lineTo(a.x + Math.cos(an + 0.4) * a.r * 0.8, a.y + Math.sin(an + 0.4) * a.r * 0.8); ctx.stroke(); } }
-  } else if (a.type === 'fluff') for (let i = 0; i < 16; i++) { const an = i * 2.4 + t * 0.1, rr = a.r * Math.sqrt(((i * 0.37) % 1)); px(a.x + Math.cos(an) * rr, a.y + Math.sin(an) * rr + Math.sin(t + i) * 2, '#f4ecdc'); }
-  else if (a.type === 'plesh') { ctx.globalAlpha = ah * 0.7; circle(a.x, a.y, a.r * 0.9, '#2e2416'); ctx.globalAlpha = ah; for (let i = 0; i < 10; i++) { const an = i * 2.1, rr = a.r * ((i * 0.31) % 0.9); px(a.x + Math.cos(an) * rr, a.y + Math.sin(an) * rr, i % 3 ? '#15110a' : '#8a8a70'); } }
-  else if (a.type === 'grinder') {
-    ctx.globalAlpha = ah * 0.6; circle(a.x, a.y, a.r * 0.85, '#23201c'); ctx.globalAlpha = ah;
-    for (let i = 0; i < 8; i++) { const an = i * 0.8 + (a.act ? t * 8 : 0), rr = a.r * (0.3 + (i % 3) * 0.22); px(a.x + Math.cos(an) * rr, a.y + Math.sin(an) * rr, i % 2 ? '#b0a890' : '#6a2a2a', 3); }
-    if (a.act) { ctx.strokeStyle = '#c0c0c0'; ctx.lineWidth = 3; ctx.beginPath(); ctx.moveTo(a.x, a.y); ctx.lineTo(a.x + Math.cos(t * 8) * a.r, a.y + Math.sin(t * 8) * a.r); ctx.moveTo(a.x, a.y); ctx.lineTo(a.x - Math.cos(t * 8) * a.r, a.y - Math.sin(t * 8) * a.r); ctx.stroke(); }
+  const c = CFG.anoms[a.type], dp = Math.hypot(a.x - P.x, a.y - P.y), gap = dp - AShape.R(a, P.x - a.x, P.y - a.y), t = G.t, sr = signR();
+  const vis = a.revealed > 0 ? 1 : a.known ? 0.6 : 0;                      // обнаружена болтом, детектором, картой или запиской
+  const sg = U.clamp(1 - gap / sr, 0, 1);                                  // близость: чем ближе, тем заметнее приметы
+  const dv = hasItem('detector2') && gap < sr ? 0.3 : 0;                    // «Детектор-2» слегка обводит контур
+  if (vis <= 0 && dv <= 0 && sg <= 0.02 && a.flash <= 0) return;
+  const at = (i, f0) => AShape.pt(a, i, f0);
+  if (vis > 0) {
+    ctx.globalAlpha = vis; const ah = vis;
+    if (a.type === 'funnel') for (let i = 0; i < 12; i++) { const an = t * 0.7 + i * 0.55, f = (i * 0.13 + t * 0.12) % 1, p = anomEdge(a, an, 0.15 + f * 0.85); px(p.x, p.y, '#c9b98f'); }
+    else if (a.type === 'electra') {
+      ctx.globalAlpha = ah * 0.25; anomPath(a, 0.95); ctx.fillStyle = '#20364a'; ctx.fill(); ctx.globalAlpha = ah;
+      if (a.state === 1 || (t * 2.7 + a.ph) % 1 < 0.05) { ctx.strokeStyle = '#9ad0ff'; ctx.lineWidth = 2; for (let i = 0; i < 4; i++) { const an = Math.random() * 6.28, p = anomEdge(a, an, 0.7 + Math.random() * 0.3); ctx.beginPath(); ctx.moveTo(a.x + Math.cos(an) * 6, a.y + Math.sin(an) * 6); ctx.lineTo((a.x + p.x) / 2 + (Math.random() - 0.5) * 14, (a.y + p.y) / 2 + (Math.random() - 0.5) * 14); ctx.lineTo(p.x, p.y); ctx.stroke(); } }
+      for (let i = 0; i < 6; i++) { const p = at(i + 1); px(p.x, p.y, '#5a7a9a', 3); }
+    } else if (a.type === 'fluff') for (let i = 0; i < 18; i++) { const p = at(i + 1); px(p.x, p.y + Math.sin(t + i) * 2, '#f4ecdc'); }
+    else if (a.type === 'plesh') { ctx.globalAlpha = ah * 0.7; anomPath(a, 0.92); ctx.fillStyle = '#2e2416'; ctx.fill(); ctx.globalAlpha = ah; for (let i = 0; i < 12; i++) { const p = at(i + 2); px(p.x, p.y, '#0e0a06', 2); } }
+    else if (a.type === 'grinder') {
+      const hole = a.r * c.hole; ctx.globalAlpha = ah * 0.6; anomPath(a, 0.95); ctx.arc(a.x, a.y, hole, 0, 6.2832, true); ctx.fillStyle = '#23201c'; ctx.fill('evenodd'); ctx.globalAlpha = ah;
+      for (let i = 0; i < 12; i++) { const p = at(i + 1); px(p.x, p.y, i % 2 ? '#b0a890' : '#6a2a2a', 3); }
+      ctx.strokeStyle = '#7a7a7a'; ctx.lineWidth = 2; ctx.beginPath(); ctx.arc(a.x, a.y, hole, 0, 6.2832); ctx.stroke();
+      if (a.act) { ctx.strokeStyle = '#c0c0c0'; ctx.lineWidth = 3; for (const s of [0, 3.1416]) { const an = t * 8 + s, p = anomEdge(a, an, 0.95); ctx.beginPath(); ctx.moveTo(a.x + Math.cos(an) * hole, a.y + Math.sin(an) * hole); ctx.lineTo(p.x, p.y); ctx.stroke(); } }
+    } else if (a.type === 'spring') {
+      const k = a.state ? a.t / c.charge : 0; ctx.strokeStyle = '#8a6a34'; ctx.lineWidth = 2;
+      for (let i = 1; i <= 3; i++) { ctx.globalAlpha = ah * (0.75 - i * 0.15); anomPath(a, (i / 3.2) * (1 - k * 0.35)); ctx.stroke(); }
+      ctx.globalAlpha = ah; for (let i = 0; i < 6; i++) { const p = at(i + 3); px(p.x, p.y - k * 6, '#e0c080', 3); }
+    } else if (a.type === 'smolder') {
+      const k = a.state ? a.t / c.charge : 0; ctx.globalAlpha = ah * 0.55; anomPath(a, 0.9); ctx.fillStyle = '#1c100c'; ctx.fill(); ctx.globalAlpha = ah;
+      for (let i = 0; i < 10; i++) { const p = at(i + 1, ((t * 0.1 + i * 0.19) % 1)); px(p.x, p.y - ((t * 14 + i * 5) % 12), i % 3 ? '#e0602a' : '#ffb050', 3); }
+      circle(a.x, a.y, a.r * (0.22 + 0.04 * Math.sin(t * 5 + a.ph)), '#c8461e');
+      if (a.state) { ctx.globalAlpha = Math.min(0.55, 0.12 + k * 0.5); ctx.fillStyle = '#ff7a30'; ctx.beginPath(); ctx.moveTo(a.x, a.y); ctx.arc(a.x, a.y, a.r * c.reach, a.dir - c.arc / 2, a.dir + c.arc / 2); ctx.closePath(); ctx.fill(); ctx.globalAlpha = ah; }
+    } else if (a.type === 'magnet') {
+      ctx.globalAlpha = ah * 0.4; anomPath(a, 0.35); ctx.fillStyle = '#1c2028'; ctx.fill(); ctx.globalAlpha = ah;
+      for (let i = 0; i < 14; i++) { const p = at(i + 2, ((t * 0.05 + i * 0.17) % 1)); px(p.x, p.y, i % 3 ? '#7a4a30' : '#9aa0a8', 3); }
+      ctx.strokeStyle = 'rgba(140,170,210,.5)'; ctx.lineWidth = 1; for (let i = 0; i < 4; i++) { const an = i * 1.57 + t * 0.4; ctx.beginPath(); ctx.ellipse(a.x, a.y, a.r * c.asp * 0.6, a.r / c.asp * 0.6, a.rot, an, an + 0.9); ctx.stroke(); }
+    } else { ctx.globalAlpha = ah * 0.4; anomPath(a, 0.85); ctx.fillStyle = '#4a7a55'; ctx.fill(); ctx.globalAlpha = ah; for (let i = 0; i < 3; i++) { const p = at(i + 4); px(p.x + Math.sin(t + i) * 2, p.y, '#cfe8cf', 3); } }
+  } else if (sg > 0.02) {
+    // не обнаружена: только редкие приметы, число и яркость растут с приближением; вблизи заметны и предупреждения о разряде
+    ctx.globalAlpha = 0.25 + sg * 0.55; const n = Math.ceil(sg * 9);
+    for (let i = 0; i < n; i++) { const p = at(i * 3 + 1); px(p.x + Math.sin(t * 0.7 + i) * (a.type === 'fluff' || a.type === 'funnel' ? 3 : 0), p.y - (a.type === 'smolder' ? (t * 10 + i * 4) % 9 : 0), c.sign || c.col, i % 4 === 0 ? 3 : 2); }
+    if (sg > 0.4 && (a.state === 1 || a.act)) { ctx.globalAlpha = 0.6; for (let i = 0; i < 5; i++) { const p = at(i * 2 + 1); px(p.x, p.y, a.type === 'electra' ? '#9ad0ff' : a.type === 'smolder' ? '#ff9a50' : '#e0c080', 3); } }
   }
-  else if (a.type === 'spring') {
-    // кольца-вмятины; перед прыжком сжимаются к центру
-    const k = a.state ? a.t / c.charge : 0;
-    ctx.strokeStyle = '#8a6a34'; ctx.lineWidth = 2;
-    for (let i = 1; i <= 3; i++) { ctx.globalAlpha = ah * (0.7 - i * 0.15); ctx.beginPath(); ctx.arc(a.x, a.y, a.r * (i / 3.2) * (1 - k * 0.35), 0, 6.28); ctx.stroke(); }
-    ctx.globalAlpha = ah; for (let i = 0; i < 6; i++) { const an = i * 1.05 + a.ph; px(a.x + Math.cos(an) * a.r * 0.75, a.y + Math.sin(an) * a.r * 0.75 - k * 6, '#e0c080', 3); }
-  }
-  else if (a.type === 'smolder') {
-    const k = a.state ? a.t / c.charge : 0;
-    ctx.globalAlpha = ah * 0.55; circle(a.x, a.y, a.r * 0.8, '#1c100c'); ctx.globalAlpha = ah;
-    for (let i = 0; i < 10; i++) { const an = i * 2.3 + a.ph, rr = a.r * (0.15 + ((i * 0.19 + t * 0.1) % 1) * 0.75); px(a.x + Math.cos(an) * rr, a.y + Math.sin(an) * rr - ((t * 14 + i * 5) % 12), i % 3 ? '#e0602a' : '#ffb050', 3); }
-    circle(a.x, a.y, a.r * (0.22 + 0.04 * Math.sin(t * 5 + a.ph)), '#c8461e');
-    if (a.state) {
-      ctx.globalAlpha = Math.min(0.55, 0.12 + k * 0.5); ctx.fillStyle = '#ff7a30'; ctx.beginPath(); ctx.moveTo(a.x, a.y); ctx.arc(a.x, a.y, a.r * c.reach, a.dir - c.arc / 2, a.dir + c.arc / 2); ctx.closePath(); ctx.fill(); ctx.globalAlpha = ah;
-    }
-  }
-  else if (a.type === 'magnet') {
-    ctx.globalAlpha = ah * 0.45; circle(a.x, a.y, a.r * 0.35, '#1c2028'); ctx.globalAlpha = ah;
-    for (let i = 0; i < 12; i++) { const an = i * 2.4 + a.ph, rr = a.r * (0.35 + ((i * 0.17 + t * 0.05) % 1) * 0.65); px(a.x + Math.cos(an) * rr, a.y + Math.sin(an) * rr, i % 3 ? '#7a4a30' : '#9aa0a8', 3); }
-    ctx.strokeStyle = 'rgba(140,170,210,.5)'; ctx.lineWidth = 1; for (let i = 0; i < 4; i++) { const an = i * 1.57 + t * 0.4; ctx.beginPath(); ctx.arc(a.x, a.y, a.r * 0.6, an, an + 0.9); ctx.stroke(); }
-  }
-  else { ctx.globalAlpha = ah * 0.4; ctx.beginPath(); ctx.ellipse(a.x, a.y, a.r * 0.8, a.r * 0.6, 0.3, 0, 6.28); ctx.fillStyle = '#4a7a55'; ctx.fill(); ctx.globalAlpha = ah; px(a.x - a.r * 0.25 + Math.sin(t) * 3, a.y - a.r * 0.2, '#cfe8d0', 4); }
-  if (a.flash > 0) { ctx.globalAlpha = a.flash; circle(a.x, a.y, a.r * (1.1 - a.flash * 0.3), a.type === 'electra' ? '#cfe6ff' : c.col); }
+  if (a.flash > 0) { ctx.globalAlpha = a.flash; anomPath(a, 1.05 - a.flash * 0.15); ctx.fillStyle = a.type === 'electra' ? '#cfe6ff' : c.col; ctx.fill(); }
   if (a.type === 'smolder' && a.flash > 0) { ctx.globalAlpha = a.flash * 0.5; ctx.fillStyle = '#ffb050'; ctx.beginPath(); ctx.moveTo(a.x, a.y); ctx.arc(a.x, a.y, a.r * c.reach, a.dir - c.arc / 2, a.dir + c.arc / 2); ctx.closePath(); ctx.fill(); }
-  if (vis) { ctx.globalAlpha = vis; ctx.strokeStyle = c.col; ctx.lineWidth = 1.5; ctx.setLineDash([6, 5]); ctx.beginPath(); ctx.arc(a.x, a.y, a.r, 0, 6.28); ctx.stroke(); ctx.setLineDash([]); ctx.font = 'bold 11px Consolas'; ctx.textAlign = 'center'; ctx.fillStyle = c.col; ctx.fillText(c.name, a.x, a.y - a.r - 6); }
+  if (vis > 0 || dv > 0) {
+    ctx.globalAlpha = Math.max(vis, dv); ctx.strokeStyle = c.col; ctx.lineWidth = 1.5; ctx.setLineDash([6, 5]); anomPath(a); ctx.stroke(); ctx.setLineDash([]);
+    if (vis > 0) { ctx.font = 'bold 11px Consolas'; ctx.textAlign = 'center'; ctx.fillStyle = c.col; ctx.fillText(c.name, a.x, a.y - a.r * AShape.edge(a, -1.5708) - 6); }
+  }
   ctx.globalAlpha = 1;
 }
 function drawMutant(m) {
@@ -627,8 +640,8 @@ function hud(dt) {
   const tip = $('tip');
   if (mouse.r && !G.ui && G.scene === 'zone') {
     const mx = mouse.x + cam.x, my = mouse.y + cam.y; let txt = null;
-    for (const a of W.anoms) if (Math.hypot(a.x - mx, a.y - my) < a.r + 25 && Math.hypot(a.x - P.x, a.y - P.y) < hintR()) { txt = CFG.anoms[a.type].hint + (P.sk.sense >= 2 ? ' — похоже на «' + CFG.anoms[a.type].name + '».' : ''); break; }
-    if (!txt) for (const a of W.arts) if (Math.hypot(a.x - mx, a.y - my) < 30 && Math.hypot(a.x - P.x, a.y - P.y) < hintR() * 0.75) { txt = 'Что-то поблёскивает.'; break; }
+    for (const a of W.anoms) if ((AShape.inside(a, mx - a.x, my - a.y, 1.15) || Math.hypot(a.x - mx, a.y - my) < 25) && Math.hypot(a.x - P.x, a.y - P.y) < a.r * 1.6 + signR()) { txt = CFG.anoms[a.type].hint + (P.sk.sense >= 2 ? ' — похоже на «' + CFG.anoms[a.type].name + '».' : ''); break; }
+    if (!txt) for (const a of W.arts) if (Math.hypot(a.x - mx, a.y - my) < 30 && Math.hypot(a.x - P.x, a.y - P.y) < signR() * 1.3 * 0.75) { txt = 'Что-то поблёскивает.'; break; }
     if (!txt) for (const s of W.corpses) if (Math.hypot(s.x - mx, s.y - my) < 30 && Math.hypot(s.x - P.x, s.y - P.y) < 300) { txt = s.looted ? 'Обшаренный труп сталкера.' : 'Труп сталкера. Может, что-то осталось.'; break; }
     if (!txt) txt = Math.hypot(P.x - W.C.x, P.y - W.C.y) < W.C.r ? 'Лагерь.' : 'Ничего необычного. Пока.';
     tip.textContent = txt; tip.style.display = 'block'; tip.style.left = Math.min(VW - 320, mouse.x + 14) + 'px'; tip.style.top = mouse.y + 14 + 'px';
@@ -724,7 +737,7 @@ function openMenu() { closePanel(); G.ui = { k: 'menu' }; renderPanel(); }
 function menuHTML(u) {
   const ctl = [['WASD / стрелки', 'движение'], ['Shift', 'бег (тратит силы, шумно)'], ['Ctrl / C', 'красться (тихо, незаметнее)'], ['Мышь', 'направление взгляда и броска'],
     ['ЛКМ', 'применить выбранное: выстрел / бросок болта / лечение / еда'], ['ПКМ (держать)', 'осмотреть место под курсором'], ['E / F', 'подобрать, обыскать, говорить'],
-    ['B', 'справочник: мутанты, аномалии, артефакты, места'], ['1–8 / Q / колесо', 'оружие (1 ещё раз — сменить), болты, аптечка, еда, антирад, приманка, шина, шок-бомба'], ['J', 'журнал: задания, репутация, знания'], ['Tab / I', 'рюкзак, навыки, записки'], ['M', 'карта'], ['Esc / F1', 'это меню (пауза)']];
+    ['B', 'справочник: мутанты, аномалии, артефакты, места'], ['1–9 / Q / колесо', 'оружие (1 ещё раз — сменить), болты, аптечка, еда, антирад, приманка, шина, шок-бомба, крюк-кошка'], ['J', 'журнал: задания, репутация, знания'], ['Tab / I', 'рюкзак, навыки, записки'], ['M', 'карта'], ['Esc / F1', 'это меню (пауза)']];
   const tips = ['Обыскивай остовы машин и тайники (E): хлам, патроны, деньги. Отмечены мерцанием рядом.', 'Хлам, трофеи с туш и артефакты неси Скупщику «Бороде» в лагере.',
     'Артефакты лежат в аномалиях. Бросай болты (слот 2), потом рискуй. Неопознанные — к учёному.', 'Слухачи слепые: красться. Стеклоеды не опасны. Жестянка бьёт сильно — води её через аномалии. Туманник: смотри на него.', 'Выброс: сирена, 25 сек, в лагерь или бункер.'];
   return `<div class="x" data-a="resume">✕ Esc</div><h2>Меню — игра на паузе</h2><div class="cols"><div><h3>Управление</h3>${ctl.map(([k, d]) => row('', '<b>' + k + '</b>', d)).join('')}</div>
@@ -769,7 +782,7 @@ addEventListener('keydown', e => {
   else if (e.code === 'Escape' || e.code === 'F1') { e.preventDefault(); G.ui ? closePanel() : openMenu(); }
   else if (e.code === 'KeyE' || e.code === 'KeyF') { if (G.ui) closePanel(); else if (G.near && !G.dead) G.near.fn(); }
   else if (e.code === 'KeyQ') P.sel = (P.sel + 1) % heldNames.length;
-  else if (/^Digit[1-8]$/.test(e.code)) { const n = +e.code[5] - 1; if (n === 0 && P.sel === 0) Meta.cycleWeapon(); P.sel = n; }
+  else if (/^Digit[1-9]$/.test(e.code)) { const n = +e.code[5] - 1; if (n === 0 && P.sel === 0) Meta.cycleWeapon(); P.sel = n; }
 });
 addEventListener('keyup', e => { keys[e.code] = false; });
 addEventListener('blur', () => { for (const k in keys) keys[k] = false; mouse.l = mouse.r = false; });
