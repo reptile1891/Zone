@@ -38,17 +38,18 @@ test("артефакт: в контейнер по клику на слот (н�
   assert.equal(o.unk, true); assert.equal(o.e0, "medusa"); assert.equal(o.q0, 1.2); assert.equal(o.left, 1); assert.deepEqual(o.swapped, [null, "medusa"]); assert.equal(o.back, true); assert.equal(o.empty, true);
 });
 
-test("быстрая панель: вещь из рюкзака кладётся на кнопку и остаётся в рюкзаке; не подходящее не ставится; слоты меняются местами", () => {
+test("быстрая панель: вещь из рюкзака кладётся на пустую кнопку и остаётся в рюкзаке; не подходящее не ставится; кнопки меняются местами; унести — освободить", () => {
   fresh();
   const o = run(`(() => {
     invAdd("antibiotic", 2); invAdd("scrap", 2); const u = G.ui; Meta.click("cell", "inv", "0", u); Meta.click("cell", "quick", "8", u); const a = heldNames[8], stay = invCount("antibiotic");
     Meta.click("cell", "inv", "1", u); Meta.click("cell", "quick", "3", u); const junk = heldNames[3];
-    Meta.click("cell", "quick", "8", u); const handQ = JSON.stringify(u.hand); Meta.click("cell", "quick", "2", u); const swap = [heldNames[2], heldNames[8]];
-    Meta.click("cell", "quick", "2", u); Meta.click("cell", "inv", "0", u); const reset = heldNames[2];
-    const w0 = P.weapon; Meta.click("cell", "quick", "0", u); const cycled = "ok";
-    return { a, stay, junk, handQ, swap, reset, u: u.hand };
+    Meta.click("cell", "quick", "8", u); const handQ = JSON.stringify(u.hand); Meta.click("cell", "quick", "1", u); const swap = [heldNames[1], heldNames[8]];
+    Meta.click("cell", "quick", "1", u); Meta.click("cell", "inv", "0", u); const cleared = heldNames[1];
+    Meta.click("cell", "gun", "0", u); Meta.click("cell", "quick", "5", u); const gun6 = heldNames[5]; Meta.click("cell", "quick", "5", u); Meta.click("cell", "gun", "0", u); const gunOff = heldNames[5];
+    return { a, stay, junk, handQ, swap, cleared, gun6, gunOff };
   })()`);
-  assert.equal(o.a, "antibiotic"); assert.equal(o.stay, 2); assert.equal(o.junk, "food", "лом на панель не ставится"); assert.equal(o.handQ, '{"z":"quick","i":8}'); assert.deepEqual(o.swap, ["antibiotic", "medkit"]); assert.equal(o.reset, "medkit", "унести с панели — вернуть прежнее");
+  assert.equal(o.a, "antibiotic"); assert.equal(o.stay, 2); assert.equal(o.junk, null, "лом на панель не ставится"); assert.equal(o.handQ, '{"z":"quick","i":8}'); assert.deepEqual(o.swap, ["antibiotic", "weapon"]);
+  assert.equal(o.cleared, null, "унести с панели — кнопка пуста"); assert.equal(o.gun6, "weapon", "оружие хоть на 6"); assert.equal(o.gunOff, null);
 });
 
 test("ящик хранения: клик по вещи и по ящику переносит туда и обратно, лимит соблюдается", () => {
@@ -77,7 +78,7 @@ test("разметка: сетка рюкзака, контейнеры, пан�
   fresh();
   const o = run(`(() => {
     invAdd("medkit", 3); invAdd("suit", 1); invAdd("art", 1, "soul", 1); const u = G.ui; u.hand = { z: "inv", i: 0 }; const html = Inv.html(u);
-    const tip = Tip.fromAttr("cell:inv:0"), tipQ = Tip.fromAttr("cell:quick:2"), none = Tip.fromAttr("cell:inv:20");
+    const tip = Tip.fromAttr("cell:inv:0"), tipQ = Tip.fromAttr("cell:quick:1"), none = Tip.fromAttr("cell:inv:20");
     G.ui = { k: "storage" }; const st = Inv.html(G.ui);
     return { cells: (html.match(/data-a="cell:inv:/g) || []).length, equip: (html.match(/data-a="cell:equip:/g) || []).length, quick: (html.match(/data-a="cell:quick:/g) || []).length, hand: /В руке/.test(html), sel: /gc sel/.test(html), skills: /Навыки/.test(html) && /Записки/.test(html), tip: !!tip, tipQ: !!tipQ, none, stash: /cell:stash:/.test(st) && /Ящик хранения/.test(st) };
   })()`);

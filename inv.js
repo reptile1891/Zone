@@ -7,9 +7,9 @@ const Inv = {
   COLS: 6,
   zone(z) { return z === 'inv' ? P.inv : z === 'stash' ? P.stash : z === 'equip' ? P.equip : null; },
   // вещь в ячейке зоны (для быстрой панели — id вещи)
-  at(z, i) { if (z === 'quick') return heldNames[i] && heldNames[i] !== 'weapon' ? heldNames[i] : null; const a = this.zone(z); return a && a[i] ? a[i] : null; },
+  at(z, i) { if (z === 'quick') return i > 0 && heldNames[i] ? heldNames[i] : null; if (z === 'gun') return 'weapon'; const a = this.zone(z); return a && a[i] ? a[i] : null; },
   handItem(u) { return u && u.hand ? this.at(u.hand.z, u.hand.i) : null; },
-  name(z, x) { return z === 'quick' ? CFG.items[x].name : z === 'equip' ? CFG.arts[x.art].name : Meta.itemLabel(x); },
+  name(z, x) { return z === 'quick' || z === 'gun' ? Quick.name(x) : z === 'equip' ? CFG.arts[x.art].name : Meta.itemLabel(x); },
   // ---- перемещения ----
   stackable(s) { return s && !s.art && !s.g && !CFG.items[s.id].pack0; },
   moveInv(from, to) {
@@ -27,7 +27,7 @@ const Inv = {
   click(u, z, i) {
     const h = u.hand;
     if (!h) {
-      if (z === 'quick' && i === 0) { Meta.cycleWeapon(); return; }
+      if ((z === 'quick' && i === 0) || z === 'melee') { Melee.cycle(); return; }
       if (this.at(z, i)) u.hand = { z, i };
       return;
     }
@@ -44,8 +44,8 @@ const Inv = {
       else if (z === 'inv') this.unequip(h.i);
     } else if (h.z === 'quick') {
       if (z === 'quick' && i > 0) Quick.assign(i, it);
-      else if (z === 'inv') { Quick.assign(h.i, Quick.DEFAULT[h.i]); }   // унести с панели — кнопка возвращает прежнюю вещь
-    }
+      else if (z === 'inv' || z === 'gun') Quick.assign(h.i, null);   // унести с панели — кнопка освобождается
+    } else if (h.z === 'gun') { if (z === 'quick' && i > 0) { Quick.assign(i, 'weapon'); log('На кнопку ' + (i + 1) + ' — ' + Quick.name('weapon') + '.', '#a8c890'); } }
   },
   // действия над вещью в руке
   act(u, what) {
@@ -58,9 +58,12 @@ const Inv = {
   // ---- разметка ----
   cell(z, i, s, u) {
     const sel = u.hand && u.hand.z === z && u.hand.i === i; let inner = '', col = '', badge = '';
+    if (z === 'gun') return '<div class="slot gc' + (sel ? ' sel' : '') + '" data-a="cell:gun:0" title="' + Quick.name('weapon') + '">' + Quick.icon('weapon') + '<span class="n">' + invCount(Wpn.of(P.weapon).ammo || 'ammo') + '</span></div>';
+    if (z === 'melee') return '<div class="slot gc" data-a="cell:melee:0" title="' + Melee.cur().name + '">' + Melee.cur().icon + '</div>';
     if (z === 'quick') {
-      const id = heldNames[i], w = id === 'weapon', n = w ? invCount(Wpn.of(P.weapon).ammo || 'ammo') : invCount(id);
-      inner = (w ? Icons.html('w_' + Wpn.base(P.weapon)) : CFG.items[id].icon) + '<span class="k">' + (i + 1) + '</span><span class="n">' + n + '</span>';
+      const id = heldNames[i], w = id === 'weapon', n = w ? invCount(Wpn.of(P.weapon).ammo || 'ammo') : id && id !== 'melee' ? invCount(id) : '';
+      if (!id) return '<div class="slot gc e' + (u.hand && (u.hand.z === 'inv' || u.hand.z === 'gun' || u.hand.z === 'quick') ? ' hint' : '') + '" data-a="cell:quick:' + i + '"><span class="k">' + (i + 1) + '</span></div>';
+      inner = Quick.icon(id) + '<span class="k">' + (i + 1) + '</span>' + (n === '' ? '' : '<span class="n">' + n + '</span>');
       return '<div class="slot gc' + (sel ? ' sel' : '') + (n === 0 && !w ? ' z' : '') + '" data-a="cell:quick:' + i + '">' + inner + '</div>';
     }
     if (!s) return '<div class="slot gc e' + (u.hand && u.hand.z !== z ? ' hint' : '') + '" data-a="cell:' + z + ':' + i + '"></div>';
@@ -102,7 +105,8 @@ const Inv = {
     }
     let h = '<div class="x" data-a="close">✕ Esc</div><h2>Снаряжение</h2><div class="cols"><div><h3>Рюкзак — ' + weight().toFixed(1) + ' / ' + carryCap() + ' кг</h3>' + this.grid('inv', u, 24) + this.handBar(u) + '</div><div><h3>Контейнеры для артефактов</h3><div class="ggrid">';
     P.equip.forEach((e, i) => { h += this.cell('equip', i, e, u); }); h += '</div><div class="stat">' + P.equip.map(a => a ? Meta.itemLabel(Gear.asSlot(a)) : '—').join(' · ') + '</div>';
-    h += '<h3>Быстрая панель</h3><div class="ggrid q">'; for (let i = 0; i < heldNames.length; i++) h += this.cell('quick', i, null, u); h += '</div><div class="stat">Возьми вещь и кликни по кнопке 2–9. Кнопка 1 — оружие (клик меняет ствол).</div>';
+    h += '<h3>Оружие</h3><div class="ggrid q">' + this.cell('gun', 0, null, u) + this.cell('melee', 0, null, u) + '</div><div class="stat">Огнестрел — возьми и положи на любую кнопку 2–9; нож (кнопка 1) — клик по нему меняет нож.</div>';
+    h += '<h3>Быстрая панель</h3><div class="ggrid q">'; for (let i = 0; i < heldNames.length; i++) h += this.cell('quick', i, null, u); h += '</div><div class="stat">Возьми вещь и кликни по кнопке 2–9, чтобы поставить; вещь с кнопки — на рюкзак или ✕, чтобы убрать.</div>';
     h += '<h3>Надето</h3>'; for (const k of Gear.KINDS) { const b = Gear.best(k); h += '<div class="stat">' + Gear.KINDNAME[k] + ': <b>' + (b ? Meta.itemLabel(b) : '—') + '</b></div>'; }
     return h + this.skillsHtml() + '</div></div>' + Meta.invExtra();
   },
@@ -110,7 +114,7 @@ const Inv = {
   syncHand(u) {
     const el = this.el; if (!el) return; const it = u && u.hand ? this.handItem(u) : null;
     if (!it) { el.style.display = 'none'; return; }
-    const z = u.hand.z; el.innerHTML = z === 'quick' ? CFG.items[it].icon : z === 'equip' ? Codex.artHtml(it.art) : itemIcon(it); el.style.display = 'block';
+    const z = u.hand.z; el.innerHTML = z === 'quick' || z === 'gun' ? Quick.icon(it) : z === 'equip' ? Codex.artHtml(it.art) : itemIcon(it); el.style.display = 'block';
   },
 };
 

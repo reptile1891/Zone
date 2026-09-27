@@ -234,7 +234,7 @@ const Dungeon = {
         if (e.mode === 'stun') { ctx.fillStyle = '#f0d060'; ctx.fillText('✦', e.x, e.y - 18); }
         else if (e.state === 'hunt' && al > 0.3) { ctx.fillStyle = '#e05050'; ctx.fillText('!', e.x, e.y - 16); }
         if (e.hp < e.max && al > 0.3) { ctx.fillStyle = '#000'; ctx.fillRect(e.x - 10, e.y - 22, 20, 3); ctx.fillStyle = '#a33'; ctx.fillRect(e.x - 10, e.y - 22, 20 * e.hp / e.max, 3); } }
-      else { const mv = keys.mx || keys.my, bob = mv ? (Math.floor(G.t * 10) % 2 ? -1 : 0) : 0; shadow(P.x, P.y + 10, 8); Spr.draw(ctx, P.sneak ? 'player_s' : 'player', P.x, P.y + bob - 2, Math.cos(P.ang) < 0); if (P.sel === 0) Gun.draw(ctx, P.x, P.y + 2, P.ang, P.weapon, P.recoil || 0); }
+      else { const mv = keys.mx || keys.my, bob = mv ? (Math.floor(G.t * 10) % 2 ? -1 : 0) : 0; shadow(P.x, P.y + 10, 8); Spr.draw(ctx, P.sneak ? 'player_s' : 'player', P.x, P.y + bob - 2, Math.cos(P.ang) < 0); if (heldNames[P.sel] === 'weapon') Gun.draw(ctx, P.x, P.y + 2, P.ang, P.weapon, P.recoil || 0); }
     }
     for (const q of this.shots) { ctx.fillStyle = '#9ad040'; ctx.beginPath(); ctx.arc(q.x, q.y, 4, 0, 6.28); ctx.fill(); ctx.fillStyle = '#d8f890'; ctx.fillRect(q.x - 1, q.y - 1, 2, 2); }
     for (const t of tracers) { ctx.strokeStyle = 'rgba(255,230,150,.8)'; ctx.lineWidth = 1.5; ctx.beginPath(); ctx.moveTo(t.x1, t.y1); ctx.lineTo(t.x2, t.y2); ctx.stroke(); }

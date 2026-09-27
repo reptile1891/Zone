@@ -154,7 +154,9 @@ function respawn() {
 }
 
 // ---------- действия игрока ----------
-const heldNames = ['weapon', 'bolt', 'medkit', 'food', 'antirad', 'lure', 'splint', 'shock', 'hook'];
+// Быстрая панель (раскладка — quick.js): 'melee' — ближний бой (всегда на кнопке 1), 'weapon' — огнестрел, id предмета или null (пусто)
+const heldNames = ['melee', 'weapon', null, null, null, null, null, null, null];
+function stepSel(d) { const n = heldNames.length; for (let k = 1; k <= n; k++) { const i = ((P.sel + d * k) % n + n) % n; if (heldNames[i]) { P.sel = i; return; } } }
 function useSel() {
   const h = heldNames[P.sel];
   if (h === 'pistol') shoot(); else if (h === 'bolt') throwBolt();
@@ -490,7 +492,7 @@ function draw() {
     else {
       const mv = keys.mx || keys.my, bob = mv ? (Math.floor(G.t * 10) % 2 ? -1 : 0) : 0;
       shadow(P.x, P.y + 10, 8); Spr.draw(ctx, P.sneak ? 'player_s' : 'player', P.x, P.y + bob - 2, Math.cos(P.ang) < 0);
-      if (P.sel === 0) Gun.draw(ctx, P.x, P.y + 2, P.ang, Wpn.base(P.weapon), P.recoil || 0);
+      if (heldNames[P.sel] === 'weapon') Gun.draw(ctx, P.x, P.y + 2, P.ang, Wpn.base(P.weapon), P.recoil || 0);
     }
   }
   for (const b of bolts) px(b.x, b.y, '#d0d0d0', 3);
@@ -642,7 +644,7 @@ function hud(dt) {
   // подсказка действия — зелёная, прямо под игроком
   const pr = $('prompt'); pr.textContent = G.near ? '[E] ' + G.near.label : '';
   if (G.near) { const w = pr.offsetWidth || 0; pr.style.left = U.clamp(P.x - cam.x, w / 2 + 8, VW - w / 2 - 8) + 'px'; pr.style.top = U.clamp(P.y - cam.y + 36, 40, VH - 90) + 'px'; }
-  let q = ''; heldNames.forEach((h, i) => { const ic = h === 'weapon' ? Icons.html('w_' + Wpn.base(P.weapon)) : CFG.items[h].icon, n = h === 'weapon' ? invCount(Wpn.of(P.weapon).ammo || 'ammo') : invCount(h); q += `<div class="qs ${P.sel === i ? 'on' : ''}" data-q="${i}"><u>${i + 1}</u>${ic}<b>${n}</b></div>`; });
+  let q = ''; heldNames.forEach((h, i) => { const ic = h ? Quick.icon(h) : '', n = h === 'weapon' ? invCount(Wpn.of(P.weapon).ammo || 'ammo') : h && h !== 'melee' ? invCount(h) : ''; q += `<div class="qs ${P.sel === i ? 'on' : ''} ${h ? '' : 'e'}" data-q="${i}"><u>${i + 1}</u>${ic}<b>${n}</b></div>`; });
   if ($('quick').dataset.s !== q) { $('quick').innerHTML = q; $('quick').dataset.s = q; }
   // осмотр (ПКМ)
   const tip = $('tip');
@@ -790,8 +792,8 @@ addEventListener('keydown', e => {
   else if (e.code === 'KeyM') { if (G.ui && G.ui.k === 'map') closePanel(); else { closePanel(); G.ui = { k: 'map' }; drawMap(); } }
   else if (e.code === 'Escape' || e.code === 'F1') { e.preventDefault(); G.ui ? closePanel() : openMenu(); }
   else if (e.code === 'KeyE' || e.code === 'KeyF') { if (G.ui) closePanel(); else if (G.near && !G.dead) G.near.fn(); }
-  else if (e.code === 'KeyQ') P.sel = (P.sel + 1) % heldNames.length;
-  else if (/^Digit[1-9]$/.test(e.code)) { const n = +e.code[5] - 1; if (n === 0 && P.sel === 0) Meta.cycleWeapon(); P.sel = n; }
+  else if (e.code === 'KeyQ') stepSel(1);
+  else if (/^Digit[1-9]$/.test(e.code)) { const n = +e.code[5] - 1; if (P.sel === n) { if (heldNames[n] === 'weapon') Meta.cycleWeapon(); else if (heldNames[n] === 'melee') Melee.cycle(); } P.sel = n; }
 });
 addEventListener('keyup', e => { keys[e.code] = false; });
 addEventListener('blur', () => { for (const k in keys) keys[k] = false; mouse.l = mouse.r = false; });
@@ -800,7 +802,7 @@ addEventListener('mousemove', e => { mouse.x = e.clientX; mouse.y = e.clientY; }
 cv.addEventListener('mousedown', e => { mouse.x = e.clientX; mouse.y = e.clientY; if (e.button === 0) { mouse.l = true; mouse.tap = true; } if (e.button === 2) mouse.r = true; });
 addEventListener('mouseup', e => { if (e.button === 0) mouse.l = false; if (e.button === 2) mouse.r = false; });
 cv.addEventListener('contextmenu', e => e.preventDefault());
-addEventListener('wheel', e => { if (G.started && !G.ui) P.sel = (P.sel + (e.deltaY > 0 ? 1 : heldNames.length - 1)) % heldNames.length; });
+addEventListener('wheel', e => { if (G.started && !G.ui) stepSel(e.deltaY > 0 ? 1 : -1); });
 $('quick').addEventListener('click', e => { const q = e.target.closest('[data-q]'); if (q) P.sel = +q.dataset.q; });
 $('mapwrap').addEventListener('click', closePanel);
 $('menubtn').onclick = () => { if (G.started) openMenu(); };

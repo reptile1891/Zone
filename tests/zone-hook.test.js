@@ -7,7 +7,7 @@ const { createZone } = require("./zone-load");
 const z = createZone();
 const run = code => JSON.parse(JSON.stringify(z.run(code) ?? null));
 const fresh = () => z.run(`(() => {
-  W = new World(1234); resetPlayer(); P.stash = []; P.bld = null; Mutants.spawn(); Stalkers.spawn(); Meta.reset(); Camp.enter(true);
+  W = new World(1234); resetPlayer(); P.stash = []; P.bld = null; Mutants.spawn(); Stalkers.spawn(); Meta.reset(); Camp.enter(true); Quick.assign(8, "hook");
   G.events = []; G.dead = false; G.started = true; G.ui = null; G.scene = "zone"; G.emi = { s: "calm", left: 0, next: 99999 }; G.t = 5; VW = 800; VH = 600;
   P.x = 3000; P.y = 3000; P.hp = 100; P.inv = []; P.sk.sense = 0; Mutants.list = []; Stalkers.list = []; W.anoms = []; W.arts = []; W.loot = []; P.cd = 0; Meta.hooks = []; Meta.reeling = []; cam.x = P.x - VW / 2; cam.y = P.y - VH / 2;
 })()`);

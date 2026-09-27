@@ -16,8 +16,8 @@ const runOne = (seed, sector, opts) => z.run(`(() => {
     G.clock = 12 / 24 * CFG.time.dayLen;
     // стартовая точка нужного сектора: не вода, не озеро
     let sx = 0, sy = 0; for (let i = 0; i < 4000; i++) { const x = 300 + rnd() * (W.S - 600), y = 300 + rnd() * (W.S - 600); if (W.danger(x, y) === ${sector} && W.biomeAt(x, y) !== "lake") { sx = x; sy = y; break; } }
-    P.x = sx; P.y = sy; P.inv = []; invAdd("ammo", opts.ammo || 30); invAdd("medkit", opts.medkits == null ? 2 : opts.medkits); invAdd("bolt", 10); invAdd("hook", opts.hooks == null ? 3 : opts.hooks); Events.act = []; Events.next = opts.events ? 60 : 1e9;
-    P.hp = 100; P.money = 0; P.weapon = "pistol"; P.cond.pistol = 100; P.sel = 0; P.kills = 0; P.grab = 0; P.stam = 100; VW = 800; VH = 600; Codex.t = 99999;
+    P.x = sx; P.y = sy; P.inv = []; invAdd("ammo", opts.ammo || 30); invAdd("medkit", opts.medkits == null ? 2 : opts.medkits); invAdd("bolt", 10); invAdd("hook", opts.hooks == null ? 3 : opts.hooks); Quick.assign(8, "hook"); Events.act = []; Events.next = opts.events ? 60 : 1e9;
+    P.hp = 100; P.money = 0; P.weapon = "pistol"; P.cond.pistol = 100; P.sel = 1; P.kills = 0; P.grab = 0; P.stam = 100; VW = 800; VH = 600; Codex.t = 99999;
     keys.KeyD = keys.KeyA = keys.KeyW = keys.KeyS = keys.ControlLeft = false; mouse.l = false;
     let hurtSum = 0; hurt0 = P.hurt; P.hurt = function (d, src) { const h = this.hp; const r = hurt0.apply(this, arguments); hurtSum += Math.max(0, h - this.hp); return r; };
     const dt = 0.1, T = (opts.minutes || 4) * 60; let t = 0, meds = 0, shots = 0, picks = 0, result = "ok", target = null, stuckT = 0, lx = P.x, ly = P.y, wander = 0, wdx = 0, wdy = 0; const ammo0 = invCount("ammo"); const bl = new Set(); const invN0 = P.inv.length;
@@ -39,7 +39,7 @@ const runOne = (seed, sector, opts) => z.run(`(() => {
         if (target && target.type && target.anom !== undefined && Math.hypot(dx, dy) < 230) {   // артефакт в аномалии: бросить крюк и дождаться, пока он вернётся
           P.sel = 8; cam.x = P.x - VW / 2; cam.y = P.y - VH / 2; mouse.x = target.x - cam.x; mouse.y = target.y - cam.y; P.ang = Math.atan2(dy, dx); P.cd = 0; useSel();
           for (let k = 0; k < 120 && (Meta.hooks.length || Meta.reeling.length); k++) { update(dt); t += dt; if (G.dead) break; }
-          P.sel = 0; target.tries = (target.tries || 0) + 1; if (!W.arts.includes(target) || target.tries >= 2 || invCount("hook") < 1) { bl.add(target); target = null; }
+          P.sel = 1; target.tries = (target.tries || 0) + 1; if (!W.arts.includes(target) || target.tries >= 2 || invCount("hook") < 1) { bl.add(target); target = null; }
         } else if (target && Math.hypot(dx, dy) < 30) { const m0 = P.money, n0 = P.inv.reduce((a, s) => a + (s.n || 1), 0); if (G.near) G.near.fn(); if (P.money !== m0 || P.inv.reduce((a, s) => a + (s.n || 1), 0) !== n0) picks++; bl.add(target); target = null; }
         else {
           // обход аномалий: если впереди (на 70 пикс.) опасный круг — свернуть по касательной

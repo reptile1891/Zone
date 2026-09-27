@@ -9,7 +9,7 @@ const Meta = {
 
   reset() { this._bountyCd = 0; this.sensors = []; this.lures = []; this.lureShots = []; this.genOffers(); this.pickEvents(); },
   afterLoad() { P.burn = 0; if (!P.fuel) P.fuel = 0; if (!P.talked) P.talked = {}; if (!P.hints) P.hints = {}; if (!P.wdefs) P.wdefs = {}; if (!P.wseq) P.wseq = 0; if ((!P.gunOffers || !P.gunOffers.length) && typeof Wpn !== 'undefined') Wpn.genShop(); for (const k in CFG.weapons) if (P.cond[k] == null) P.cond[k] = 100; this._bountyCd = 0; for (const q of P.quests || []) if (q.type === 'bounty' && q.prog < 1) this.spawnBounty(q); this.sensors = []; this.lures = []; this.lureShots = []; if (!P.offers || !P.offers.length) this.genOffers(); if (!G.events || !G.events.length) this.pickEvents(); },
-  saveFields() { const o = {}; for (const k of ['rep', 'karma', 'quests', 'offers', 'lore', 'weapons', 'weapon', 'cond', 'suitCond', 'insured', 'pass', 'earned', 'researched', 'kills', 'mapSold', 'stash', 'bld', 'chainDone', 'fuel', 'talked', 'deepDone', 'hints', 'hintsOff', 'wdefs', 'wseq', 'gunOffers', 'codex', 'st', 'ach', 'run', 'lastRun', 'quick']) o[k] = P[k]; return o; },
+  saveFields() { const o = {}; for (const k of ['rep', 'karma', 'quests', 'offers', 'lore', 'weapons', 'weapon', 'cond', 'suitCond', 'insured', 'pass', 'earned', 'researched', 'kills', 'mapSold', 'stash', 'bld', 'chainDone', 'fuel', 'talked', 'deepDone', 'hints', 'hintsOff', 'wdefs', 'wseq', 'gunOffers', 'codex', 'st', 'ach', 'run', 'lastRun', 'quick', 'quickV', 'knives', 'knife']) o[k] = P[k]; return o; },
 
   // ---- костюм ----
   // Носится лучший костюм из рюкзака (слот со своими характеристиками)
@@ -633,7 +633,7 @@ function shoot() {
 function useSel() {
   const h = heldNames[P.sel];
   if (G.scene === 'dungeon' && (h === 'bolt' || h === 'lure' || h === 'shock' || h === 'hook')) { if (!(G.t < (Meta._dunLog || 0))) { Meta._dunLog = G.t + 3; log('Под землёй это ни к чему.'); } return; }
-  if (h === 'weapon') shoot(); else if (h === 'bolt') throwBolt(); else if (h === 'lure') Meta.throwLure(); else if (h === 'shock') Meta.throwShock(); else if (h === 'hook') Meta.throwHook(); else if (invCount(h) > 0) useItem(h);
+  if (h === 'melee') Melee.swing(); else if (h === 'weapon') shoot(); else if (h === 'bolt') throwBolt(); else if (h === 'lure') Meta.throwLure(); else if (h === 'shock') Meta.throwShock(); else if (h === 'hook') Meta.throwHook(); else if (invCount(h) > 0) useItem(h);
 }
 function useItem(id) {
   const u = CFG.items[id].use; if (!u || invCount(id) < 1) return;

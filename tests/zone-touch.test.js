@@ -36,7 +36,7 @@ test("стик прицела: точка перед игроком в нужн�
     cam.x = P.x - VW / 2; cam.y = P.y - VH / 2;
     Touch.aim({ x: 0, y: -1, n: 1 }); const up = { x: mouse.x, y: mouse.y }; Touch.aim({ x: 0.3, y: 0, n: 0.3 }); const short = { x: mouse.x, y: mouse.y };
     Touch.aim({ x: 3, y: 4, n: 0.5 }); update(0.016);
-    invAdd("ammo", 10); P.weapon = "pistol"; P.sel = 0; P.cd = 0; const a0 = invCount("ammo"); mouse.tap = true; update(0.016); const shot = a0 - invCount("ammo");
+    invAdd("ammo", 10); P.weapon = "pistol"; P.sel = 1; P.cd = 0; const a0 = invCount("ammo"); mouse.tap = true; update(0.016); const shot = a0 - invCount("ammo");
     return { up, short, ang: +P.ang.toFixed(3), want: +Math.atan2(4, 3).toFixed(3), shot, last: Touch.lastAim };
   })()`);
   assert.equal(o.up.x, 400); assert.equal(o.up.y, 300 - 400); assert.ok(o.short.x > 400 && o.short.x < 400 + 200 && o.short.y === 300);
@@ -46,12 +46,12 @@ test("стик прицела: точка перед игроком в нужн�
 test("автоприцел: цель в конусе и дальности, ближайшая к направлению; мимо конуса, далёкие, спящие в золе, чужие — нет; уровни и слот предмета", () => {
   fresh();
   const o = run(`(() => {
-    P.x = 3000; P.y = 3000; P.weapon = "pistol"; P.sel = 0; Touch.set.aim = 1; cam.x = P.x - VW / 2; cam.y = P.y - VH / 2;
+    P.x = 3000; P.y = 3000; P.weapon = "pistol"; P.sel = 1; Touch.set.aim = 1; cam.x = P.x - VW / 2; cam.y = P.y - VH / 2;
     const mk = (sp, dx, dy, st) => { const m = new Mutant(sp, P.x + dx, P.y + dy, null); m.state = st || "wander"; Mutants.list.push(m); return m; };
     const near = mk("listener", 200, 20), far = mk("tin", 900, 0), off = mk("glass", 200, 200), sleeper = mk("cinder", 150, 0, "sleep"), dead = mk("bristler", 120, 5); dead.dead = true;
     const r1 = Touch.assist(1, 0), r2 = Touch.assist(0, 1), r3 = Touch.assist(-1, 0);
     Touch.set.aim = 2; const wide = Touch.assist(Math.cos(0.4), Math.sin(0.4)); Touch.set.aim = 1; const narrow = Touch.assist(Math.cos(0.4), Math.sin(0.4)); Touch.set.aim = 0; const offOff = Touch.assist(1, 0); Touch.set.aim = 1;
-    P.sel = 1; const bolt = Touch.assist(1, 0); P.sel = 0;
+    Quick.assign(2, "bolt"); P.sel = 2; const bolt = Touch.assist(1, 0); P.sel = 1;
     Stalkers.list = [{ x: P.x + 300, y: P.y - 15, dead: false, hostile: false }, { x: P.x + 250, y: P.y + 30, dead: false, hostile: true }]; Mutants.list = [];
     const st = Touch.assist(1, 0);
     Mutants.list = [near]; Stalkers.list = []; Touch.aim({ x: 1, y: 0, n: 0.5 }, true); const withAssist = { mx: mouse.x + cam.x - P.x, my: mouse.y + cam.y - P.y, target: !!Touch.target };

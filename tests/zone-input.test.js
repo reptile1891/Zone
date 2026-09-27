@@ -9,7 +9,7 @@ const run = code => JSON.parse(JSON.stringify(z.run(code) ?? null));
 const fresh = () => z.run(`(() => {
   W = new World(1234); resetPlayer(); P.stash = []; P.bld = null; Mutants.spawn(); Stalkers.spawn(); Meta.reset(); Camp.enter(true);
   G.events = []; G.dead = false; G.started = true; G.ui = null; G.scene = "zone"; G.emi = { s: "calm", left: 0, next: 99999 }; G.t = 5; VW = 800; VH = 600;
-  P.x = 3000; P.y = 3000; P.hp = 100; P.cd = 0; P.weapon = "pistol"; P.cond.pistol = 100; P.sel = 0; P.inv = []; invAdd("ammo", 10); Mutants.list = []; Stalkers.list = [];
+  P.x = 3000; P.y = 3000; P.hp = 100; P.cd = 0; P.weapon = "pistol"; P.cond.pistol = 100; P.sel = 1; P.inv = []; invAdd("ammo", 10); Mutants.list = []; Stalkers.list = [];
   keys.KeyA = keys.KeyD = keys.KeyW = keys.KeyS = false; mouse.l = false; mouse.tap = false; mouse.x = 0; mouse.y = 0; localStorage.removeItem("zone_save_v2");
 })()`);
 

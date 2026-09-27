@@ -211,6 +211,13 @@ const CFG = {
     crossbow: { lvl: 2, name: 'Самострел', dmg: 34, cd: 1.1, spread: 0.05, pellets: 1, range: 420, noise: 60, price: 340, wear: 0.15, repair: 0.7, ammo: 'bolt', ambush: 2, note: 'бесшумный, стреляет болтами; по не заметившим — двойной урон' },
     smg:     { lvl: 3, name: 'ПП «Оса»', dmg: 15, cd: 0.14, spread: 0.2, pellets: 1, range: 330, noise: 1000, price: 620, wear: 0.14, repair: 1.1 },
   },
+  // Ближний бой (Melee): dmg — урон удара, cd — перезарядка, reach — длина, arc — сектор (рад), noise — шум, back — множитель по не заметившим, lvl — уровень Мастерской для продажи
+  melee: {
+    knife:   { name: 'Нож', icon: '🔪', dmg: 16, cd: 0.45, reach: 36, arc: 1.1, noise: 70, back: 2.5, price: 0, note: 'Быстрый и почти бесшумный. По не заметившим — удар в спину ×2.5.' },
+    shiv:    { name: 'Заточка', icon: '🗡', dmg: 11, cd: 0.28, reach: 30, arc: 0.9, noise: 35, back: 3.5, price: 70, note: 'Очень быстрая и тихая. Удар в спину ×3.5 — для тех, кто подкрадывается.' },
+    machete: { name: 'Мачете', icon: '⚔', lvl: 2, dmg: 27, cd: 0.62, reach: 44, arc: 1.5, noise: 110, back: 2, price: 190, note: 'Широкий замах: задевает сразу нескольких.' },
+    hatchet: { name: 'Топорик', icon: '🪓', lvl: 3, dmg: 38, cd: 0.95, reach: 40, arc: 1.2, noise: 140, back: 2, pierce: true, price: 340, note: 'Медленный, но тяжёлый: пробивает броню Панцирника и Жестянки.' },
+  },
   gate: { rep: 15 },
   stalkers: {
     loner:   { name: 'Одиночка', hp: 60, walk: 55, run: 100, sight: 240, roam: 350, hostile: false, dmg: 8, acc: 0.45, range: 170, cd: 1.3, count: 5, dmin: 1, dmax: 3 },

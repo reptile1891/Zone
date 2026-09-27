@@ -146,7 +146,7 @@ test("интерфейс оружейника: имя цветом редкос�
   fresh();
   const o = run(`(() => {
     P.bld = Camp.DEFAULT_BLD(); P.bld.gun = 3; const def = { base: "revolver", rar: 2, mods: { dmg: 1.15, cd: 0.9, wear: 1.2 }, perks: {}, name: "Револьвер «Тяжёлый Скорый»" }; P.gunOffers = [{ def, price: 700 }]; const id = Wpn.add(Wpn.roll("rifle", U.rng(3), { rar: 3 }));
-    const html = Meta.gunShopHTML(); const offerTip = Tip.fromAttr("wbuyg:0"), ownTip = Tip.fromAttr("wequip:" + id), plainTip = Tip.fromAttr("wequip:pistol"), hud = Tip.quick(0);
+    const html = Meta.gunShopHTML(); const offerTip = Tip.fromAttr("wbuyg:0"), ownTip = Tip.fromAttr("wequip:" + id), plainTip = Tip.fromAttr("wequip:pistol"), hud = Tip.quick(1);
     return { html, offerTip, ownTip, plainTip, id, hasIcon: html.includes("<img") };
   })()`);
   assert.match(o.html, /color:#6fa8e8/); assert.match(o.html, /color:#e8a040/); assert.match(o.html, /урон \+15%/); assert.match(o.html, /темп \+10%/); assert.match(o.html, /износ \+20%/); assert.match(o.html, /wbuyg:0/); assert.match(o.html, /wsell:/); assert.ok(o.hasIcon);

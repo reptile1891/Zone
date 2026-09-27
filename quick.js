@@ -1,43 +1,40 @@
 'use strict';
-// Быстрая панель: игрок сам решает, что лежит под кнопками 2–9 (слот 1 — всегда оружие).
-//   В рюкзаке у подходящих вещей (расходники, болты, приманка, шок, крюк) кнопка «⚡» → выбрать номер слота; вещь, уже стоявшая в другом слоте, меняется местами.
-//   Раскладка — P.quick (в сохранении); heldNames в main.js — «живой» список, по которому работают клавиши 1–9, колесо, касания и подсказки.
+// Быстрая панель: кнопка 1 — всегда ближний бой (нож, Melee); кнопки 2–9 пустые, игрок сам раскладывает по ним что угодно — расходники, болты,
+// приманку, шок, крюк и даже огнестрел («weapon», хоть на 6-ю). В начале игры пистолет лежит на кнопке 2.
+//   Перекладывание — в инвентаре (inv.js): взять вещь и кликнуть по кнопке; занятая кнопка обменивается. Раскладка — P.quick (в сохранении, P.quickV — версия);
+//   heldNames в main.js — «живой» список (null — пусто), по нему работают клавиши 1–9, колесо, касания и подсказки.
 const Quick = {
-  DEFAULT: ['weapon', 'bolt', 'medkit', 'food', 'antirad', 'lure', 'splint', 'shock', 'hook'],
-  // что можно поставить на панель
-  can(id) { return id !== 'weapon' && !!CFG.items[id] && (['bolt', 'lure', 'shock', 'hook'].includes(id) || !!CFG.items[id].use); },
-  layout() { const q = Array.isArray(P.quick) ? P.quick : []; return this.DEFAULT.map((d, i) => (i === 0 ? 'weapon' : this.can(q[i]) ? q[i] : d)); },
-  // применить раскладку игрока к живому списку (вызывается при новой игре и загрузке)
-  apply() { const L = this.layout(); P.quick = L.slice(); for (let i = 0; i < L.length; i++) heldNames[i] = L[i]; },
-  // поставить вещь id на слот n (0-based, 1..8); если она стояла в другом слоте — слоты меняются
+  V: 2,
+  DEFAULT: ['melee', 'weapon', null, null, null, null, null, null, null],
+  // что можно поставить на кнопку 2–9 (ближний бой стоит на первой всегда)
+  can(id) { return id === 'weapon' || (id !== 'melee' && !!CFG.items[id] && (['bolt', 'lure', 'shock', 'hook'].includes(id) || !!CFG.items[id].use)); },
+  layout() {
+    const q = Array.isArray(P.quick) && P.quickV === this.V ? P.quick : this.DEFAULT, L = this.DEFAULT.map((d, i) => (i === 0 ? 'melee' : this.can(q[i]) ? q[i] : null)), seen = new Set();
+    return L.map(x => (x && seen.has(x) ? null : (x && seen.add(x), x)));   // одна вещь — одна кнопка
+  },
+  // применить раскладку игрока к живому списку (новая игра, загрузка); старые сохранения (полная панель) начинают с пустой
+  apply() { const L = this.layout(); P.quick = L.slice(); P.quickV = this.V; for (let i = 0; i < L.length; i++) heldNames[i] = L[i]; },
+  // поставить вещь id на кнопку n (0-based, 1..8); id = null — очистить; если вещь стояла на другой кнопке, кнопки меняются
   assign(n, id) {
-    if (n < 1 || n >= this.DEFAULT.length || !this.can(id)) return false;
-    const L = this.layout(), from = L.indexOf(id); if (from === n) return true;
+    if (n < 1 || n >= this.DEFAULT.length || (id !== null && !this.can(id))) return false;
+    const L = this.layout(); if (id === null) { L[n] = null; P.quick = L; this.apply(); return true; }
+    const from = L.indexOf(id); if (from === n) return true;
     if (from > 0) L[from] = L[n]; L[n] = id; P.quick = L; this.apply(); return true;
   },
-  reset() { P.quick = this.DEFAULT.slice(); this.apply(); },
-  // строка выбора слота под списком рюкзака
-  chooser(u) {
-    if (!u.qpick || !this.can(u.qpick)) return '';
-    const L = this.layout(); let h = '<div class="note"><b>' + CFG.items[u.qpick].icon + ' ' + CFG.items[u.qpick].name + '</b> — на какую кнопку быстрой панели поставить?<div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:6px">';
-    for (let i = 1; i < L.length; i++) h += '<button class="btn" data-a="qset:' + i + '" title="Сейчас: ' + (CFG.items[L[i]] ? CFG.items[L[i]].name : L[i]) + '">' + (i + 1) + ' ' + (CFG.items[L[i]] ? CFG.items[L[i]].icon : '') + '</button>';
-    return h + '<button class="btn" data-a="qcancel">Отмена</button></div></div>';
-  },
+  reset() { P.quick = this.DEFAULT.slice(); P.quickV = this.V; this.apply(); },
+  name(id) { return id === 'weapon' ? Wpn.name(P.weapon) : id === 'melee' ? Melee.cur().name : CFG.items[id] ? CFG.items[id].name : id; },
+  icon(id) { return id === 'weapon' ? Icons.html('w_' + Wpn.base(P.weapon)) : id === 'melee' ? Melee.cur().icon : CFG.items[id] ? CFG.items[id].icon : ''; },
 };
 
 (function () {
   Quick.apply();
-  const _rp = resetPlayer; resetPlayer = function () { _rp(); P.quick = Quick.DEFAULT.slice(); Quick.apply(); };
+  const _rp = resetPlayer; resetPlayer = function () { _rp(); Quick.reset(); };
   const _al = Meta.afterLoad; Meta.afterLoad = function () { _al.call(this); Quick.apply(); };
   const _click = Meta.click; Meta.click = function (a, arg, arg2, u) {
-    if (a === 'qp') { u.qpick = u.qpick === arg ? null : arg; setTimeout(() => { panel.scrollTop = panel.scrollHeight; }, 0); return true; }
-    if (a === 'qset') { if (u.qpick && Quick.assign(+arg, u.qpick)) { log('На кнопку ' + (+arg + 1) + ' — ' + CFG.items[u.qpick].name + '.', '#a8c890'); } u.qpick = null; return true; }
-    if (a === 'qcancel') { u.qpick = null; return true; }
-    if (a === 'qreset') { Quick.reset(); u.qpick = null; return true; }
+    if (a === 'qreset') { Quick.reset(); return true; }
     return _click.call(this, a, arg, arg2, u);
   };
   const _ie = Meta.invExtra; Meta.invExtra = function () {
-    const u = G.ui || {};
-    return Quick.chooser(u) + _ie.call(this) + '<div class="stat" style="margin-top:6px">Быстрая панель: возьми вещь в рюкзаке и кликни по кнопке 2–9. ' + '<button class="btn" data-a="qreset">Сбросить раскладку</button></div>';
+    return _ie.call(this) + '<div class="stat" style="margin-top:6px">Быстрая панель: возьми вещь или оружие и кликни по кнопке 2–9. Кнопка 1 — нож. <button class="btn" data-a="qreset">Сбросить раскладку</button></div>';
   };
 })();

@@ -1,5 +1,5 @@
 "use strict";
-// v0.31: быстрая панель настраивается игроком; артефакты в раскрытых аномалиях видны.
+// v0.32: быстрая панель — нож на 1, остальное пусто и раскладывается игроком (в том числе огнестрел); артефакты в раскрытых аномалиях видны.
 const test = require("node:test");
 const assert = require("node:assert/strict");
 const { createZone } = require("./zone-load");
@@ -11,52 +11,53 @@ const fresh = () => z.run(`(() => {
   G.events = []; G.dead = false; G.started = true; G.ui = null; G.scene = "camp"; P.inv = []; Mutants.list = []; Stalkers.list = []; W.anoms = []; W.arts = [];
 })()`);
 
-test("раскладка по умолчанию прежняя, слот 1 — оружие и не переставляется", () => {
+test("раскладка по умолчанию: нож на 1, пистолет на 2, остальное пусто; нож не переставляется", () => {
   fresh();
-  const o = run(`(() => ({ held: heldNames.slice(), q: P.quick.slice(), w: Quick.assign(0, "medkit"), moved: heldNames[0], toWeapon: Quick.assign(3, "weapon") }))()`);
-  assert.deepEqual(o.held, ["weapon", "bolt", "medkit", "food", "antirad", "lure", "splint", "shock", "hook"]); assert.deepEqual(o.q, o.held); assert.equal(o.w, false); assert.equal(o.moved, "weapon"); assert.equal(o.toWeapon, false);
+  const o = run(`(() => ({ held: heldNames.slice(), q: P.quick.slice(), toKnife: Quick.assign(0, "medkit"), moved: heldNames[0], melee: Quick.assign(3, "melee"), sel: P.sel }))()`);
+  assert.deepEqual(o.held, ["melee", "weapon", null, null, null, null, null, null, null]); assert.deepEqual(o.q, o.held); assert.equal(o.toKnife, false); assert.equal(o.moved, "melee"); assert.equal(o.melee, false); assert.equal(o.sel, 0);
 });
 
-test("вещь ставится на выбранную кнопку, стоявшая там уходит на прежнее место (обмен); подходят только полезные вещи", () => {
+test("любая полезная вещь и огнестрел ставятся на любую кнопку 2–9; занятая обменивается; очистка; лишнее не ставится", () => {
   fresh();
   const o = run(`(() => {
-    const ok = Quick.assign(1, "antibiotic"); const a = heldNames.slice(); const swap = Quick.assign(1, "food"); const b = heldNames.slice();
-    return { ok, a, swap, b, junk: Quick.can("scrap"), art: Quick.can("art"), gun: Quick.can("weapon"), hook: Quick.can("hook"), detector: Quick.can("detector") };
+    const ok = Quick.assign(5, "weapon"); const a = heldNames.slice(); const sw = Quick.assign(5, "food"); const b = heldNames.slice(); const clear = Quick.assign(5, null); const c = heldNames.slice();
+    return { ok, a, sw, b, clear, c, junk: Quick.can("scrap"), art: Quick.can("art"), hook: Quick.can("hook"), gun: Quick.can("weapon"), detector: Quick.can("detector") };
   })()`);
-  assert.equal(o.ok, true); assert.equal(o.a[1], "antibiotic"); assert.equal(o.a[3], "food", "прежний слот других вещей не тронут");
-  assert.equal(o.b[1], "food"); assert.equal(o.b[3], "antibiotic", "обмен местами"); assert.equal(o.junk, false); assert.equal(o.art, false); assert.equal(o.gun, false); assert.equal(o.hook, true);
+  assert.equal(o.ok, true); assert.equal(o.a[5], "weapon"); assert.equal(o.a[1], null, "оружие ушло с кнопки 2: одна вещь — одна кнопка");
+  assert.equal(o.b[5], "food"); assert.equal(o.b[1], null); assert.equal(o.c[5], null); assert.equal(o.junk, false); assert.equal(o.art, false); assert.equal(o.hook, true); assert.equal(o.gun, true);
 });
 
-test("клавиша слота использует то, что под ней; количество и значок берутся с новой вещи", () => {
+test("клавиша кнопки использует то, что под ней; пустая кнопка ничего не делает; колесо пропускает пустые", () => {
   fresh();
   const o = run(`(() => {
     Quick.assign(4, "food"); invAdd("food", 2); P.food = 20; P.sel = 4; P.cd = 0; const before = invCount("food"); useSel(); const eaten = P.food > 20 && invCount("food") === before - 1;
-    return { eaten, tip: !!Tip.quick(4) };
+    P.sel = 6; P.cd = 0; const f0 = P.food; useSel(); const idle = P.food === f0;
+    P.sel = 0; stepSel(1); const s1 = P.sel; stepSel(1); const s2 = P.sel; stepSel(-1); const s3 = P.sel;
+    return { eaten, idle, s1, s2, s3, tip: !!Tip.quick(4), tipEmpty: Tip.quick(6), tipKnife: /Нож/.test(Tip.quick(0)) };
   })()`);
-  assert.equal(o.eaten, true); assert.equal(o.tip, true);
+  assert.equal(o.eaten, true); assert.equal(o.idle, true); assert.equal(o.s1, 1); assert.equal(o.s2, 4, "пустые 3 пропущены"); assert.equal(o.s3, 1); assert.equal(o.tip, true); assert.equal(o.tipEmpty, null); assert.equal(o.tipKnife, true);
 });
 
-test("выбор слота через рюкзак: ⚡ → номер; отмена и сброс; раскладка живёт в сохранении и новой игре не переходит", () => {
+test("выбор кнопки в рюкзаке; раскладка живёт в сохранении, новая игра — по умолчанию; старые сохранения начинают с пустой панели", () => {
   fresh();
   const o = run(`(() => {
-    invAdd("antibiotic", 1); G.ui = { k: "inv" }; const btnShown = /qp:antibiotic/.test(""); const u = G.ui;
-    Meta.click("qp", "antibiotic", undefined, u); const picked = u.qpick, chooser = /qset:8/.test(Quick.chooser(u));
-    Meta.click("qset", "8", undefined, u); const after = heldNames[8], cleared = u.qpick;
-    Meta.click("qp", "antibiotic", undefined, u); Meta.click("qcancel", undefined, undefined, u); const canc = u.qpick;
-    G.scene = "camp"; save(true); const raw = JSON.parse(localStorage.getItem(saveKey())); const saved = raw.P.quick && raw.P.quick[8];
+    invAdd("antibiotic", 1); G.ui = { k: "inv" }; const u = G.ui;
+    Meta.click("cell", "inv", "0", u); Meta.click("cell", "quick", "8", u); const after = heldNames[8];
+    G.scene = "camp"; save(true); const raw = JSON.parse(localStorage.getItem(saveKey())); const saved = raw.P.quick && raw.P.quick[8], ver = raw.P.quickV;
     resetPlayer(); const fresh2 = heldNames[8];
-    P.quick = ["weapon", "bolt", "medkit", "food", "antirad", "lure", "splint", "shock", "antibiotic"]; Meta.afterLoad(); const loaded = heldNames[8];
+    P.quick = ["weapon", "bolt", "medkit", "food", "antirad", "lure", "splint", "shock", "hook"]; P.quickV = undefined; Meta.afterLoad(); const legacy = heldNames.slice();
+    P.quick = ["melee", "weapon", null, null, null, null, null, null, "antibiotic"]; P.quickV = 2; Meta.afterLoad(); const loaded = heldNames[8];
     Quick.assign(2, "antirad"); Quick.reset(); const reset = heldNames.slice();
-    return { picked, chooser, after, cleared, canc, saved, fresh2, loaded, reset };
+    return { after, saved, ver, fresh2, legacy, loaded, reset };
   })()`);
-  assert.equal(o.picked, "antibiotic"); assert.equal(o.chooser, true); assert.equal(o.after, "antibiotic"); assert.equal(o.cleared, null); assert.equal(o.canc, null); assert.equal(o.saved, "antibiotic");
-  assert.equal(o.fresh2, "hook", "новая игра — раскладка по умолчанию"); assert.equal(o.loaded, "antibiotic", "загрузка возвращает раскладку"); assert.deepEqual(o.reset, ["weapon", "bolt", "medkit", "food", "antirad", "lure", "splint", "shock", "hook"]);
+  assert.equal(o.after, "antibiotic"); assert.equal(o.saved, "antibiotic"); assert.equal(o.ver, 2); assert.equal(o.fresh2, null); assert.deepEqual(o.legacy, ["melee", "weapon", null, null, null, null, null, null, null]);
+  assert.equal(o.loaded, "antibiotic"); assert.deepEqual(o.reset, ["melee", "weapon", null, null, null, null, null, null, null]);
 });
 
-test("старые сохранения без раскладки и мусор в ней не ломают панель", () => {
+test("мусор в раскладке не ломает панель: дубликаты, неподходящее, чужие типы", () => {
   fresh();
-  const o = run(`(() => { P.quick = undefined; Meta.afterLoad(); const a = heldNames.slice(); P.quick = ["x", 5, "scrap", null, "nope", "lure", "art", "weapon", "hook"]; Meta.afterLoad(); return { a, b: heldNames.slice() }; })()`);
-  assert.equal(o.a[2], "medkit"); assert.deepEqual(o.b, ["weapon", "bolt", "medkit", "food", "antirad", "lure", "splint", "shock", "hook"]);
+  const o = run(`(() => { P.quickV = 2; P.quick = ["x", 5, "scrap", null, "nope", "lure", "lure", "weapon", "hook"]; Meta.afterLoad(); return heldNames.slice(); })()`);
+  assert.deepEqual(o, ["melee", null, null, null, null, "lure", null, "weapon", "hook"]);
 });
 
 test("артефакт в раскрытой аномалии виден издалека, в нераскрытой — только вплотную", () => {
