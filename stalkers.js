@@ -6,11 +6,19 @@ class Stalker {
   constructor(kind, x, y) {
     const c = CFG.stalkers[kind];
     Object.assign(this, { kind, c, x, y, hx: x, hy: y, tx: x, ty: y, hp: c.hp, r: 9, state: kind === 'wounded' ? 'wounded' : 'wander', st: 0,
-      cd: 1 + Math.random(), hostile: !!c.hostile, dead: false, slow: 1, face: 1, name: U.pick(STALKER_NAMES), perc: Math.random() * 0.3, lost: 0, gave: false, warned: false });
+      cd: 1 + Math.random(), hostile: !!c.hostile, dead: false, slow: 1, face: 1, name: U.pick(STALKER_NAMES), perc: Math.random() * 0.3, lost: 0, gave: false, warned: false, alert: 0, foe: null });
+  }
+  // Вступить в бой с мутантом (напал сам или ранил): мирные одиночки тоже отстреливаются
+  engage(m) { if (this.dead || this.state === 'wounded' || this.c.dmg <= 0) return; if (!this.foe || this.foe.dead) { this.foe = m; this.state = 'combat'; this.lost = 0; } }
+  nearestMutant() {
+    if (Math.hypot(this.x - W.C.x, this.y - W.C.y) < W.C.r + 60) return null;
+    let best = null, bd = this.c.sight * 0.9;
+    for (const m of Mutants.list) { if (m.dead || m.state === 'sleep' || m.c.timid || Mutants.hidden(m)) continue; const d = Math.hypot(m.x - this.x, m.y - this.y); if (d < bd) { bd = d; best = m; } }
+    return best;
   }
   hurt(d, src) {
     if (this.dead) return;
-    this.hp -= d;
+    this.hp -= d; if (src instanceof Mutant) this.engage(src);
     if (src === P && !this.hostile && this.state !== 'wounded') { this.hostile = true; P.rep -= 5; log('Ты выстрелил в своего. Репутация падает.', '#e06060'); }
     if (this.hp <= 0) this.die(src);
   }
@@ -33,14 +41,16 @@ class Stalker {
     if (this.perc <= 0) { this.perc = 0.25; this.perceive(pd); }
     let tx = this.tx, ty = this.ty, speed = 0;
     if (this.state === 'combat') {
-      if (G.dead || inCamp()) this.state = 'wander';
+      if (this.foe && (this.foe.dead || Math.hypot(this.foe.x - this.x, this.foe.y - this.y) > c.sight * 2)) this.foe = null;
+      const T = this.foe || P, td = Math.hypot(T.x - this.x, T.y - this.y);
+      if (!this.foe && (G.dead || inCamp() || !this.hostile)) this.state = 'wander';
       else {
-        tx = P.x; ty = P.y; const ang = Math.atan2(P.y - this.y, P.x - this.x); this.face = Math.cos(ang) < 0 ? -1 : 1;
-        if (pd > c.range + 30) speed = c.run;
-        else if (pd < c.range - 60) { tx = this.x - (P.x - this.x); ty = this.y - (P.y - this.y); speed = c.walk; }
+        tx = T.x; ty = T.y; const ang = Math.atan2(T.y - this.y, T.x - this.x); this.face = Math.cos(ang) < 0 ? -1 : 1;
+        if (td > c.range + 30) speed = c.run;
+        else if (td < c.range - 60) { tx = this.x - (T.x - this.x); ty = this.y - (T.y - this.y); speed = c.walk; }
         else { const s = Math.floor(G.t / 2 + this.x) % 2 ? 1 : -1; tx = this.x - Math.sin(ang) * 40 * s; ty = this.y + Math.cos(ang) * 40 * s; speed = c.walk * 0.8; }
-        if (pd < c.range + 80 && this.cd <= 0) this.shoot(pd);
-        if (pd > c.sight * 1.8) { this.lost += dt; if (this.lost > 6) this.state = 'wander'; } else this.lost = 0;
+        if (td < c.range + 80 && this.cd <= 0) this.shoot(td, T);
+        if (td > c.sight * 1.8) { this.lost += dt; if (this.lost > 6) this.state = 'wander'; } else this.lost = 0;
       }
     } else {
       speed = c.walk;
@@ -53,17 +63,20 @@ class Stalker {
     this.move(dt, tx, ty, speed);
   }
   perceive(pd) {
+    if (this.state !== 'wounded' && this.c.dmg > 0 && (!this.foe || this.foe.dead)) { const m = this.nearestMutant(); if (m) { this.foe = m; this.state = 'combat'; this.lost = 0; } }
     if (!this.hostile || this.state === 'combat' || G.dead || inCamp()) return;
     const c = this.c, sight = c.sight * (P.sneak ? 0.6 : 1) * (W.inGrass(P.x, P.y) ? 0.6 : 1) * (1 - G.fog * 0.3) * (1 - G.rain * 0.2) * (1 - 0.45 * G.night);
-    if (pd < sight) { this.state = 'combat'; this.lost = 0; if (!this.warned) { this.warned = true; log(c.name + ' заметил тебя!', '#e06060'); } }
+    // тревога копится, пока игрок в поле зрения: вблизи бандит замечает за ~1 с, у края — за несколько секунд; вышел из виду — тревога спадает
+    if (pd < sight) this.alert += 0.25 * (0.5 + 1.6 * (1 - pd / sight)); else this.alert = Math.max(0, this.alert - 0.15);
+    if (this.alert >= 1.4) { this.state = 'combat'; this.lost = 0; this.alert = 0; if (!this.warned) { this.warned = true; log(c.name + ' заметил тебя!', '#e06060'); } }
   }
-  shoot(pd) {
+  shoot(pd, T = P) {
     const c = this.c; this.cd = c.cd * (0.8 + Math.random() * 0.5); this.recoil = 1;
-    const moving = Math.hypot(keys.mx || 0, keys.my || 0) > 0;
-    const acc = c.acc * (moving ? 0.75 : 1) * (P.sneak ? 0.75 : 1) * U.clamp(1 - pd / (c.range * 2.4), 0.25, 1);
-    tracers.push({ x1: this.x, y1: this.y, x2: P.x + (Math.random() - 0.5) * 40 * (1 - acc), y2: P.y + (Math.random() - 0.5) * 40 * (1 - acc), t: 0.06 });
+    const moving = T === P && Math.hypot(keys.mx || 0, keys.my || 0) > 0;
+    const acc = c.acc * (moving ? 0.75 : 1) * (T === P && P.sneak ? 0.75 : 1) * U.clamp(1 - pd / (c.range * 2.4), 0.25, 1);
+    tracers.push({ x1: this.x, y1: this.y, x2: T.x + (Math.random() - 0.5) * 40 * (1 - acc), y2: T.y + (Math.random() - 0.5) * 40 * (1 - acc), t: 0.06 });
     Snd.at('shot', this.x, this.y); Mutants.hear(this.x, this.y, 550);
-    if (Math.random() < acc) P.hurt(c.dmg, 'gun');
+    if (Math.random() < acc) { if (T === P) P.hurt(c.dmg, 'gun'); else T.hurt(c.dmg, this); }
   }
   move(dt, tx, ty, speed) {
     speed *= this.slow;
@@ -114,7 +127,8 @@ function drawStalker(s) {
   shadow(s.x, s.y + 10, 8); Spr.draw(ctx, spr, s.x, s.y - (s.kind === 'wounded' ? 0 : 2), s.face < 0);
   if (s.kind !== 'wounded') Gun.draw(ctx, s.x, s.y + 2, s.state === 'combat' ? Math.atan2(P.y - s.y, P.x - s.x) : (s.face < 0 ? Math.PI : 0), s.kind === 'patrol' ? 'rifle' : 'pistol', s.recoil || 0);
   ctx.font = 'bold 12px Consolas'; ctx.textAlign = 'center';
-  if (s.state === 'combat') { ctx.fillStyle = '#e05050'; ctx.fillText('!', s.x, s.y - 20); }
+  if (s.state === 'combat') { ctx.fillStyle = s.foe ? '#e0a050' : '#e05050'; ctx.fillText('!', s.x, s.y - 20); }
+  else if (s.alert > 0.45) { ctx.fillStyle = '#e8d060'; ctx.fillText('?', s.x, s.y - 20); }
   else if (s.kind === 'wounded') { ctx.fillStyle = '#e8d060'; ctx.fillText('+', s.x, s.y - 12); }
   if (pd < 130 && !s.hostile) { ctx.fillStyle = '#c9c2a8'; ctx.fillText(s.name, s.x, s.y - 24); }
   if (s.hp < s.c.hp) { ctx.fillStyle = '#000'; ctx.fillRect(s.x - 10, s.y - 20, 20, 3); ctx.fillStyle = '#a33'; ctx.fillRect(s.x - 10, s.y - 20, 20 * s.hp / s.c.hp, 3); }

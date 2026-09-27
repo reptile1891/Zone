@@ -213,10 +213,10 @@ const CFG = {
   },
   gate: { rep: 15 },
   stalkers: {
-    loner:   { name: 'Одиночка', hp: 60, walk: 55, run: 100, sight: 240, roam: 350, hostile: false, dmg: 0, acc: 0, range: 0, cd: 1, count: 8, dmin: 1, dmax: 3 },
-    bandit:  { name: 'Бандит', hp: 70, walk: 60, run: 115, sight: 280, roam: 260, hostile: true, dmg: 10, acc: 0.4, range: 190, cd: 1.1, count: 12, dmin: 2, dmax: 4 },
+    loner:   { name: 'Одиночка', hp: 60, walk: 55, run: 100, sight: 240, roam: 350, hostile: false, dmg: 8, acc: 0.45, range: 170, cd: 1.3, count: 5, dmin: 1, dmax: 3 },
+    bandit:  { name: 'Бандит', hp: 70, walk: 60, run: 115, sight: 230, roam: 260, hostile: true, dmg: 10, acc: 0.4, range: 190, cd: 1.1, count: 5, dmin: 2, dmax: 4 },
     patrol:  { name: 'Оцепление', hp: 95, walk: 70, run: 130, sight: 360, roam: 0, hostile: true, dmg: 13, acc: 0.6, range: 210, cd: 0.9, count: 0, dmin: 4, dmax: 4 },
-    wounded: { name: 'Раненый', hp: 40, walk: 0, run: 0, sight: 0, roam: 0, hostile: false, dmg: 0, acc: 0, range: 0, cd: 1, count: 6, dmin: 2, dmax: 3 },
+    wounded: { name: 'Раненый', hp: 40, walk: 0, run: 0, sight: 0, roam: 0, hostile: false, dmg: 0, acc: 0, range: 0, cd: 1, count: 4, dmin: 2, dmax: 3 },
   },
   events: [
     { k: 'medkit', mul: 1.5, text: 'Дефицит аптечек — дорожают.' },

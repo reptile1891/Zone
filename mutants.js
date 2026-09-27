@@ -74,6 +74,14 @@ class Mutant {
         if ((this.hunger > 0.35 || n >= 3 + Math.floor(Mutants.ad(this.sp).player / 2)) && this.fear < 0.5) this.startHunt(P); else { this.state = 'investigate'; this.tx = P.x; this.ty = P.y; this.st = 3; }
       }
     }
+    // хищники нападают и на сталкеров (не на раненых и не у лагеря): голод или стая, как с игроком
+    if (!busy && !c.timid && !c.stalker && !inC) {
+      const n = this.pack ? this.pack.members.length : 1;
+      if ((this.hunger > 0.35 || n >= 3) && this.fear < 0.5) for (const s of Stalkers.list) {
+        if (s.dead || s.kind === 'wounded' || Math.hypot(s.x - W.C.x, s.y - W.C.y) < W.C.r + 60) continue;
+        if (Math.hypot(s.x - this.x, s.y - this.y) < c.sight * (act ? 0.7 : 0.4)) { this.startHunt(s); break; }
+      }
+    }
     if (c.hostile && !busy) { for (const m of Mutants.list) if (!m.dead && c.hostile.includes(m.sp) && Math.hypot(m.x - this.hx, m.y - this.hy) < c.territory) { this.startHunt(m); break; } }
     if (c.prey && this.hunger > 0.6 && !busy && this.pack && this.pack.members.length >= 3) { const p = this.nearestHostile(c.prey, 220); if (p) this.startHunt(p); }
     // ведомые копируют вожака
@@ -90,7 +98,7 @@ class Mutant {
   }
   startHunt(t) {
     this.state = 'hunt'; this.target = t; this.lost = 0;
-    if (t !== P) { if (t.c.timid) t.flee(this.x, this.y, 4); else if (t.state !== 'hunt') { t.target = this; t.state = 'hunt'; } }
+    if (t !== P) { if (t.kind) t.engage(this); else if (t.c.timid) t.flee(this.x, this.y, 4); else if (t.state !== 'hunt') { t.target = this; t.state = 'hunt'; } }
     if (this.pack && !this.c.timid) Mutants.rally(this, t);
     if (t === P) Snd.at({ listener: 'click', tin: 'clank', fogger: 'whisper' }[this.sp] || 'yelp', this.x, this.y);
   }
