@@ -10,7 +10,7 @@ const P = { x: 0, y: 0, ang: 0, r: CFG.player.r, hp: 100, stam: 100, rad: 0, foo
   sk: {}, money: 0, inv: [], equip: [null, null], notes: [], known: {}, sel: 0, cd: 0, slow: 1, sneak: false, running: false,
   dead: false, goal: false, wasOut: false, noiseT: 0, geigerRate: 0, burn: 0, fuel: 0, grab: 0, hints: {}, hintsOff: false,
   rep: 0, karma: { greed: 0, cruelty: 0, mercy: 0, study: 0 }, quests: [], offers: [], lore: 0, weapons: ['pistol'], weapon: 'pistol',
-  cond: Object.fromEntries(Object.keys(CFG.weapons).map(k => [k, 100])), wdefs: {}, wseq: 0, gunOffers: [], suitCond: 100, insured: false, pass: false, fracture: false, infect: 0, earned: 0, researched: {}, kills: 0, mapSold: 0,
+  cond: Object.fromEntries(Object.keys(CFG.weapons).map(k => [k, 100])), wdefs: {}, wseq: 0, codex: { m: {}, d: {}, a: {}, b: {} }, gunOffers: [], suitCond: 100, insured: false, pass: false, fracture: false, infect: 0, earned: 0, researched: {}, kills: 0, mapSold: 0,
   hurt(d, src) {
     if (G.dead) return;
     if (src === 'anom') d *= 1 - Meta.suitAnom();
@@ -88,7 +88,7 @@ function resetPlayer() {
   Object.assign(P, { hp: 100, stam: 100, rad: 0, food: 80, stress: 0, bleed: 0, xp: 0, lvl: 1, sp: 0, money: 50, inv: [], equip: [null, null],
     notes: [], known: {}, sel: 0, cd: 0, dead: false, goal: false, wasOut: false, burn: 0, fuel: 0, grab: 0, talked: {}, hints: {},
     rep: 0, karma: { greed: 0, cruelty: 0, mercy: 0, study: 0 }, quests: [], offers: [], lore: 0, weapons: ['pistol'], weapon: 'pistol',
-    cond: Object.fromEntries(Object.keys(CFG.weapons).map(k => [k, 100])), wdefs: {}, wseq: 0, gunOffers: [], suitCond: 100, insured: false, pass: false, fracture: false, infect: 0, earned: 0, researched: {}, kills: 0, mapSold: 0 });
+    cond: Object.fromEntries(Object.keys(CFG.weapons).map(k => [k, 100])), wdefs: {}, wseq: 0, codex: { m: {}, d: {}, a: {}, b: {} }, gunOffers: [], suitCond: 100, insured: false, pass: false, fracture: false, infect: 0, earned: 0, researched: {}, kills: 0, mapSold: 0 });
   for (const k in CFG.skills) P.sk[k] = 0;
   invAdd('ammo', 12); invAdd('bolt', 15); invAdd('medkit', 1); invAdd('food', 2);
   P.x = W.C.x; P.y = W.C.y + 40; known.fill(0); reveal(W.C.x, W.C.y, 320);
@@ -721,7 +721,7 @@ function openMenu() { closePanel(); G.ui = { k: 'menu' }; renderPanel(); }
 function menuHTML(u) {
   const ctl = [['WASD / стрелки', 'движение'], ['Shift', 'бег (тратит силы, шумно)'], ['Ctrl / C', 'красться (тихо, незаметнее)'], ['Мышь', 'направление взгляда и броска'],
     ['ЛКМ', 'применить выбранное: выстрел / бросок болта / лечение / еда'], ['ПКМ (держать)', 'осмотреть место под курсором'], ['E / F', 'подобрать, обыскать, говорить'],
-    ['1–8 / Q / колесо', 'оружие (1 ещё раз — сменить), болты, аптечка, еда, антирад, приманка, шина, шок-бомба'], ['J', 'журнал: задания, репутация, знания'], ['Tab / I', 'рюкзак, навыки, записки'], ['M', 'карта'], ['Esc / F1', 'это меню (пауза)']];
+    ['B', 'справочник: мутанты, аномалии, артефакты, места'], ['1–8 / Q / колесо', 'оружие (1 ещё раз — сменить), болты, аптечка, еда, антирад, приманка, шина, шок-бомба'], ['J', 'журнал: задания, репутация, знания'], ['Tab / I', 'рюкзак, навыки, записки'], ['M', 'карта'], ['Esc / F1', 'это меню (пауза)']];
   const tips = ['Обыскивай остовы машин и тайники (E): хлам, патроны, деньги. Отмечены мерцанием рядом.', 'Хлам, трофеи с туш и артефакты неси Скупщику «Бороде» в лагере.',
     'Артефакты лежат в аномалиях. Бросай болты (слот 2), потом рискуй. Неопознанные — к учёному.', 'Слухачи слепые: красться. Стеклоеды не опасны. Жестянка бьёт сильно — води её через аномалии. Туманник: смотри на него.', 'Выброс: сирена, 25 сек, в лагерь или бункер.'];
   return `<div class="x" data-a="resume">✕ Esc</div><h2>Меню — игра на паузе</h2><div class="cols"><div><h3>Управление</h3>${ctl.map(([k, d]) => row('', '<b>' + k + '</b>', d)).join('')}</div>
