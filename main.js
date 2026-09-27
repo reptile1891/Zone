@@ -755,6 +755,7 @@ function drawMap() {
 // ---------- ввод ----------
 addEventListener('keydown', e => {
   if (!G.started) return;
+  if (e.target && /INPUT|TEXTAREA/.test(e.target.tagName || '')) return;   // ввод текста (поиск в справочнике, код сохранения) — не игровые клавиши
   if (e.code === 'Tab' || e.code === 'ControlLeft' && false) e.preventDefault();
   if (e.repeat) { keys[e.code] = true; return; }
   keys[e.code] = true;

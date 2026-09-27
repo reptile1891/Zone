@@ -19,11 +19,12 @@ test("тексты покрывают весь контент: у каждого
     for (const k in CFG.dungeon.enemies) if (!(Codex.TEXT.d[k] && Codex.TEXT.d[k].length === 2)) miss.push("d:" + k);
     for (const k in CFG.anoms) if (!(Codex.TEXT.a[k] && Codex.TEXT.a[k].length === 2)) miss.push("a:" + k);
     for (const k in CFG.biomes) if (typeof Codex.TEXT.b[k] !== "string") miss.push("b:" + k);
-    const extra = []; for (const c of ["m", "d", "a", "b"]) for (const k in Codex.TEXT[c]) if (!Codex.ids(c === "d" ? "m" : c).includes(k)) extra.push(c + ":" + k);
-    const html = []; for (const c of Codex.CATS) for (const id of Codex.ids(c.k)) { P.codex = { m: {}, d: {}, a: {}, b: {} }; P.known = {}; if (c.k === "r") P.known[id] = true; else P.codex[Codex.rc(c.k, id)][id] = { n: 3 }; try { Codex.detail(c.k, id); } catch (e) { html.push(c.k + ":" + id + " " + e.message); } }
+    for (const k in CFG.weapons) if (typeof Codex.TEXT.w[k] !== "string") miss.push("w:" + k);
+    const extra = []; for (const c of ["m", "d", "a", "b", "w"]) for (const k in Codex.TEXT[c]) if (!Codex.ids(c === "d" ? "m" : c).includes(k)) extra.push(c + ":" + k);
+    const html = []; for (const c of Codex.CATS) for (const id of Codex.ids(c.k)) { P.codex = { m: {}, d: {}, a: {}, b: {} }; Codex.ensure(); P.known = {}; if (c.k === "r") P.known[id] = true; else P.codex[Codex.rc(c.k, id)][id] = { n: 3 }; try { Codex.detail(c.k, id); } catch (e) { html.push(c.k + ":" + id + " " + e.message); } }
     return { miss, extra, html, all: Codex.CATS.reduce((n, c) => n + Codex.ids(c.k).length, 0) };
   })()`);
-  assert.deepEqual(o.miss, []); assert.deepEqual(o.extra, []); assert.deepEqual(o.html, []); assert.ok(o.all >= 8 + 4 + 9 + 11);
+  assert.deepEqual(o.miss, []); assert.deepEqual(o.extra, []); assert.deepEqual(o.html, []); assert.ok(o.all >= 8 + 4 + 9 + 11 + 7 + 30);
 });
 
 test("запись: первое появление пишет в лог один раз, убийства открывают характеристики", () => {
@@ -110,8 +111,9 @@ test("картинки: для каждой записи рисуется изо
     const _ce = document.createElement; document.createElement = () => { calls.made++; return { width: 0, height: 0, getContext: ctx, toDataURL: () => "data:image/png;base64,AAAA" }; };
     for (const k in CFG.mut) Spr.cache[k] = { width: 32, height: 16 };
     for (const k in CFG.dungeon.enemies) Spr.cache[CFG.dungeon.enemies[k].spr] = { width: 20, height: 16 };
+    for (const k in CFG.weapons) Icons.cache["w_" + k] = "data:image/png;base64,WW";
     Dungeon.sprReady = true; Codex._pics = {};
-    const missing = []; for (const c of Codex.CATS) for (const id of Codex.ids(c.k)) if (!Codex.img(c.k, id, 48).startsWith("<img")) missing.push(c.k + ":" + id);
+    const missing = []; for (const c of Codex.CATS) for (const id of Codex.ids(c.k)) if (!/^<(img|div)/.test(Codex.img(c.k, id, 48))) missing.push(c.k + ":" + id);
     const again = calls.made; Codex.img("m", "tin", 48); const cached = calls.made === again;
     document.createElement = () => { throw new Error("нет холста"); }; Codex._pics = {}; const broken = Codex.img("m", "tin", 48);
     document.createElement = _ce; return { missing, draw: calls.draw > 20, cached, broken };
@@ -139,6 +141,25 @@ test("вкладка «Мутанты» включает обитателей б
     Codex.openPanel(); G.ui.tab = "m"; const list = Codex.html(G.ui); Meta.click("cx", "m", "carapace", G.ui); const cara = Codex.html(G.ui); Meta.click("cx", "m", "crawler", G.ui); const crawl = Codex.html(G.ui);
     return { tabs: Codex.CATS.map(c => c.k), ids: Codex.ids("m").length, list, cara, crawl, killed: Codex.studied("m", "crawler"), notKilled: Codex.studied("m", "carapace"), title: Codex.title("m", "shade") };
   })()`);
-  assert.deepEqual(o.tabs, ["m", "a", "r", "b"]); assert.equal(o.ids, 12); assert.doesNotMatch(o.list, /Под землёй/); assert.match(o.list, /Бункер · Замечен/); assert.match(o.list, /Бункер · Изучен/);
+  assert.deepEqual(o.tabs, ["m", "a", "r", "w", "i", "b"]); assert.equal(o.ids, 12); assert.doesNotMatch(o.list, /Под землёй/); assert.match(o.list, /Бункер · Замечен/); assert.match(o.list, /Бункер · Изучен/);
   assert.match(o.cara, /Панцирник/); assert.match(o.cara, /в бункерах/); assert.match(o.cara, /Характеристики и советы откроются/); assert.match(o.crawl, /Здоровье:[^]*50/); assert.equal(o.killed, true); assert.equal(o.notKilled, false); assert.equal(o.title, "Тень");
+});
+
+test("оружие и предметы: записи открываются по владению, описание берёт числа из конфига, «новое» снимается при открытии, поиск не ломает клавиши", () => {
+  fresh();
+  const o = run(`(() => {
+    P.codex = null; P.inv = [{ id: "ammo", n: 5 }]; P.weapons = ["pistol"]; P.known = {};
+    Codex.t = 0; Codex.tick(1); const quiet = { i: Object.keys(P.codex.i), w: Object.keys(P.codex.w), nw: Codex.anyNew("i") || Codex.anyNew("w") };
+    invAdd("medkit", 1); Wpn.add(Wpn.roll("smg", Math.random, { rar: 0 })); P.known.soul = true; Codex.t = 0; Codex.tick(1);
+    const fresh = { i: Object.keys(P.codex.i).sort(), w: Object.keys(P.codex.w).sort(), r: !!P.codex.r.soul, newI: Codex.isNew("i", "medkit"), newW: Codex.isNew("w", "smg"), tab: Codex.anyNew("w") };
+    Codex.openPanel(); G.ui.tab = "w"; const list = Codex.html(G.ui); Meta.click("cx", "w", "smg", G.ui); const wd = Codex.html(G.ui); const cleared = !Codex.isNew("w", "smg");
+    Meta.click("cxt", "i", undefined, G.ui); Meta.click("cx", "i", "medkit", G.ui); const idet = Codex.html(G.ui);
+    for (const k of ["scrap", "circuit", "battery", "plate", "food", "antirad"]) P.codex.i[k] = { n: 1 }; const many = (G.ui.tab = "i", Codex.html(G.ui));
+    G.ui.q = "аптеч"; const filtered = Codex.html(G.ui);
+    return { quiet, fresh, list, wd, cleared, idet, hasSearch: /id="cxq"/.test(many), filtered };
+  })()`);
+  assert.deepEqual(o.quiet, { i: ["ammo"], w: ["pistol"], nw: false }, "то, что уже есть при старте, заносится без «новое»");
+  assert.deepEqual(o.fresh.i, ["ammo", "medkit"]); assert.deepEqual(o.fresh.w, ["pistol", "smg"]); assert.ok(o.fresh.r && o.fresh.newI && o.fresh.newW && o.fresh.tab);
+  assert.match(o.list, /ПП «Оса»/); assert.match(o.list, /● новое/); assert.match(o.wd, /Скорострельность:[^]*7\.1 выстр/); assert.match(o.wd, /Разные экземпляры/); assert.equal(o.cleared, true);
+  assert.match(o.idet, /Аптечка/); assert.match(o.idet, /Лечит/); assert.doesNotMatch(o.idet, /ti-h/); assert.ok(o.hasSearch); assert.doesNotMatch(o.filtered, /Тушёнка/); assert.match(o.filtered, /Аптечка/);
 });

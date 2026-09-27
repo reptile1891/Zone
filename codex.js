@@ -4,7 +4,7 @@
 // артефакт — когда опознал, место — когда там побывал. Прогресс хранится в P.codex = { m: {вид: {n: убито}}, d: {…}, a: {тип: 1}, b: {биом: 1} } и сохраняется.
 // Числа берутся из CFG, тексты (описание и советы) — из CODEX.TEXT ниже; списки «где обитает» и «какие артефакты» строятся из конфига сами.
 const Codex = {
-  CATS: [{ k: 'm', n: 'Мутанты', ic: '☠' }, { k: 'a', n: 'Аномалии', ic: '◎' }, { k: 'r', n: 'Артефакты', ic: '✦' }, { k: 'b', n: 'Места', ic: '⌖' }],
+  CATS: [{ k: 'm', n: 'Мутанты', ic: '☠' }, { k: 'a', n: 'Аномалии', ic: '◎' }, { k: 'r', n: 'Артефакты', ic: '✦' }, { k: 'w', n: 'Оружие', ic: '⌐' }, { k: 'i', n: 'Предметы', ic: '▣' }, { k: 'b', n: 'Места', ic: '⌖' }],
   TEXT: {
     m: {
       listener: ['Ходит по ночам стаями. Почти слепой, зато слышит каждый шорох: шаг, выстрел, звон болта. Кусает до крови.', 'Красться (Ctrl или кнопка «Красться») почти вдвое тише. Стая опасна в открытом поле: держись у укрытий, бей по одиночкам, уводи шумом (болт в сторону). Кровотечение останавливает аптечка.'],
@@ -33,6 +33,15 @@ const Codex = {
       magnet: ['Ржавчина тянется к центру, железки лежат кольцом.', 'Тянет к центру, металл рвёт втрое сильнее живого: заманивай туда Жестянок. Болты и железки притягивает.'],
       smolder: ['Земля тлеет красным, тянет дымом. Вокруг ни травинки.', 'Между вспышками просто светится; вспышка — конус туда, куда «смотрит» колодец (видно по заряду). Поджигает; огнеупорный плащ режет ожог.'],
     },
+    w: {
+      pistol: 'Табельный ствол сталкера. Слабый, зато с самого начала и почти не требует ухода.',
+      sawnoff: 'Обрез двустволки: картечь на короткой дистанции. Шумный и медленный, но вблизи валит.',
+      revolver: 'Надёжный и точный, бьёт заметно сильнее пистолета. Хороший первый апгрейд.',
+      rifle: 'Дальнобойная и мощная, но медленная. Для тех, кто выбирает цель заранее.',
+      flamer: 'Огнемёт-самоделка: конус огня бьёт всех внутри сквозь броню и поджигает. Ест топливо (канистры). Огнеупорным мутантам не страшен.',
+      crossbow: 'Самострел: почти бесшумный, из засады (по неподозревающей цели) бьёт вдвое сильнее. Стреляет болтами.',
+      smg: 'ПП «Оса»: очень частые выстрелы и большой разброс. Жрёт патроны, зато плотный огонь спасает в стае.',
+    },
     b: {
       meadow: 'Открытые луга. Тихо, далеко видно, укрытий мало. Здесь кормятся стеклоеды.',
       forest: 'Лес. Видимость ниже, деревья скрывают засады. Днём здесь хозяйничают Щетинники.',
@@ -56,8 +65,17 @@ const Codex = {
   FXCOL: { radRes: '#7ad07a', stamRegen: '#e8d060', carry: '#6aa8e8', hpRegen: '#e06060', psy: '#a070d0', repel: '#e8e8f4', lure: '#d09060', fireRes: '#e88a30', sight: '#60d8e0' },
   PROPSPR: { car: 'car_b', dtuft: 'tuft_d', container: 'crate', barrel: 'barrel' },
   rnd(str) { let h = 2166136261; for (const ch of str) h = Math.imul(h ^ ch.charCodeAt(0), 16777619); return () => ((h = Math.imul(h ^ (h >>> 15), 2246822507) + 1013904223 | 0) >>> 0) / 4294967296; },
+  // Готовые пиксельные значки оружия и предметов (Icons) — в рамке, увеличенные
+  frame(inner, S) { return '<div style="width:' + S + 'px;height:' + S + 'px;background:#10120d;border:1px solid #33321f;display:flex;align-items:center;justify-content:center;flex:none">' + inner + '</div>'; },
+  iconImg(html, S) {
+    const m = /src="([^"]+)"/.exec(html || ''), sz = Math.round(S * 0.72);
+    return this.frame(m ? '<img src="' + m[1] + '" width="' + sz + '" height="' + sz + '" style="image-rendering:pixelated;display:block" alt="">' : '<span style="font-size:' + Math.round(S * 0.5) + 'px;line-height:1">' + (html || '?') + '</span>', S);
+  },
   img(cat, id, S) {
-    cat = this.rc(cat, id); const key = cat + ':' + id + ':' + S; let u = this._pics[key];
+    cat = this.rc(cat, id);
+    if (cat === 'w') { const u = Icons.cache['w_' + id]; return u ? this.frame('<img src="' + u + '" width="' + Math.round(S * 0.8) + '" height="' + Math.round(S * 0.8) + '" style="image-rendering:pixelated;display:block" alt="">', S) : ''; }
+    if (cat === 'i') return this.iconImg(CFG.items[id].icon, S);
+    const key = cat + ':' + id + ':' + S; let u = this._pics[key];
     if (u === undefined) { try { u = this.paint(cat, id, S) || ''; } catch (e) { u = ''; } this._pics[key] = u; }
     return u ? '<img src="' + u + '" width="' + S + '" height="' + S + '" style="image-rendering:pixelated;display:block" alt="">' : '';
   },
@@ -119,27 +137,36 @@ const Codex = {
     g.drawImage(px, Math.round(S * 0.12), Math.round(S * 0.12), Math.round(S * 0.76), Math.round(S * 0.76));
   },
 
-  ensure() { const c = P.codex || (P.codex = {}); for (const k of ['m', 'd', 'a', 'b']) if (!c[k]) c[k] = {}; return c; },
+  ensure() { const c = P.codex || (P.codex = {}); for (const k of ['m', 'd', 'a', 'b', 'r', 'w', 'i']) if (!c[k]) c[k] = {}; return c; },
+  // Запись открыта в справочнике — метка «новое» снимается
+  viewed(cat, id) { const e = this.ensure()[this.rc(cat, id)][id]; if (e && e.nw) delete e.nw; },
+  isNew(cat, id) { const e = this.ensure()[this.rc(cat, id)][id]; return !!(e && e.nw); },
+  anyNew(cat) { return this.ids(cat).some(id => this.open(cat, id) && this.isNew(cat, id)); },
   // Запись: новая — сообщение в лог. n — прибавка к счётчику убийств
-  see(cat, id, n = 0) {
+  see(cat, id, n = 0, silent) {
     const c = this.ensure()[cat]; let e = c[id], fresh = false;
-    if (!e) { e = c[id] = cat === 'm' || cat === 'd' ? { n: 0 } : { n: 1 }; fresh = true; }
+    if (!e) { e = c[id] = cat === 'm' || cat === 'd' ? { n: 0 } : { n: 1 }; fresh = true; if (!silent) e.nw = 1; }   // nw — «новое», пока запись не открыли в справочнике
     e.n += n;
-    if (fresh) log('Справочник: новая запись — ' + this.title(cat, id) + ' (B)', '#9ad0e8');
-    else if (n && e.n === 1 && (cat === 'm' || cat === 'd')) log('Справочник: ' + this.title(cat, id) + ' изучен — открыты характеристики и советы (B)', '#9ad0e8');
+    if (fresh && !silent) log('Справочник: новая запись — ' + this.title(cat, id) + ' (B)', '#9ad0e8');
+    else if (n && e.n === 1 && (cat === 'm' || cat === 'd')) { e.nw = 1; log('Справочник: ' + this.title(cat, id) + ' изучен — открыты характеристики и советы (B)', '#9ad0e8'); }
     return e;
   },
   // Обитатели бункеров показываются во вкладке «Мутанты»; хранятся и считаются отдельно (P.codex.d)
   rc(cat, id) { return cat === 'm' && !CFG.mut[id] && CFG.dungeon.enemies[id] ? 'd' : cat; },
-  title(cat, id) { cat = this.rc(cat, id); return cat === 'm' ? CFG.mut[id].name : cat === 'd' ? CFG.dungeon.enemies[id].name : cat === 'a' ? CFG.anoms[id].name : cat === 'r' ? CFG.arts[id].name : CFG.biomes[id].name; },
-  ids(cat) { return cat === 'm' ? Object.keys(CFG.mut).concat(Object.keys(CFG.dungeon.enemies)) : cat === 'd' ? Object.keys(CFG.dungeon.enemies) : cat === 'a' ? Object.keys(CFG.anoms) : cat === 'r' ? Object.keys(CFG.arts) : Object.keys(CFG.biomes); },
+  title(cat, id) { cat = this.rc(cat, id); return cat === 'm' ? CFG.mut[id].name : cat === 'd' ? CFG.dungeon.enemies[id].name : cat === 'a' ? CFG.anoms[id].name : cat === 'r' ? CFG.arts[id].name : cat === 'w' ? CFG.weapons[id].name : cat === 'i' ? CFG.items[id].name : CFG.biomes[id].name; },
+  ids(cat) { return cat === 'm' ? Object.keys(CFG.mut).concat(Object.keys(CFG.dungeon.enemies)) : cat === 'd' ? Object.keys(CFG.dungeon.enemies) : cat === 'a' ? Object.keys(CFG.anoms) : cat === 'r' ? Object.keys(CFG.arts) : cat === 'w' ? Object.keys(CFG.weapons) : cat === 'i' ? Object.keys(CFG.items).filter(k => k !== 'art') : Object.keys(CFG.biomes); },
   open(cat, id) { cat = this.rc(cat, id); const c = this.ensure(); return cat === 'r' ? !!P.known[id] : !!c[cat][id]; },
   // Изучен ли вид: убит хотя бы раз (характеристики и советы)
   studied(cat, id) { cat = this.rc(cat, id); const e = this.ensure()[cat][id]; return !!(e && e.n > 0); },
 
   // ---------- наблюдение ----------
   tick(dt) {
-    if (!G.started || G.dead) return; this.ensure(); this.t = (this.t || 0) - dt; if (this.t > 0) return; this.t = 0.4;
+    if (!G.started || G.dead) return; const cx = this.ensure(); this.t = (this.t || 0) - dt; if (this.t > 0) return; this.t = 0.4;
+    // при первой проверке (новая игра или старое сохранение) уже имеющееся заносится молча
+    const quiet = !cx.init; cx.init = 1;
+    for (const sl of P.inv) if (!sl.art && CFG.items[sl.id] && !cx.i[sl.id]) this.see('i', sl.id, 0, quiet);
+    for (const id of P.weapons) { const b = Wpn.base(id); if (CFG.weapons[b] && !cx.w[b]) this.see('w', b, 0, quiet); }
+    for (const id in P.known) if (P.known[id] && CFG.arts[id] && !cx.r[id]) this.see('r', id, 0, quiet);
     if (G.scene === 'zone') {
       this.see('b', W.biomeAt(P.x, P.y), 0);
       for (const m of Mutants.list) if (!m.dead && !Mutants.hidden(m) && !(m.sp === 'cinder' && m.state === 'sleep') && !(m.sp === 'fogger' && m.state === 'sleep') && CFG.mut[m.sp] && Math.hypot(m.x - P.x, m.y - P.y) < 300) { if (!this.ensure().m[m.sp]) this.see('m', m.sp); }
@@ -150,32 +177,48 @@ const Codex = {
   },
 
   // ---------- панель ----------
-  openPanel() { G.ui = { k: 'codex', tab: (G.ui && G.ui.tab) || 'm', sel: null }; renderPanel(); },
+  openPanel() { G.ui = { k: 'codex', tab: (G.ui && G.ui.tab) || 'm', sel: null, q: '' }; renderPanel(); },
   html(u) {
-    const cat = this.CATS.find(c => c.k === u.tab) || this.CATS[0], ids = this.ids(cat.k).filter(id => this.open(cat.k, id));
-    let h = '<div class="x" data-a="close">✕ Esc</div><h2>Справочник Зоны</h2><div class="stat">Записи появляются по ходу игры: мутантов заносят, когда увидишь, а характеристики и советы — когда убьёшь; аномалии — когда найдёшь; артефакты — когда опознаешь; места — когда побываешь.</div>';
-    h += '<div style="display:flex;gap:6px;flex-wrap:wrap;margin:8px 0">' + this.CATS.map(c => '<button class="btn" data-a="cxt:' + c.k + '" style="' + (c.k === cat.k ? 'border-color:#b5742a;background:#3a2f16;color:#f0d9a0' : '') + '">' + c.ic + ' ' + c.n + '</button>').join('') + '</div>';
-    h += '<div class="cols"><div>';
+    const cat = this.CATS.find(c => c.k === u.tab) || this.CATS[0], q = (u.q || '').trim().toLowerCase();
+    const all = this.ids(cat.k).filter(id => this.open(cat.k, id)), ids = q ? all.filter(id => this.title(cat.k, id).toLowerCase().includes(q)) : all;
+    let h = '<div class="x" data-a="close">✕ Esc</div><h2>Справочник Зоны</h2><div class="stat">Записи появляются по ходу игры: мутантов заносят, когда увидишь, а характеристики и советы — когда убьёшь; аномалии — когда найдёшь; артефакты — когда опознаешь; оружие и предметы — когда получишь; места — когда побываешь.</div>';
+    h += '<div style="display:flex;gap:6px;flex-wrap:wrap;margin:8px 0">' + this.CATS.map(c => '<button class="btn" data-a="cxt:' + c.k + '" style="' + (c.k === cat.k ? 'border-color:#b5742a;background:#3a2f16;color:#f0d9a0' : '') + '">' + c.ic + ' ' + c.n + (this.anyNew(c.k) ? ' <span style="color:#7fe07f">●</span>' : '') + '</button>').join('') + '</div>';
+    if (all.length > 5) h += '<input id="cxq" type="text" placeholder="Поиск по названию…" value="' + (u.q || '').replace(/"/g, '') + '" autocomplete="off" style="width:100%;margin:0 0 6px;padding:7px 9px;background:#0e0f0b;border:1px solid #4a4634;color:#c9c2a8;font:inherit;user-select:text">';
+    h += '<div class="cols"><div id="cxlist">';
     for (const id of ids) {
-      const sel = u.sel === id;
-      h += '<div class="row" data-a="cx:' + cat.k + ':' + id + '" style="cursor:pointer' + (sel ? ';background:#1c1b14;border-left:2px solid #b5742a' : '') + '"><div class="ic" style="width:52px;height:52px;padding:0">' + (this.img(cat.k, id, 48) || cat.ic) + '</div><div class="nm">' + this.title(cat.k, id) + '<div class="sub">' + this.sub(cat.k, id) + '</div></div></div>';
+      const sel = u.sel === id, nw = this.isNew(cat.k, id), nm = this.title(cat.k, id);
+      h += '<div class="row" data-n="' + nm.toLowerCase().replace(/"/g, '') + '" data-a="cx:' + cat.k + ':' + id + '" style="cursor:pointer' + (sel ? ';background:#1c1b14;border-left:2px solid #b5742a' : '') + '"><div class="ic" style="width:52px;height:52px;padding:0">' + (this.img(cat.k, id, 48) || cat.ic) + '</div><div class="nm">' + nm + (nw ? ' <span style="color:#7fe07f;font-size:11px">● новое</span>' : '') + '<div class="sub">' + this.sub(cat.k, id) + '</div></div></div>';
     }
-    if (!ids.length) h += '<div class="stat">Пока пусто.</div>';
-    h += '</div><div>' + (u.sel && this.open(cat.k, u.sel) ? this.detail(cat.k, u.sel) : '<div class="stat">' + (ids.length ? 'Выберите запись слева.' : '') + '</div>') + '</div></div>';
+    if (!ids.length) h += '<div class="stat">' + (q ? 'Ничего не найдено.' : 'Пока пусто.') + '</div>';
+    h += '</div><div>' + (u.sel && this.open(cat.k, u.sel) && this.ids(cat.k).includes(u.sel) ? this.detail(cat.k, u.sel) : '<div class="stat">' + (ids.length ? 'Выберите запись слева.' : '') + '</div>') + '</div></div>';
     return h;
   },
   sub(cat, id) {
     cat = this.rc(cat, id);
     if (cat === 'm' || cat === 'd') { const e = this.ensure()[cat][id], pre = cat === 'd' ? 'Бункер · ' : ''; return pre + (e && e.n > 0 ? 'Изучен · убито: ' + e.n : 'Замечен — убей, чтобы изучить'); }
     if (cat === 'r') return CFG.arts[id].desc;
+    if (cat === 'w') return 'Тип оружия';
+    if (cat === 'i') return Tip.kind(id);
     return cat === 'a' ? 'Найдена' : 'Посещено';
   },
   detail(cat, id) {
     cat = this.rc(cat, id);
     const t = cat === 'b' ? [this.TEXT.b[id]] : (this.TEXT[cat] || {})[id] || [], row = (l, v) => '<div class="ti-r" style="color:#7d7864">' + l + ' <b style="color:#c9c2a8;font-weight:normal">' + v + '</b></div>';
-    const pic = this.img(cat, id, 160);
+    const pic = this.img(cat, id, cat === 'm' || cat === 'd' ? 200 : 160);
     let h = '<div style="display:flex;gap:10px;align-items:center;margin-bottom:6px">' + pic + '<h3 style="margin:0;color:#b5742a;font-size:16px">' + this.title(cat, id) + '</h3></div>';
-    if (cat === 'm') {
+    if (cat === 'w') {
+      const w = CFG.weapons[id], b = (l, v) => row(l, v);
+      h += '<div class="note">' + this.TEXT.w[id] + '</div>' + b('Урон:', w.dmg + (w.pellets > 1 ? ' ×' + w.pellets + ' (картечь)' : '')) + b('Скорострельность:', (1 / w.cd).toFixed(1) + ' выстр./с') + b('Дальность:', w.range) + b('Шум:', w.noise) + (w.spread ? b('Разброс:', w.spread) : '') + b('Износ за выстрел:', w.wear + '%') + b('Боеприпас:', CFG.items[w.ammo || 'ammo'].name + (w.perAmmo ? ' (1 шт. = ' + w.perAmmo + ' выстрелов)' : '')) + b('Цена:', w.price ? w.price + ' ₽' : 'выдаётся сразу') + (w.lvl ? b('Продаётся:', 'Оружейник, мастерская ур. ' + w.lvl) : '');
+      h += '<h3>Разные экземпляры</h3><div class="note">Найденное и купленное оружие бывает Обычным, Хорошим, Редким и Уникальным: у каждого свои множители урона, темпа, разброса, дальности, шума и износа. Улучшить можно на верстаке (тюнинг).</div>';
+    } else if (cat === 'i') {
+      const it = CFG.items[id], mob = Object.keys(CFG.mut).filter(k => CFG.mut[k].part === id && this.open('m', k)).map(k => CFG.mut[k].name), dun = Object.keys(CFG.dungeon.enemies).filter(k => CFG.dungeon.enemies[k].drop && CFG.dungeon.enemies[k].drop.id === id && this.open('m', k)).map(k => CFG.dungeon.enemies[k].name);
+      const rec = CFG.recipes.filter(r => r.out[0] === id).map(r => (r.st === 'sci' ? 'лаборатория' : 'верстак') + ' ур. ' + r.lvl), made = CFG.recipes.filter(r => r.mat[id]).map(r => r.name);
+      const sells = Object.keys(CFG.vendors).filter(k => (CFG.vendors[k].sells || []).includes(id)).map(k => CFG.vendors[k].name);
+      h += Tip.item(id).replace(/^<div class="ti-h"[^]*?<\/div>/, '');
+      if (mob.length || dun.length) h += row('Трофей с:', mob.concat(dun).join(', '));
+      if (sells.length) h += row('Продаёт:', sells.join(', ') + (it.buy ? ' (' + it.buy + ' ₽)' : ''));
+      if (rec.length) h += row('Делается:', rec.join(', ')); if (made.length) h += row('Нужен для:', made.slice(0, 4).join('; '));
+    } else if (cat === 'm') {
       const c = CFG.mut[id], st = this.studied('m', id), e = this.ensure().m[id];
       h += '<div class="note">' + t[0] + '</div>';
       const fl = Tip.mutantFlags(c); if (fl.length) h += '<div class="stat" style="margin:6px 0">Повадки: ' + fl.join('; ') + '.</div>';
@@ -216,11 +259,18 @@ const Codex = {
   // панель и клики
   const _render = Camp.render; Camp.render = function (u) { if (u.k === 'codex') { panel.style.display = 'block'; const st = panel.scrollTop; panel.innerHTML = Codex.html(u); panel.scrollTop = st; return true; } return _render.call(this, u); };
   const _click = Meta.click; Meta.click = function (a, arg, arg2, u) {
-    if (a === 'cxt') { u.tab = arg; u.sel = null; return true; }
-    if (a === 'cx') { u.tab = arg; u.sel = arg2; return true; }
+    if (a === 'cxt') { u.tab = arg; u.sel = null; u.q = ''; return true; }
+    if (a === 'cx') { u.tab = arg; u.sel = arg2; Codex.viewed(arg, arg2); return true; }
     return _click.call(this, a, arg, arg2, u);
   };
+  // поиск: список фильтруется прямо в разметке (перерисовка сбила бы фокус и клавиатуру)
+  if (typeof panel !== 'undefined' && panel && panel.addEventListener) panel.addEventListener('input', e => {
+    if (!e.target || e.target.id !== 'cxq' || !G.ui || G.ui.k !== 'codex') return;
+    const q = e.target.value.trim().toLowerCase(); G.ui.q = e.target.value; let n = 0;
+    document.querySelectorAll('#cxlist .row').forEach(r => { const ok = !q || (r.dataset.n || '').includes(q); r.style.display = ok ? '' : 'none'; if (ok) n++; });
+  });
   if (typeof addEventListener === 'function') addEventListener('keydown', e => {
+    if (e.target && /INPUT|TEXTAREA/.test(e.target.tagName || '')) return;   // печатаем в поиске
     if (e.code !== 'KeyB' || e.repeat || !G.started || G.dead) return;
     if (G.ui && G.ui.k === 'codex') closePanel(); else if (!G.ui || G.ui.k !== 'menu') { closePanel(); Codex.openPanel(); }
   });
