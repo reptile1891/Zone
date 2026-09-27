@@ -9,3 +9,6 @@ desktop.ini
 
 # собранная веб-часть приложения (npm run build:web)
 www/
+
+# один файл для друзей (npm run build:single)
+dist/
