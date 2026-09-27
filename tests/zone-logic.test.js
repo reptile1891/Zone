@@ -113,7 +113,7 @@ test("цепочка «Сумерки»: три этапа, дневник по�
 test("цена продажи: неопознанный артефакт дешевле в 3 раза, спрос и события двигают цену, торговля и репутация помогают", () => {
   fresh();
   const o = run(`(() => {
-    invAdd("art", 1, "soul"); const s = P.inv[0], vk = "sci";
+    invAdd("art", 1, "soul", 1); const s = P.inv[0], vk = "sci";   // качество фиксируем: иначе оно случайно
     const unk = sellPrice(s, vk); P.known.soul = true; const known = sellPrice(s, vk);
     G.demand.soul = 1.5; const hot = sellPrice(s, vk); G.demand.soul = 1;
     P.sk.trade = 5; const trader = sellPrice(s, vk); P.sk.trade = 0; P.rep = 50; const liked = sellPrice(s, vk); P.rep = 0;
