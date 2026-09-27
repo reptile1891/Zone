@@ -49,6 +49,69 @@ const Codex = {
   },
   ACT: { day: 'днём', night: 'ночью', weather: 'в туман и дождь' },
 
+  // ---------- картинки ----------
+  // Мутанты и обитатели бункеров — их игровые спрайты, аномалии — схематичный рисунок по цвету и повадке, артефакты — значок по главному свойству,
+  // места — кусочек местности из настоящих спрайтов. Рисуются в data-URL один раз (кэш), при сбое картинки просто нет.
+  _pics: {},
+  FXCOL: { radRes: '#7ad07a', stamRegen: '#e8d060', carry: '#6aa8e8', hpRegen: '#e06060', psy: '#a070d0', repel: '#e8e8f4', lure: '#d09060', fireRes: '#e88a30', sight: '#60d8e0' },
+  PROPSPR: { car: 'car_b', dtuft: 'tuft_d', container: 'crate', barrel: 'barrel' },
+  rnd(str) { let h = 2166136261; for (const ch of str) h = Math.imul(h ^ ch.charCodeAt(0), 16777619); return () => ((h = Math.imul(h ^ (h >>> 15), 2246822507) + 1013904223 | 0) >>> 0) / 4294967296; },
+  img(cat, id, S) {
+    const key = cat + ':' + id + ':' + S; let u = this._pics[key];
+    if (u === undefined) { try { u = this.paint(cat, id, S) || ''; } catch (e) { u = ''; } this._pics[key] = u; }
+    return u ? '<img src="' + u + '" width="' + S + '" height="' + S + '" style="image-rendering:pixelated;display:block" alt="">' : '';
+  },
+  paint(cat, id, S) {
+    const c = document.createElement('canvas'); c.width = c.height = S; const g = c.getContext('2d'); g.imageSmoothingEnabled = false;
+    g.fillStyle = '#10120d'; g.fillRect(0, 0, S, S); g.strokeStyle = '#33321f'; g.strokeRect(0.5, 0.5, S - 1, S - 1);
+    const R = this.rnd(cat + id), sprite = (spr, box) => { const w = spr.width, h = spr.height, k = Math.max(1, Math.floor(Math.min(box / w, box / h))); return { w: w * k, h: h * k }; };
+    if (cat === 'm' || cat === 'd') {
+      if (cat === 'd' && typeof Dungeon !== 'undefined') Dungeon.initSprites();   // спрайты подземных врагов создаются лениво
+      const spr = Spr.cache[cat === 'd' ? CFG.dungeon.enemies[id].spr : id]; if (!spr) return '';
+      const d = sprite(spr, S - 10); g.drawImage(spr, Math.round((S - d.w) / 2), Math.round((S - d.h) / 2), d.w, d.h);
+    } else if (cat === 'a') this.anom(g, id, S, R);
+    else if (cat === 'r') this.gem(g, id, S);
+    else {
+      const b = CFG.biomes[id]; g.fillStyle = b.map; g.fillRect(1, 1, S - 2, S - 2);
+      const props = Object.keys(b.props).map(k => [k, this.PROPSPR[k] && Spr.cache[this.PROPSPR[k]] ? this.PROPSPR[k] : k]).filter(p => Spr.cache[p[1]]).sort((x, y) => b.props[y[0]] - b.props[x[0]]).slice(0, 6);
+      props.forEach((p, i) => { const spr = Spr.cache[p[1]], d = sprite(spr, S * 0.36), cx = S * (0.2 + (i % 3) * 0.3) + (R() - 0.5) * S * 0.06, cy = S * (i < 3 ? 0.34 : 0.72) + (R() - 0.5) * S * 0.06; g.drawImage(spr, Math.round(cx - d.w / 2), Math.round(cy - d.h / 2), d.w, d.h); });
+    }
+    return c.toDataURL();
+  },
+  // Аномалия: свечение и кольцо цвета из конфига, внутри — примета типа
+  anom(g, id, S, R) {
+    const a = CFG.anoms[id], k = S / 64, cx = S / 2, cy = S / 2, col = a.col, dot = (x, y, r, c) => { g.fillStyle = c; g.fillRect(Math.round(cx + x * k), Math.round(cy + y * k), Math.max(1, Math.round(r * k)), Math.max(1, Math.round(r * k))); };
+    const gr = g.createRadialGradient(cx, cy, 2 * k, cx, cy, 28 * k); gr.addColorStop(0, col + '88'); gr.addColorStop(1, col + '00'); g.fillStyle = gr; g.fillRect(2, 2, S - 4, S - 4);
+    g.strokeStyle = col; g.lineWidth = Math.max(1, 2 * k); g.beginPath(); g.arc(cx, cy, 24 * k, 0, 6.283); g.stroke();
+    const ring = (n, r0, r1, c, sz) => { for (let i = 0; i < n; i++) { const t = i / n * 6.283 + R() * 0.3, r = r0 + (r1 - r0) * R(); dot(Math.cos(t) * r, Math.sin(t) * r, sz, c); } };
+    switch (id) {
+      case 'plesh': g.fillStyle = '#5a4a30'; g.beginPath(); g.arc(cx, cy, 15 * k, 0, 6.283); g.fill(); ring(14, 6, 22, '#20180e', 2); break;
+      case 'grinder': ring(14, 12, 21, '#d8cfae', 3); ring(6, 4, 10, '#a05050', 2); break;
+      case 'funnel': for (let t = 0; t < 12; t += 0.25) dot(Math.cos(t) * (2 + t * 1.8), Math.sin(t) * (2 + t * 1.8), 2, '#e8dcb0'); break;
+      case 'electra': g.strokeStyle = '#dff0ff'; g.lineWidth = Math.max(1, 2 * k); g.beginPath(); g.moveTo(cx - 8 * k, cy - 22 * k); g.lineTo(cx + 2 * k, cy - 6 * k); g.lineTo(cx - 6 * k, cy + 2 * k); g.lineTo(cx + 6 * k, cy + 22 * k); g.stroke(); break;
+      case 'fluff': ring(22, 0, 21, '#fff8e8', 2); break;
+      case 'slime': g.fillStyle = col; g.beginPath(); g.arc(cx, cy, 16 * k, 0, 6.283); g.fill(); dot(-6, -6, 5, '#e8ffe8'); dot(4, 3, 3, '#e8ffe8'); break;
+      case 'spring': g.strokeStyle = '#f0d890'; g.lineWidth = Math.max(1, 2 * k); for (const r of [8, 15, 21]) { g.beginPath(); g.arc(cx, cy, r * k, 0, 6.283); g.stroke(); } break;
+      case 'magnet': for (let i = 0; i < 8; i++) { const t = i / 8 * 6.283; dot(Math.cos(t) * 18 - 2, Math.sin(t) * 18 - 2, 4, '#b0c0d8'); } dot(-3, -3, 6, '#5a6a80'); break;
+      case 'smolder': g.fillStyle = '#ffb060'; g.beginPath(); g.arc(cx, cy, 7 * k, 0, 6.283); g.fill(); ring(10, 8, 20, '#7a2a10', 3); break;
+      default: ring(10, 6, 20, col, 3);
+    }
+  },
+  // Артефакт: 16×16 «камень»; цвет — по главному свойству, форма — по номеру в списке, чтобы разные были не похожи
+  gem(g, id, S) {
+    const a = CFG.arts[id], main = Object.keys(a.fx)[0], col = this.FXCOL[main] || '#8a8a8a', shape = Object.keys(CFG.arts).indexOf(id) % 4, dark = '#00000055', light = '#ffffff88';
+    const px = document.createElement('canvas'); px.width = px.height = 16; const p = px.getContext('2d');
+    for (let y = 0; y < 16; y++) for (let x = 0; x < 16; x++) {
+      const u = x - 7.5, v = y - 7.5, au = Math.abs(u), av = Math.abs(v);
+      const inside = shape === 0 ? au + av < 6.5 : shape === 1 ? u * u + v * v < 42 : shape === 2 ? (au * av < 7 && au + av < 9) : (v > -1 ? u * u + v * v < 40 : au < (v + 7) * 0.9 && v > -7);
+      if (!inside) continue; p.fillStyle = col; p.fillRect(x, y, 1, 1);
+      if (u + v > 5) { p.fillStyle = dark; p.fillRect(x, y, 1, 1); } else if (u + v < -4) { p.fillStyle = light; p.fillRect(x, y, 1, 1); }
+    }
+    const core = Math.floor(Object.keys(CFG.arts).indexOf(id) / 4) % 4;   // вторая примета, чтобы одноцветные камни не путались
+    p.fillStyle = '#000000aa'; if (core === 1) p.fillRect(7, 7, 2, 2); else if (core === 2) { p.fillRect(7, 5, 2, 6); p.fillRect(5, 7, 6, 2); } else if (core === 3) { p.fillRect(5, 5, 6, 1); p.fillRect(5, 10, 6, 1); p.fillRect(5, 5, 1, 6); p.fillRect(10, 5, 1, 6); }
+    g.drawImage(px, Math.round(S * 0.12), Math.round(S * 0.12), Math.round(S * 0.76), Math.round(S * 0.76));
+  },
+
   ensure() { const c = P.codex || (P.codex = {}); for (const k of ['m', 'd', 'a', 'b']) if (!c[k]) c[k] = {}; return c; },
   // Запись: новая — сообщение в лог. n — прибавка к счётчику убийств
   see(cat, id, n = 0) {
@@ -88,7 +151,7 @@ const Codex = {
     h += '<div class="cols"><div>';
     for (const id of ids) {
       const on = this.open(cat.k, id), sel = u.sel === id;
-      h += '<div class="row"' + (on ? ' data-a="cx:' + cat.k + ':' + id + '" style="cursor:pointer' + (sel ? ';background:#1c1b14;border-left:2px solid #b5742a' : '') + '"' : ' style="opacity:.45"') + '><div class="ic">' + (on ? cat.ic : '?') + '</div><div class="nm">' + (on ? this.title(cat.k, id) : '??? ') + '<div class="sub">' + (on ? this.sub(cat.k, id) : 'Не открыто') + '</div></div></div>';
+      h += '<div class="row"' + (on ? ' data-a="cx:' + cat.k + ':' + id + '" style="cursor:pointer' + (sel ? ';background:#1c1b14;border-left:2px solid #b5742a' : '') + '"' : ' style="opacity:.45"') + '><div class="ic" style="width:52px;height:52px;padding:0">' + (on ? (this.img(cat.k, id, 48) || cat.ic) : '?') + '</div><div class="nm">' + (on ? this.title(cat.k, id) : '??? ') + '<div class="sub">' + (on ? this.sub(cat.k, id) : 'Не открыто') + '</div></div></div>';
     }
     h += '</div><div>' + (u.sel && this.open(cat.k, u.sel) ? this.detail(cat.k, u.sel) : '<div class="stat">Выберите запись слева.</div>') + '</div></div>';
     return h;
@@ -100,7 +163,8 @@ const Codex = {
   },
   detail(cat, id) {
     const t = cat === 'b' ? [this.TEXT.b[id]] : (this.TEXT[cat] || {})[id] || [], row = (l, v) => '<div class="ti-r" style="color:#7d7864">' + l + ' <b style="color:#c9c2a8;font-weight:normal">' + v + '</b></div>';
-    let h = '<h3 style="margin-top:0;color:#b5742a">' + this.title(cat, id) + '</h3>';
+    const pic = this.img(cat, id, 96);
+    let h = '<div style="display:flex;gap:10px;align-items:center;margin-bottom:6px">' + pic + '<h3 style="margin:0;color:#b5742a;font-size:16px">' + this.title(cat, id) + '</h3></div>';
     if (cat === 'm') {
       const c = CFG.mut[id], st = this.studied('m', id), e = this.ensure().m[id];
       h += '<div class="note">' + t[0] + '</div>';

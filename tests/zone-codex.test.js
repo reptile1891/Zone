@@ -101,3 +101,20 @@ test("справочник сохраняется, при новой игре с
   })()`);
   assert.equal(o.saved, 2); assert.deepEqual(o.after, { n: 2, a: true }); assert.equal(o.old, 0); assert.equal(o.reset, 0);
 });
+
+test("картинки: для каждой записи рисуется изображение (на подставном холсте), при сбое — просто без картинки", () => {
+  fresh();
+  const o = run(`(() => {
+    const calls = { draw: 0, made: 0 };
+    const ctx = () => new Proxy({}, { get: (t, k) => k === "createRadialGradient" ? () => ({ addColorStop() {} }) : () => { if (k === "drawImage") calls.draw++; }, set: () => true });
+    const _ce = document.createElement; document.createElement = () => { calls.made++; return { width: 0, height: 0, getContext: ctx, toDataURL: () => "data:image/png;base64,AAAA" }; };
+    for (const k in CFG.mut) Spr.cache[k] = { width: 32, height: 16 };
+    for (const k in CFG.dungeon.enemies) Spr.cache[CFG.dungeon.enemies[k].spr] = { width: 20, height: 16 };
+    Dungeon.sprReady = true; Codex._pics = {};
+    const missing = []; for (const c of Codex.CATS) for (const id of Codex.ids(c.k)) if (!Codex.img(c.k, id, 48).startsWith("<img")) missing.push(c.k + ":" + id);
+    const again = calls.made; Codex.img("m", "tin", 48); const cached = calls.made === again;
+    document.createElement = () => { throw new Error("нет холста"); }; Codex._pics = {}; const broken = Codex.img("m", "tin", 48);
+    document.createElement = _ce; return { missing, draw: calls.draw > 20, cached, broken };
+  })()`);
+  assert.deepEqual(o.missing, []); assert.ok(o.draw); assert.ok(o.cached, "картинка кэшируется"); assert.equal(o.broken, "");
+});
