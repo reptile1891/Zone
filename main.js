@@ -102,11 +102,14 @@ function newGame() {
 // force — сохранить и вне лагеря (автосейв в поле, закрытие вкладки, смерть). Такое сохранение помечается field:
 // при загрузке игрок окажется в лагере с тем, что нёс, но заплатит за «вытаскивание» (см. load).
 const idxWhere = (a, f) => a.reduce((r, x, i) => (f(x) && r.push(i), r), []);
+// ключ сохранения выбранного слота (saves.js); без модуля — прежний единственный слот
+function saveKey() { return typeof Saves !== 'undefined' ? Saves.key() : 'zone_save_v2'; }
 function save(force) {
+  if (typeof Saves !== 'undefined' && Saves.blocked) return;   // идёт импорт: не затирать загруженное сохранение
   if (!force && (!inCamp() || G.scene === 'dungeon' || G.dead)) return;
   try {
     const kb = []; for (let i = 0; i < known.length; i++) kb.push(known[i]);
-    localStorage.setItem('zone_save_v2', JSON.stringify({ seed: W.seed, P: { money: P.money, inv: P.inv, equip: P.equip, notes: P.notes, known: P.known,
+    localStorage.setItem(saveKey(), JSON.stringify({ seed: W.seed, P: { money: P.money, inv: P.inv, equip: P.equip, notes: P.notes, known: P.known,
       sk: P.sk, sp: P.sp, xp: P.xp, lvl: P.lvl, hp: P.hp, rad: P.rad, food: P.food, goal: P.goal, ...Meta.saveFields() }, clock: G.clock, demand: G.demand, events: G.events,
       caches: W.caches, kn: kb.join(''), field: (!inCamp() || G.scene === 'dungeon') && !G.dead, bo: W.bunkers.map(b => b.opened),
       oc: idxWhere(W.conts, c => c.opened), cl: idxWhere(W.corpses.slice(0, W.nGenCorpses), c => c.looted),
@@ -115,7 +118,7 @@ function save(force) {
 }
 function load() {
   try {
-    const s = JSON.parse(localStorage.getItem('zone_save_v2')); if (!s) return false;
+    const s = JSON.parse(localStorage.getItem(saveKey())); if (!s) return false;
     W = new World(s.seed); resetPlayer(); Object.assign(P, s.P); P.sp = s.P.sp; Gear.fixEquip(); G.clock = s.clock; G.demand = s.demand || {}; G.events = s.events || [];
     W.caches = s.caches || []; for (let i = 0; i < known.length; i++) known[i] = +s.kn[i] || 0;
     for (const k in CFG.skills) P.sk[k] = P.sk[k] || 0;
@@ -687,7 +690,7 @@ function panelClick(attr) {
   if (Meta.click(a, arg, arg2, u)) { renderPanel(); return; }
   if (a === 'vol') { Snd.vol = U.clamp(Math.round((Snd.vol + (arg === 'up' ? 0.1 : -0.1)) * 10) / 10, 0, 1); if (Snd.master) Snd.master.gain.value = Snd.vol; }
   else if (a === 'savenow') { if (inCamp() && G.scene !== 'dungeon') { save(); log('Сохранено.'); } else log('Сохраняться можно только в лагере.'); }
-  else if (a === 'newgame') { if (u.conf) { try { localStorage.removeItem('zone_save_v2'); } catch (e) {} closePanel(); newGame(); return; } u.conf = true; }
+  else if (a === 'newgame') { if (u.conf) { try { localStorage.removeItem(saveKey()); } catch (e) {} closePanel(); newGame(); return; } u.conf = true; }
   if (a === 'use') { const s = P.inv[i]; if (s) useItem(s.id); }
   else if (a === 'drop') { const s = P.inv[i]; if (s) { if (s.art) W.arts.push({ id: 0, type: s.art, q: s.q, x: P.x + 20, y: P.y, anom: 0 }); else W.loot.push({ x: P.x + 20, y: P.y, id: s.id, n: s.n, g: s.g }); P.inv.splice(i, 1); } }
   else if (a === 'equip') {
@@ -730,6 +733,7 @@ function menuHTML(u) {
     <div class="row"><div class="nm">Подсказки по ходу игры: <b>${P.hintsOff ? 'выключены' : 'включены'}</b><div class="sub">советы по ситуации, каждый один раз</div></div>${btn('hintsToggle', P.hintsOff ? 'Включить' : 'Выключить')}${btn('hintsReset', 'Показать заново')}</div>
     <div class="row"><div class="nm">Сохранение<div class="sub">в лагере; в Зоне — автосейв каждые 30 с (при обрыве связи: −10% денег)</div></div>${btn('savenow', 'Сохранить', !inCamp())}</div>
     <div class="row"><div class="nm">Новая игра<div class="sub">${u.conf ? 'Нажми ещё раз: сохранение будет стёрто' : 'Начать заново'}</div></div>${btn('newgame', u.conf ? 'Точно?' : 'Новая')}</div>
+    ${typeof Saves !== 'undefined' ? Saves.menuRows() : ''}
     <div style="margin-top:12px">${btn('resume', '▶ Продолжить')}</div></div></div>`;
 }
 // ---------- карта ----------
@@ -789,7 +793,7 @@ function start(cont) {
 $('bNew').onclick = () => start(false);
 $('bCont').onclick = () => start(true);
 Spr.init();
-try { if (!localStorage.getItem('zone_save_v2')) $('bCont').style.display = 'none'; } catch (e) { $('bCont').style.display = 'none'; }
+try { if (!localStorage.getItem(saveKey())) $('bCont').style.display = 'none'; } catch (e) { $('bCont').style.display = 'none'; }
 let last = performance.now();
 function frame(now) {
   const dt = Math.min(0.05, (now - last) / 1000); last = now;

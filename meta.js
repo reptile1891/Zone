@@ -534,7 +534,7 @@ const Meta = {
       }
       case 'nkill': u.s.hurt(999, P); closePanel(); return true;
       case 'endcont': closePanel(); return true;
-      case 'endnew': try { localStorage.removeItem('zone_save_v2'); } catch (e) { } closePanel(); newGame(); return true;
+      case 'endnew': try { localStorage.removeItem(saveKey()); } catch (e) { } closePanel(); newGame(); return true;
     }
     return false;
   },
