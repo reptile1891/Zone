@@ -13,7 +13,7 @@ Object.assign(Camp, {
     const base = CFG.vendors[vk].sells; if (vk !== 'gear') return base;
     return base.filter(id => (CFG.gearStock[id] || 1) <= this.lvl('gear'));
   },
-  identCost() { return [20, 10, 0][this.lvl('sci') - 1]; },
+  identCost() { return [30, 20, 12][this.lvl('sci') - 1]; },   // никогда не бесплатно: учёный работает за деньги
   researchCost() { return [40, 25, 10][this.lvl('sci') - 1]; },
   sleepCost() { return [15, 8, 0][this.lvl('barracks') - 1]; },
   repairMul(vk) { return [1, 0.75, 0.5][this.lvl(vk) - 1]; },
@@ -109,7 +109,7 @@ Object.assign(Camp, {
       add('crates', 120, 390, 2.4, { foot: 30 }); add('crates', 690, 400, 2.4, { foot: 30 }); add('rug', 400, 400, 2.6, { decor: true });
       talk(400, 315, 'Торговый прилавок: купить, продать, опознать'); upgFor('gear', 110, 300); upgFor('buyer', 690, 300);
       R.vendors = [{ k: 'gear', x: 330, y: 208 }, { k: 'buyer', x: 470, y: 208 }]; R.vendor = R.vendors[0];
-      R.greet = 'Всё в одном месте: «Кум» отпускает снаряжение, «Борода» берёт хабар, оружие и приборы — на полках. Опознать артефакт тоже здесь.';
+      R.greet = 'Всё в одном месте: «Кум» отпускает снаряжение, «Борода» берёт хабар, оружие и приборы — на полках. Неопознанные артефакты берут дёшево; опознать их может только учёный в Мастерской.';
     } else if (k === 'buyer') {
       add('shelf', 190, 150, 2, { foot: 24 }); add('shelf', 290, 150, 2, { foot: 24 }); add('shelf', 510, 150, 2, { foot: 24 }); add('shelf', 610, 150, 2, { foot: 24 }); add('counter', 400, 240, 2.6, { foot: 150, base: 10 });
       add('scales', 340, 218, 2.4, { decor: true }); add('safe', 690, 190, 2.2, { foot: 20 }); add('crates', 120, 380, 2.4, { foot: 30 }); add('crates', 680, 400, 2.4, { foot: 30 }); add('rug', 400, 390, 2.6, { decor: true });
@@ -122,7 +122,9 @@ Object.assign(Camp, {
       R.spots.push({ x: 610, y: 305, r: 60, label: () => 'Верстак: ремонт, тюнинг, разборка, мастерить', fn: () => { G.ui = { k: 'craft', st: 'gun' }; renderPanel(); } });
       add('labbench', 430, 130, 2.2, { foot: 90, base: 10 }); upgFor('sci', 700, 400);
       R.spots.push({ x: 430, y: 190, r: 60, label: () => 'Лабораторный стол: синтез', fn: () => { G.ui = { k: 'craft', st: 'sci' }; renderPanel(); } });
-      R.vendor = { x: 300, y: 205 }; R.greet = 'Пахнет маслом и порохом. «Ржавый» не поднимает головы: «Чинить, тюнинговать, разбирать — вон верстак. Стволы и патроны — в Торговом доме».'; L(610, 200, 150, 0.7);
+      R.vendors = [{ k: 'gun', x: 300, y: 205 }, { k: 'sci', x: 520, y: 215 }]; R.vendor = R.vendors[0];
+      R.spots.push({ x: 520, y: 285, r: 70, label: () => 'Говорить: Учёный «Лис» — опознать артефакт, исследования', fn: () => openTrade('sci') });
+      R.greet = 'Пахнет маслом и порохом. «Ржавый» не поднимает головы: «Чинить, тюнинговать, разбирать — вон верстак. Стволы и патроны — в Торговом доме». В углу у приборов возится «Лис»: он опознаёт артефакты — за деньги.'; L(610, 200, 150, 0.7);
     } else if (k === 'gear') {
       add('shelf', 200, 150, 2, { foot: 24 }); add('shelf', 300, 150, 2, { foot: 24 }); add('shelf', 500, 150, 2, { foot: 24 }); add('rackc', 640, 170, 2.2, { foot: 30 }); add('counter', 400, 250, 2.6, { foot: 150, base: 10 });
       add('crates', 130, 380, 2.4, { foot: 30 }); add('barrel', 690, 400, 2.2, { foot: 14 }); add('rug', 400, 400, 2.6, { decor: true });

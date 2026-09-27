@@ -469,7 +469,7 @@ const Meta = {
   },
 
   tradeExtra(vk) {
-    if (vk === 'market') { const t = (G.ui && G.ui.tab) || 'trade'; return t === 'guns' ? this.tradeExtra('gun') : t === 'serv' ? this.tradeExtra('gear') + this.tradeExtra('sci') : ''; }   // вкладки одного окна
+    if (vk === 'market') { const t = (G.ui && G.ui.tab) || 'trade'; return t === 'guns' ? this.tradeExtra('gun') : t === 'serv' ? this.tradeExtra('gear') : ''; }   // вкладки одного окна
     let h = '<div class="cols">';
     if (vk === 'gun') {
       h += this.gunShopHTML();
@@ -527,7 +527,7 @@ const Meta = {
       }
       case 'ident': {
         const s = P.inv[i], v = CFG.vendors[u.v];
-        if (s && s.art && P.money >= Camp.identCost()) { P.money -= Camp.identCost(); P.known[s.art] = true; addXp(25); P.karma.study += 0.5; log('Опознан: ' + CFG.arts[s.art].name + ' (' + Gear.grade(s.q).n.toLowerCase() + '). ' + CFG.arts[s.art].desc, Gear.grade(s.q).col); } return true;
+        if (s && s.art && u && u.v === 'sci' && P.money >= Camp.identCost()) { P.money -= Camp.identCost(); P.known[s.art] = true; addXp(25); P.karma.study += 0.5; log('Опознан: ' + CFG.arts[s.art].name + ' (' + Gear.grade(s.q).n.toLowerCase() + '). ' + CFG.arts[s.art].desc, Gear.grade(s.q).col); } return true;
       }
       case 'sleep': {
         const v = CFG.vendors.bar;

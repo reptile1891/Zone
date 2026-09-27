@@ -226,7 +226,7 @@ function findNear() {
 const npcPos = k => Camp.vendorPos(k);
 function takeArt(a) {
   invAdd('art', 1, a.type, a.q); W.arts.splice(W.arts.indexOf(a), 1); Snd.pick();
-  log(P.known[a.type] ? 'Взят артефакт: ' + Meta.itemName(P.inv[P.inv.length - 1]) : 'Взят неопознанный артефакт. В Торговом доме его опознают.', '#e8c060');
+  log(P.known[a.type] ? 'Взят артефакт: ' + Meta.itemName(P.inv[P.inv.length - 1]) : 'Взят неопознанный артефакт. Опознать его может Учёный «Лис» в Мастерской — за деньги.', '#e8c060');
 }
 function lootCorpse(s) {
   s.looted = true; const got = [];
