@@ -644,7 +644,7 @@ function hud(dt) {
   // подсказка действия — зелёная, прямо под игроком
   const pr = $('prompt'); pr.textContent = G.near ? '[E] ' + G.near.label : '';
   if (G.near) { const w = pr.offsetWidth || 0; pr.style.left = U.clamp(P.x - cam.x, w / 2 + 8, VW - w / 2 - 8) + 'px'; pr.style.top = U.clamp(P.y - cam.y + 36, 40, VH - 90) + 'px'; }
-  let q = ''; heldNames.forEach((h, i) => { const ic = h ? Quick.icon(h) : '', n = h ? Quick.count(h) : ''; q += `<div class="qs ${P.sel === i ? 'on' : ''} ${h ? '' : 'e'}" data-q="${i}"><u>${i + 1}</u>${ic}<b>${n}</b></div>`; });
+  let q = ''; heldNames.forEach((h, i) => { const ic = h ? Quick.icon(h) : '', n = h ? Quick.count(h) : ''; q += `<div class="qs ${P.sel === i ? 'on' : ''} ${h ? '' : 'e'} ${h && n === 0 ? 'z' : ''}" data-q="${i}"><u>${i + 1}</u>${ic}<b>${n}</b></div>`; });
   if ($('quick').dataset.s !== q) { $('quick').innerHTML = q; $('quick').dataset.s = q; }
   // осмотр (ПКМ)
   const tip = $('tip');

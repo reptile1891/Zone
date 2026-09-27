@@ -2,7 +2,7 @@
 // Инвентарь «point & click»: рюкзак и ящик хранения — сетки ячеек с иконками. Клик по вещи берёт её «в руку» (значок ходит за курсором),
 // второй клик кладёт: в другую ячейку рюкзака (порядок; одинаковые стопки сливаются), в контейнер для артефактов, на кнопку быстрой панели
 // (вещь остаётся в рюкзаке, кнопка запоминает её), в ящик и обратно. Правая кнопка мыши по вещи — использовать (артефакт — в контейнер).
-// Стопки переносятся ПО ОДНОЙ штуке (Shift+клик или кнопка «Все» — вся стопка; «+1» / «−1» — сколько нести).
+// Клик по стопке берёт ВСЮ стопку; Shift+клик — одну штуку; «−1» / «+1» / «Все» в строке «В руке» — сколько нести.
 // Быстрый доступ раскладывается прямо на нижней панели: взял вещь в инвентаре — кликнул по кнопке внизу (окно инвентаря приподнято и не закрывает панель).
 // Под сеткой строка «В руке» с кнопками: использовать, выбросить, в ящик. Зоны ячеек: inv, stash, equip (контейнеры), gun (свои стволы), melee (свои ножи); quick — кнопки нижней панели.
 // Окно с вкладками «Предметы» (расходники, материалы, трофеи), «Снаряжение» (костюм, шлем, обувь, рюкзак, артефакты и контейнеры), «Оружие» (все стволы и ножи игрока —
@@ -31,7 +31,7 @@ const Inv = {
     if (st && s.n > n) s.n -= n; else fromList.splice(i, 1);
   },
   limit() { const l = Camp.stashLimit(); return l > 999 ? 0 : l; },
-  pickN(z, i) { const s = this.at(z, i); return s && (z === 'inv' || z === 'stash') && this.stackable(s) && !this.shift ? 1 : (s && s.n) || 1; },
+  pickN(z, i) { const s = this.at(z, i); return s && (z === 'inv' || z === 'stash') && this.stackable(s) && this.shift ? 1 : (s && s.n) || 1; },
   equipTo(from, slot) {
     const s = P.inv[from]; if (!s || !s.art) return log('В контейнер кладут только артефакты.');
     if (!P.known[s.art]) return log('Неизвестный артефакт в контейнер не положишь — опознай его в Торговом доме.');
@@ -59,12 +59,13 @@ const Inv = {
       else if (z === 'inv') this.unequip(h.i);
     } else if (h.z === 'quick') {
       if (z === 'quick' && i > 0) Quick.assign(i, it);
-      else if (z === 'inv' || z === 'gun' || z === 'melee') { Quick.assign(h.i, null); log('Кнопка ' + (h.i + 1) + ' свободна: ' + Quick.name(it) + (Quick.gun(it) || Quick.knife(it) ? ' — оружие осталось во вкладке «Оружие».' : ' осталась в рюкзаке.'), '#a8c890'); }   // унести с панели — кнопка освобождается
+      // с кнопки в рюкзак вещь не «убирается» случайным кликом: кнопка помнит её и без запаса (серая, с нулём); убрать — кнопкой «Убрать с кнопки» в строке «В руке»
     } else if (h.z === 'gun' || h.z === 'melee') { if (z === 'quick' && i > 0) { Quick.assign(i, it); log('На кнопку ' + (i + 1) + ' — ' + Quick.name(it) + '.', '#a8c890'); } }
   },
   // действия над вещью в руке
   act(u, what) {
-    const h = u.hand; if (!h || (h.z !== 'inv' && h.z !== 'stash')) return; const list = h.z === 'inv' ? P.inv : P.stash, s = list[h.i]; if (!s) { u.hand = null; return; }
+    const h = u.hand; if (h && h.z === 'quick' && what === 'unslot') { const it = this.at('quick', h.i); u.hand = null; if (it) { Quick.assign(h.i, null); log('Кнопка ' + (h.i + 1) + ' свободна: ' + Quick.name(it) + (Quick.gun(it) || Quick.knife(it) ? ' — оружие осталось во вкладке «Оружие».' : ' осталась в рюкзаке.'), '#a8c890'); } return; }
+    if (!h || (h.z !== 'inv' && h.z !== 'stash')) return; const list = h.z === 'inv' ? P.inv : P.stash, s = list[h.i]; if (!s) { u.hand = null; return; }
     if (what === 'more') { h.n = Math.min(s.n || 1, h.n + 1); return; }
     if (what === 'less') { h.n = Math.max(1, h.n - 1); return; }
     if (what === 'all') { h.n = s.n || 1; return; }
@@ -102,9 +103,10 @@ const Inv = {
     return h + '</div>';
   },
   handBar(u) {
-    const it = this.handItem(u); if (!it) return '<div class="stat" style="margin-top:6px">Клик по вещи — взять одну штуку в руку, ещё клик — положить (Shift или «Все» — всю стопку). Правая кнопка — использовать. Быстрый доступ: возьми вещь и кликни по кнопке на нижней панели.</div>';
+    const it = this.handItem(u); if (!it) return '<div class="stat" style="margin-top:6px">Клик по вещи — взять всю стопку в руку, ещё клик — положить (Shift+клик — одну штуку; «−1» / «+1» — сколько нести). Правая кнопка — использовать. Быстрый доступ: возьми вещь и кликни по кнопке на нижней панели — кнопка запомнит вещь, а число на ней растёт с подбором и покупкой.</div>';
     const z = u.hand.z, name = this.name(z, it);
     let h = '<div class="note" style="margin-top:6px">В руке: <b>' + name + '</b>' + (u.hand.n > 1 || ((it.n || 1) > 1 && (z === 'inv' || z === 'stash')) ? ' ×' + u.hand.n + (it.n > u.hand.n ? ' из ' + it.n : '') : '');
+    if (z === 'quick') h += ' <span style="display:inline-flex;gap:6px">' + btn('hact:unslot', 'Убрать с кнопки') + '</span>';
     if (z === 'inv' || z === 'stash') {
       const s = it; h += ' <span style="display:inline-flex;gap:6px;flex-wrap:wrap">';
       if (this.stackable(s) && s.n > 1) h += btn('hact:less', '−1', u.hand.n <= 1) + btn('hact:more', '+1', u.hand.n >= s.n) + btn('hact:all', 'Все', u.hand.n >= s.n);
