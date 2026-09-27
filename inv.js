@@ -148,8 +148,10 @@ const Inv = {
     }
     return '<div class="slot gc' + (sel ? ' sel' : '') + '" data-a="cell:' + z + ':' + i + '" style="' + (col ? 'border-color:' + col : '') + '">' + inner + badge + '</div>';
   },
+  // на телефоне (Touch.on) вертикальное место в панели очень ограничено — не резервируем под пустые ячейки больше двух рядов
+  minCells(min, cols) { return (typeof Touch !== 'undefined' && Touch.on) ? Math.min(min, cols * 2) : min; },
   grid(z, u, min) {
-    const a = this.zone(z), cells = Math.max(min, Math.ceil((a.length + 1) / this.COLS) * this.COLS); let h = '<div class="ggrid">';
+    const a = this.zone(z), cells = Math.max(this.minCells(min, this.COLS), Math.ceil((a.length + 1) / this.COLS) * this.COLS); let h = '<div class="ggrid">';
     for (let i = 0; i < cells; i++) h += this.cell(z, i, a[i], u);
     return h + '</div>';
   },
@@ -189,9 +191,9 @@ const Inv = {
     return h;
   },
   handBar(u) {
-    const it = this.handItem(u); if (!it) return '<div class="stat" style="margin-top:6px">Клик по вещи — взять в руку, ещё клик — положить (Shift+клик — одну штуку из стопки; «−1» / «+1» / «Все» — сколько нести). Правая кнопка — использовать. Быстрый доступ: возьми вещь и кликни по кнопке на нижней панели.</div>';
+    const it = this.handItem(u); if (!it) return '<div class="stat hbar" style="margin-top:6px">Клик по вещи — взять в руку, ещё клик — положить (Shift+клик — одну штуку из стопки; «−1» / «+1» / «Все» — сколько нести). Правая кнопка — использовать. Быстрый доступ: возьми вещь и кликни по кнопке на нижней панели.</div>';
     const z = u.hand.z, name = this.name(z, it);
-    let h = '<div class="note" style="margin-top:6px">' + (z === 'shop' ? 'Выбрано' : 'В руке') + ': <b>' + name + '</b>' + (z === 'shop' && it.sub ? ' — ' + it.sub : '') + (u.hand.n > 1 || ((it.n || 1) > 1 && (z === 'inv' || z === 'stash')) ? ' ×' + u.hand.n + (z !== 'shop' && it.n > u.hand.n ? ' из ' + it.n : '') : '');
+    let h = '<div class="note hbar" style="margin-top:6px">' + (z === 'shop' ? 'Выбрано' : 'В руке') + ': <b>' + name + '</b>' + (z === 'shop' && it.sub ? ' — ' + it.sub : '') + (u.hand.n > 1 || ((it.n || 1) > 1 && (z === 'inv' || z === 'stash')) ? ' ×' + u.hand.n + (z !== 'shop' && it.n > u.hand.n ? ' из ' + it.n : '') : '');
     h += ' <span style="display:inline-flex;gap:6px;flex-wrap:wrap;align-items:center">';
     if (z === 'shop') {
       const max = this.shopMax(it); if (it.stack && max > 0) h += btn('hact:less', '−1', u.hand.n <= 1) + '<b>×' + u.hand.n + '</b>' + btn('hact:more', '+1', u.hand.n >= max) + btn('hact:all', 'Все', u.hand.n >= max);
@@ -216,7 +218,7 @@ const Inv = {
   // общая сетка: сначала стволы и ножи, затем стопки рюкзака; свободные ячейки — конец рюкзака
   bigGrid(u) {
     const list = []; P.weapons.forEach((id, i) => list.push(['gun', i])); (P.knives || []).forEach((id, i) => list.push(['melee', i])); P.inv.forEach((s, i) => list.push(['inv', i]));
-    const cells = Math.max(60, Math.ceil((list.length + 1) / this.BIG) * this.BIG); let h = '<div class="ggrid big">';
+    const cells = Math.max(this.minCells(60, this.BIG), Math.ceil((list.length + 1) / this.BIG) * this.BIG); let h = '<div class="ggrid big">';
     for (let k = 0; k < cells; k++) { if (k < list.length) { const [z, i] = list[k]; h += this.cell(z, i, z === 'inv' ? P.inv[i] : null, u); } else h += this.cell('inv', P.inv.length + (k - list.length), null, u); }
     return h + '</div>';
   },
